@@ -25,3 +25,4 @@ hs_err_pid*
 # Idea reliated files
 .idea/
 target/
+*.iml

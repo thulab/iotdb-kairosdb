@@ -35,6 +35,7 @@ public class MetricsManager {
             createNewMetric(name);
             addDatapoint(name, tags, type, timestamp, value);
         } catch (SQLException e) {
+            LOGGER.error("Add data points failed because ", e);
             throw e;
         } finally {
             if (rs != null)
