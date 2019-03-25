@@ -29,13 +29,6 @@
             <groupId>org.glassfish.jersey.inject</groupId>
             <artifactId>jersey-hk2</artifactId>
         </dependency>
-
-        <!-- uncomment this to get JSON support:
-         <dependency>
-            <groupId>org.glassfish.jersey.media</groupId>
-            <artifactId>jersey-media-json-binding</artifactId>
-        </dependency>
-        -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -53,20 +46,22 @@
             <version>1.2.17</version>
         </dependency>
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.31</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.8.2</version>
         </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>2.9.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.jaxrs</groupId>
+            <artifactId>jackson-jaxrs-json-provider</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+
         <dependency>
             <groupId>com.google.collections</groupId>
             <artifactId>google-collections</artifactId>
@@ -77,6 +72,7 @@
             <artifactId>jsr305</artifactId>
             <version>3.0.2</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>

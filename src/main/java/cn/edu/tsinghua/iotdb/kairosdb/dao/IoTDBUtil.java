@@ -20,7 +20,7 @@ public class IoTDBUtil {
         connection = DriverManager.getConnection(String.format(URL, host, port), user, password);
     }
 
-    public static Connection getConnection() { return connection; }
+    static Connection getConnection() { return connection; }
 
     public static void closeConnection() {
         try {
@@ -32,7 +32,7 @@ public class IoTDBUtil {
         }
     }
 
-    public static PreparedStatement getPreparedStatement(String sql, Object[] params) throws SQLException {
+    static PreparedStatement getPreparedStatement(String sql, Object[] params) throws SQLException {
         PreparedStatement preparedStatement = connection.prepareStatement(sql);
 
         if (params != null)

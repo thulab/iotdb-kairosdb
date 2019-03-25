@@ -96,22 +96,23 @@ public class DataPointsParser {
         else if (metric.getValue() != null && !metric.getValue().isJsonNull())
             Validator.isNotNull(validationErrors, context.setAttribute("timestamp"), metric.getTimestamp());
 
-        if (Validator.isGreaterThanOrEqualTo(validationErrors, context.setAttribute("tags count"), metric.getTags().size(), 1)) {
-            int tagCount = 0;
-            SubContext tagContext = new SubContext(context.setAttribute(null), "tag");
+        if (Validator.isNotNull(validationErrors, context.setAttribute("tags count"), metric.getTags()))
+            if (Validator.isGreaterThanOrEqualTo(validationErrors, context.setAttribute("tags count"), metric.getTags().size(), 1)) {
+                int tagCount = 0;
+                SubContext tagContext = new SubContext(context.setAttribute(null), "tag");
 
-            for (Map.Entry<String, String> entry : metric.getTags().entrySet()) {
-                tagContext.setCount(tagCount);
-                if (Validator.isNotNullOrEmpty(validationErrors, tagContext.setAttribute("name"), entry.getKey())) {
-                    tagContext.setName(entry.getKey());
-                    Validator.isNotNullOrEmpty(validationErrors, tagContext, entry.getKey());
+                for (Map.Entry<String, String> entry : metric.getTags().entrySet()) {
+                    tagContext.setCount(tagCount);
+                    if (Validator.isNotNullOrEmpty(validationErrors, tagContext.setAttribute("name"), entry.getKey())) {
+                        tagContext.setName(entry.getKey());
+                        Validator.isNotNullOrEmpty(validationErrors, tagContext, entry.getKey());
+                    }
+                    if (Validator.isNotNullOrEmpty(validationErrors, tagContext.setAttribute("value"), entry.getValue()))
+                        Validator.isNotNullOrEmpty(validationErrors, tagContext, entry.getValue());
+
+                    tagCount++;
                 }
-                if (Validator.isNotNullOrEmpty(validationErrors, tagContext.setAttribute("value"), entry.getValue()))
-                    Validator.isNotNullOrEmpty(validationErrors, tagContext, entry.getValue());
-
-                tagCount++;
             }
-        }
 
         if (!validationErrors.hasErrors())
         {

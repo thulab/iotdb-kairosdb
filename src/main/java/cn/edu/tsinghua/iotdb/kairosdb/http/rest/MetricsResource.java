@@ -91,6 +91,7 @@ public class MetricsResource {
                 {
                     builder.addError(errorMessage);
                 }
+                System.out.println(builder.build());
                 return builder.build();
             }
         }

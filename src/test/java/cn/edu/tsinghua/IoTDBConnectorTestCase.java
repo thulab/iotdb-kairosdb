@@ -1,5 +1,6 @@
 package cn.edu.tsinghua;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,10 +35,14 @@ public class IoTDBConnectorTestCase {
             init();
             LOGGER.info("Success in initialing the connection to IoTDB");
 
-            ResultSet rs = executeQuery("select s0,s1 from root.vehicle.d0", null);
+//            ResultSet rs = executeQuery("select s0,s1 from root.vehicle.d0", null);
 //            Statement state = connection.createStatement();
 //            state.execute("SHOW TIMESERIES root");
 //            ResultSet rs = state.getResultSet();
+
+            Statement statement = connection.createStatement();
+            statement.execute("SELECT * FROM root.SYSTEM.TAG_NAME_INFO");
+            ResultSet rs = statement.getResultSet();
 
             ResultSetMetaData rsmd = rs.getMetaData();
 //            for (int i = 1; i <= rsmd.getColumnCount(); i++) {
@@ -47,6 +52,12 @@ public class IoTDBConnectorTestCase {
 //                System.out.print(rsmd.getSchemaName(i) + "  ");
 //                System.out.println();
 //            }
+//            if (rs.next()){
+//                System.out.println(true);
+//            } else {
+//                System.out.println(false);
+//            }
+
             while (rs.next()) {
                 StringBuilder builder = new StringBuilder();
                 for (int i = 1; i <= rsmd.getColumnCount(); i++) {
@@ -61,7 +72,7 @@ public class IoTDBConnectorTestCase {
         } catch (ClassNotFoundException e) {
             LOGGER.error("Driver Class Not Found!");
         } catch (SQLException e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error(e.getClass().getName() + ": " + e.getMessage());
         }
     }
 
