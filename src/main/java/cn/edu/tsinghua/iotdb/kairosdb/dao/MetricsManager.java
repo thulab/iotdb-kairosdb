@@ -19,10 +19,18 @@ public class MetricsManager {
 
     private MetricsManager() {}
 
+    private static String storageGroup = "default";
+
     private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
     private static final String ENCODING_PLAIN = "PLAIN";
 
-    public static void loadMetadata() {
+    public static void loadMetadata(String storageGroup) {
+        if (null != storageGroup)
+            MetricsManager.storageGroup = storageGroup;
+        loadMetadata();
+    }
+
+    private static void loadMetadata() {
         LOGGER.info("Start loading system data.");
         Statement statement = null;
         ResultSet rs = null;
@@ -51,7 +59,7 @@ public class MetricsManager {
                 statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", ENCODING_PLAIN));
                 statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", ENCODING_PLAIN));
                 statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", "RLE"));
-                statement.execute(String.format("SET STORAGE GROUP TO root.%s", "vehicle"));
+                statement.execute(String.format("SET STORAGE GROUP TO root.%s", storageGroup));
             }
 
         } catch (SQLException e) {
@@ -70,7 +78,7 @@ public class MetricsManager {
             encoding = ENCODING_PLAIN;
         }
         Statement statement = IoTDBUtil.getConnection().createStatement();
-        statement.execute(String.format("CREATE TIMESERIES root.vehicle%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", name, datatype, encoding));
+        statement.execute(String.format("CREATE TIMESERIES root.%s%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", storageGroup, name, datatype, encoding));
         statement.close();
     }
 
@@ -99,7 +107,7 @@ public class MetricsManager {
             }
             i++;
         }
-        String insertingSql = String.format("insert into root.vehicle%s(timestamp,%s) values(%s,%s);", pathBuilder.toString(), name, timestamp, value);
+        String insertingSql = String.format("insert into root.%s%s(timestamp,%s) values(%s,%s);", storageGroup, pathBuilder.toString(), name, timestamp, value);
 
         PreparedStatement pst = null;
         ResultSet rs = null;

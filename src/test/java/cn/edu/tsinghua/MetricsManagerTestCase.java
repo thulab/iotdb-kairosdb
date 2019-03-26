@@ -16,7 +16,7 @@ public class MetricsManagerTestCase {
 
     private static void initDB() throws SQLException, ClassNotFoundException {
         IoTDBUtil.initConnection("127.0.0.1", "6667", "root", "root");
-        MetricsManager.loadMetadata();
+        MetricsManager.loadMetadata(null);
     }
 
     public static void main(String[] argv) {
