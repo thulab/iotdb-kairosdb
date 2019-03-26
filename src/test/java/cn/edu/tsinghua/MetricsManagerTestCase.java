@@ -21,15 +21,16 @@ public class MetricsManagerTestCase {
 
     public static void main(String[] argv) {
         Map<String, String > tags = new HashMap<>();
+        tags.put("host", "server1");
         tags.put("data-center", "DC1");
 
         String name = "arc";
         Long timestamp = 123L;
-        String value = "26";
+        String value = "abcd";
 
         try {
             initDB();
-            MetricsManager.addDatapoint(name, ImmutableSortedMap.copyOf(tags), null, timestamp, value);
+            MetricsManager.addDatapoint(name, ImmutableSortedMap.copyOf(tags), "string", timestamp, value);
         } catch (Exception e) {
             LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
         }

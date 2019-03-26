@@ -23,7 +23,7 @@ public class MetricsManager {
     private static final String ENCODING_PLAIN = "PLAIN";
 
     public static void loadMetadata() {
-        LOGGER.info("Start reading system data.");
+        LOGGER.info("Start loading system data.");
         Statement statement = null;
         ResultSet rs = null;
         try {
@@ -59,7 +59,7 @@ public class MetricsManager {
         } finally {
             close(statement, rs);
         }
-        LOGGER.info("Finish reading system data.");
+        LOGGER.info("Finish loading system data.");
     }
 
     private static void createNewMetric(String name, String type) throws SQLException {
@@ -86,7 +86,9 @@ public class MetricsManager {
         }
 
         StringBuilder pathBuilder = new StringBuilder();
-        for (int i = 0, counter = 0; i < metricTags.size() && counter < tags.size(); i++) {
+        int i = 0;
+        int counter = 0;
+        while (i < metricTags.size() && counter < tags.size()) {
             String path = tags.get(mapping.get(i));
             pathBuilder.append(".");
             if (null == path)
@@ -95,6 +97,7 @@ public class MetricsManager {
                 pathBuilder.append(path);
                 counter++;
             }
+            i++;
         }
         String insertingSql = String.format("insert into root.vehicle%s(timestamp,%s) values(%s,%s);", pathBuilder.toString(), name, timestamp, value);
 
