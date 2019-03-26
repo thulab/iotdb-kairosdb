@@ -20,6 +20,7 @@ public class MetricsManager {
     private MetricsManager() {}
 
     private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
+    private static final String ENCODING_PLAIN = "PLAIN";
 
     public static void loadMetadata() {
         LOGGER.info("Start reading system data.");
@@ -47,8 +48,8 @@ public class MetricsManager {
                 }
             } else {
                 statement.execute(String.format("SET STORAGE GROUP TO root.%s", "SYSTEM"));
-                statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", "PLAIN"));
-                statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", "PLAIN"));
+                statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", ENCODING_PLAIN));
+                statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", ENCODING_PLAIN));
                 statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", "RLE"));
                 statement.execute(String.format("SET STORAGE GROUP TO root.%s", "vehicle"));
             }
@@ -61,15 +62,63 @@ public class MetricsManager {
         LOGGER.info("Finish reading system data.");
     }
 
-    private static void createNewMetric(String name) throws SQLException {
+    private static void createNewMetric(String name, String type) throws SQLException {
+        String datatype = "DOUBLE";
+        String encoding = "GORILLA";
+        if (type.equals("string")) {
+            datatype = "TEXT";
+            encoding = ENCODING_PLAIN;
+        }
         Statement statement = IoTDBUtil.getConnection().createStatement();
-        statement.execute(String.format("CREATE TIMESERIES root.vehicle%s WITH DATATYPE=INT32, ENCODING=RLE", name));
+        statement.execute(String.format("CREATE TIMESERIES root.vehicle%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", name, datatype, encoding));
         statement.close();
     }
 
     public static void addDatapoint(String name, ImmutableSortedMap<String, String> tags, String type, Long timestamp, String value) throws SQLException {
 
         if (null == tags) return;
+
+        HashMap<String, Integer> metricTags = tagOrder.get(name);
+        HashMap<Integer, String> mapping = getMapping(name, tags);
+
+        if (type.equals("string")) {
+            value = String.format("\"%s\"", value);
+        }
+
+        StringBuilder pathBuilder = new StringBuilder();
+        for (int i = 0, counter = 0; i < metricTags.size() && counter < tags.size(); i++) {
+            String path = tags.get(mapping.get(i));
+            pathBuilder.append(".");
+            if (null == path)
+                pathBuilder.append("d");
+            else {
+                pathBuilder.append(path);
+                counter++;
+            }
+        }
+        String insertingSql = String.format("insert into root.vehicle%s(timestamp,%s) values(%s,%s);", pathBuilder.toString(), name, timestamp, value);
+
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        try {
+            pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
+            pst.executeUpdate();
+            rs = pst.getResultSet();
+        } catch (IoTDBSQLException e) {
+            LOGGER.warn(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+            createNewMetric(String.format("%s.%s", pathBuilder.toString(), name), type);
+            pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
+            pst.executeUpdate();
+            rs = pst.getResultSet();
+        } catch (SQLException e) {
+            LOGGER.error("Add data points failed because ", e);
+            throw e;
+        } finally {
+            close(pst, rs);
+        }
+    }
+
+    private static HashMap<Integer, String> getMapping(String name, Map<String, String> tags) {
         HashMap<String, Integer> metricTags = tagOrder.get(name);
         HashMap<Integer, String> mapping = new HashMap<>();
         HashMap<String, Integer> cache = new HashMap<>();
@@ -97,38 +146,7 @@ public class MetricsManager {
             }
         }
         persistMappingCache(name, cache);
-
-        StringBuilder pathBuilder = new StringBuilder();
-        for (int i = 0, counter = 0; i < metricTags.size() && counter < tags.size(); i++) {
-            String path = tags.get(mapping.get(i));
-            pathBuilder.append(".");
-            if (null == path)
-                pathBuilder.append("d");
-            else {
-                pathBuilder.append(path);
-                counter++;
-            }
-        }
-        String insertingSql = String.format("insert into root.vehicle%s(timestamp,%s) values(%s,%s);", pathBuilder.toString(), name, timestamp, value);
-
-        PreparedStatement pst = null;
-        ResultSet rs = null;
-        try {
-            pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
-            pst.executeUpdate();
-            rs = pst.getResultSet();
-        } catch (IoTDBSQLException e) {
-            LOGGER.warn(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-            createNewMetric(String.format("%s.%s", pathBuilder.toString(), name));
-            pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
-            pst.executeUpdate();
-            rs = pst.getResultSet();
-        } catch (SQLException e) {
-            LOGGER.error("Add data points failed because ", e);
-            throw e;
-        } finally {
-            close(pst, rs);
-        }
+        return mapping;
     }
 
     private static void persistMappingCache(String metricName, Map<String, Integer> cache) {
