@@ -17,58 +17,48 @@ package cn.edu.tsinghua.iotdb.kairosdb.datastore;
 
 import static cn.edu.tsinghua.iotdb.kairosdb.util.Preconditions.checkNotNullOrEmpty;
 
-public enum TimeUnit
-{
-	MILLISECONDS,
-	SECONDS,
-	MINUTES,
-	HOURS,
-	DAYS,
-	WEEKS,
-	MONTHS,
-	YEARS;
+public enum TimeUnit {
+  MILLISECONDS,
+  SECONDS,
+  MINUTES,
+  HOURS,
+  DAYS,
+  WEEKS,
+  MONTHS,
+  YEARS;
 
-	public static TimeUnit from(String value)
-	{
-		checkNotNullOrEmpty(value);
-		for (TimeUnit unit : values())
-		{
-			if (unit.toString().equalsIgnoreCase(value))
-			{
-				return unit;
-			}
-		}
+  public static TimeUnit from(String value) {
+    checkNotNullOrEmpty(value);
+    for (TimeUnit unit : values()) {
+      if (unit.toString().equalsIgnoreCase(value)) {
+        return unit;
+      }
+    }
 
-		throw new IllegalArgumentException("No enum constant for " + value);
-	}
+    throw new IllegalArgumentException("No enum constant for " + value);
+  }
 
-	public static boolean contains(String value)
-	{
-		for (TimeUnit unit : values())
-		{
-			if (unit.name().equalsIgnoreCase(value))
-			{
-				return true;
-			}
-		}
+  public static boolean contains(String value) {
+    for (TimeUnit unit : values()) {
+      if (unit.name().equalsIgnoreCase(value)) {
+        return true;
+      }
+    }
 
-		return false;
-	}
+    return false;
+  }
 
-	public static String toValueNames()
-	{
-		StringBuilder builder = new StringBuilder();
-		boolean firstTime = true;
-		for (TimeUnit timeUnit : values())
-		{
-			if (!firstTime)
-			{
-				builder.append(',');
-			}
-			builder.append(timeUnit.name());
-			firstTime = false;
-		}
-		return builder.toString();
-	}
+  public static String toValueNames() {
+    StringBuilder builder = new StringBuilder();
+    boolean firstTime = true;
+    for (TimeUnit timeUnit : values()) {
+      if (!firstTime) {
+        builder.append(',');
+      }
+      builder.append(timeUnit.name());
+      firstTime = false;
+    }
+    return builder.toString();
+  }
 }
 

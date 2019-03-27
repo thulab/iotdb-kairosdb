@@ -16,42 +16,38 @@
 
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
-public class JsonResponseBuilder
-{
-	private List<String> errorMessages = new ArrayList<String>();
-	private int status;
+public class JsonResponseBuilder {
 
-	public JsonResponseBuilder(Response.Status status)
-	{
-		this.status = status.getStatusCode();
-	}
+  private List<String> errorMessages = new ArrayList<String>();
+  private int status;
 
-	public JsonResponseBuilder addErrors(List<String> errorMessages)
-	{
-		this.errorMessages.addAll(errorMessages);
-		return this;
-	}
+  public JsonResponseBuilder(Response.Status status) {
+    this.status = status.getStatusCode();
+  }
 
-	public JsonResponseBuilder addError(String errorMessage)
-	{
-		errorMessages.add(errorMessage);
-		return this;
-	}
+  public JsonResponseBuilder addErrors(List<String> errorMessages) {
+    this.errorMessages.addAll(errorMessages);
+    return this;
+  }
 
-	public Response build()
-	{
-		ErrorResponse responseJson = new ErrorResponse(errorMessages);
+  public JsonResponseBuilder addError(String errorMessage) {
+    errorMessages.add(errorMessage);
+    return this;
+  }
 
-		return Response
-				.status(status)
-				.header("Access-Control-Allow-Origin", "*")
-				.type(MediaType.APPLICATION_JSON_TYPE)
-				.entity(responseJson).build();
-	}
+  public Response build() {
+    ErrorResponse responseJson = new ErrorResponse(errorMessages);
+
+    return Response
+        .status(status)
+        .header("Access-Control-Allow-Origin", "*")
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(responseJson).build();
+  }
 }
 

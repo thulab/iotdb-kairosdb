@@ -9,18 +9,18 @@ import javax.ws.rs.core.Response;
 @Path("/api/v1/health")
 public class HealthCheckResource {
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
-    @Path("check")
-    public Response check() {
-        return null;
-    }
+  @GET
+  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+  @Path("check")
+  public Response check() {
+    return null;
+  }
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
-    @Path("status")
-    public Response status() {
-        return null;
-    }
+  @GET
+  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+  @Path("status")
+  public Response status() {
+    return null;
+  }
 
 }

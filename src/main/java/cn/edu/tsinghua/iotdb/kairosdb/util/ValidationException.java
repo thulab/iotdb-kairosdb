@@ -16,11 +16,9 @@
 
 package cn.edu.tsinghua.iotdb.kairosdb.util;
 
-public class ValidationException extends Exception
+public class ValidationException extends Exception {
 
-{
-	public ValidationException(String message)
-	{
-		super(message);
-	}
+  public ValidationException(String message) {
+    super(message);
+  }
 }

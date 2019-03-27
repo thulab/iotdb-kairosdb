@@ -19,28 +19,24 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Collections;
 import java.util.List;
 
-public class ErrorResponse
-{
-	private List<String> m_errors;
+public class ErrorResponse {
 
-	@JsonCreator
-	public ErrorResponse(@JsonProperty("errors") List<String> errors)
-	{
-		m_errors = errors;
-	}
+  private List<String> m_errors;
 
-	public ErrorResponse(String error)
-	{
-		m_errors = Collections.singletonList(error);
-	}
+  @JsonCreator
+  public ErrorResponse(@JsonProperty("errors") List<String> errors) {
+    m_errors = errors;
+  }
 
-	@JsonProperty
-	public List<String> getErrors()
-	{
-		return (m_errors);
-	}
+  public ErrorResponse(String error) {
+    m_errors = Collections.singletonList(error);
+  }
+
+  @JsonProperty
+  public List<String> getErrors() {
+    return (m_errors);
+  }
 }

@@ -18,38 +18,32 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ValidationErrors
-{
-	private List<String> errors = new ArrayList<String>();
+public class ValidationErrors {
 
-	@SuppressWarnings("ThrowableResultOfMethodCallIgnored")
-	public void addErrorMessage(String message)
-	{
-		errors.add(message);
-	}
+  private List<String> errors = new ArrayList<String>();
 
-	public void add(ValidationErrors errors)
-	{
-		this.errors.addAll(errors.getErrors());
-	}
+  @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
+  public void addErrorMessage(String message) {
+    errors.add(message);
+  }
 
-	public boolean hasErrors()
-	{
-		return errors.size() > 0;
-	}
+  public void add(ValidationErrors errors) {
+    this.errors.addAll(errors.getErrors());
+  }
 
-	public List<String> getErrors()
-	{
-		return errors;
-	}
+  public boolean hasErrors() {
+    return errors.size() > 0;
+  }
 
-	public String getFirstError()
-	{
-		return errors.get(0);
-	}
+  public List<String> getErrors() {
+    return errors;
+  }
 
-	public int size()
-	{
-		return errors.size();
-	}
+  public String getFirstError() {
+    return errors.get(0);
+  }
+
+  public int size() {
+    return errors.size();
+  }
 }

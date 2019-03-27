@@ -7,25 +7,25 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface FeatureProperty
-{
-    String name() default "";
+public @interface FeatureProperty {
 
-    String label() default "";
+  String name() default "";
 
-    String description();
+  String label() default "";
 
-    boolean optional() default false;
+  String description();
 
-    String type() default "";
+  boolean optional() default false;
 
-    String[] options() default {};
+  String type() default "";
 
-    String default_value() default "";
+  String[] options() default {};
 
-    String autocomplete() default "";
+  String default_value() default "";
 
-    boolean multiline() default false;
+  String autocomplete() default "";
 
-    ValidationProperty[] validations() default { };
+  boolean multiline() default false;
+
+  ValidationProperty[] validations() default {};
 }

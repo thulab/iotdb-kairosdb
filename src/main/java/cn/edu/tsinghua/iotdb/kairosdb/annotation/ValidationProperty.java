@@ -7,11 +7,11 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ValidationProperty
-{
-    String expression();
+public @interface ValidationProperty {
 
-    String type() default "js";
+  String expression();
 
-    String message();
+  String type() default "js";
+
+  String message();
 }

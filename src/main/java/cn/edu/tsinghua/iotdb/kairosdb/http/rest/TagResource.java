@@ -9,18 +9,18 @@ import javax.ws.rs.core.Response;
 @Path("/api/v1")
 public class TagResource {
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
-    @Path("tagnames")
-    public Response getTagNames() {
-        return null;
-    }
+  @GET
+  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+  @Path("tagnames")
+  public Response getTagNames() {
+    return null;
+  }
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
-    @Path("tagvalues")
-    public Response getTagValues() {
-        return null;
-    }
+  @GET
+  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+  @Path("tagvalues")
+  public Response getTagValues() {
+    return null;
+  }
 
 }
