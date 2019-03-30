@@ -8,6 +8,7 @@ public class Config {
   private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
   public String HOST = "localhost";
   public String PORT = "6667";
+  public int STORAGE_GROUP_SIZE = 50;
 
   Config() {
 

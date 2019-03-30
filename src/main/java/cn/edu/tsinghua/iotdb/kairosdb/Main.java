@@ -37,7 +37,7 @@ public class Main {
     LOGGER.info("Ready to connect to IoTDB.");
     IoTDBUtil.initConnection(config.HOST, config.PORT, USER, PSW);
     LOGGER.info("Connected successfully.");
-    MetricsManager.loadMetadata(STORAGE_GROUP);
+    MetricsManager.loadMetadata();
   }
 
   public static void main(String[] argv) throws Exception {

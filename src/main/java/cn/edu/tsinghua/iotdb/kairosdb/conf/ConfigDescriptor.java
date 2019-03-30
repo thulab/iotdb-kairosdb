@@ -43,6 +43,7 @@ public class ConfigDescriptor {
         properties.load(inputStream);
         config.HOST = properties.getProperty("HOST", "127.0.0.1");
         config.PORT = properties.getProperty("PORT", "6667");
+        config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
       } catch (IOException e) {
         e.printStackTrace();
       }

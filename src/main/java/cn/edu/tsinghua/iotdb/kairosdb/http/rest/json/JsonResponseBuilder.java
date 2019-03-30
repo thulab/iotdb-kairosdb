@@ -41,13 +41,20 @@ public class JsonResponseBuilder {
   }
 
   public Response build() {
-    ErrorResponse responseJson = new ErrorResponse(errorMessages);
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append("{\"errors:\"[");
+    for (String msg : errorMessages) {
+      stringBuilder.append("\"");
+      stringBuilder.append(msg);
+      stringBuilder.append("\"");
+    }
+    stringBuilder.append("]}");
 
     return Response
         .status(status)
         .header("Access-Control-Allow-Origin", "*")
         .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(responseJson).build();
+        .entity(stringBuilder.toString()).build();
   }
 }
 

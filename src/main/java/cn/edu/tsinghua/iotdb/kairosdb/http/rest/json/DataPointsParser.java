@@ -141,8 +141,11 @@ public class DataPointsParser {
         }
 
         try {
-          MetricsManager.addDatapoint(metric.getName(), tags, type, metric.getTimestamp(),
+          ValidationErrors tErrors = MetricsManager.addDatapoint(metric.getName(), tags, type, metric.getTimestamp(),
               metric.getValue().getAsString());
+          if (null != tErrors) {
+            validationErrors.add(tErrors);
+          }
         } catch (SQLException e) {
           validationErrors.addErrorMessage(context + " " + e.getMessage());
         }
@@ -194,8 +197,11 @@ public class DataPointsParser {
             }
 
             try {
-              MetricsManager.addDatapoint(metric.getName(), tags, type, timestamp,
+              ValidationErrors tErrors = MetricsManager.addDatapoint(metric.getName(), tags, type, timestamp,
                   dataPoint[1].getAsString());
+              if (null != tErrors) {
+                validationErrors.add(tErrors);
+              }
             } catch (SQLException e) {
               validationErrors.addErrorMessage(context + " " + e.getMessage());
             }

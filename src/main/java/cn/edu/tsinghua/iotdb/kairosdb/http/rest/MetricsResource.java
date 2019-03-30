@@ -104,7 +104,6 @@ public class MetricsResource {
         for (String errorMessage : validationErrors.getErrors()) {
           builder.addError(errorMessage);
         }
-        System.out.println(builder.build());
         return builder.build();
       }
     } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
