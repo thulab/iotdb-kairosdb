@@ -17,10 +17,14 @@ public class MetricsManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManager.class);
   private static final String ERROR_OUTPUT_FORMATTER = "%s: %s";
 
-  private static final HashMap<String, HashMap<String, Integer>> tagOrder = new HashMap<>();
+  private static final HashMap<String, Map<String, Integer>> tagOrder = new HashMap<>();
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
   private static final String ENCODING_PLAIN = "PLAIN";
+  private static final String INT64_ENCODING = "TS_2DIFF";
+  private static final String INT32_ENCODING = "TS_2DIFF";
+  private static final String DOUBLE_ENCODING = "GORILLA";
   private static String storageGroup = "default";
+
   private MetricsManager() {
   }
 
@@ -48,7 +52,7 @@ public class MetricsManager {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
           Integer pos = rs.getInt(4);
-          HashMap<String, Integer> temp = tagOrder.get(name);
+          Map<String, Integer> temp = tagOrder.get(name);
           if (null == temp) {
             temp = new HashMap<>();
             tagOrder.put(name, temp);
@@ -59,41 +63,51 @@ public class MetricsManager {
         statement.execute(String.format("SET STORAGE GROUP TO root.%s", "SYSTEM"));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", ENCODING_PLAIN));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", ENCODING_PLAIN));
-        statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", "RLE"));
+        statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", INT32_ENCODING));
         statement.execute(String.format("SET STORAGE GROUP TO root.%s", storageGroup));
       }
 
     } catch (SQLException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     } finally {
-      close(statement, rs);
+      close(statement);
     }
     LOGGER.info("Finish loading system data.");
   }
 
   private static void createNewMetric(String name, String type) throws SQLException {
-    String datatype = "DOUBLE";
-    String encoding = "GORILLA";
-    if (type.equals("string")) {
-      datatype = "TEXT";
-      encoding = ENCODING_PLAIN;
+    String datatype;
+    String encoding;
+    switch (type) {
+      case "long":
+        datatype = "INT64";
+        encoding = INT64_ENCODING;
+        break;
+      case "double":
+        datatype = "DOUBLE";
+        encoding = DOUBLE_ENCODING;
+        break;
+      default:
+        datatype = "TEXT";
+        encoding = ENCODING_PLAIN;
     }
-    Statement statement = IoTDBUtil.getConnection().createStatement();
-    statement.execute(String
-        .format("CREATE TIMESERIES root.%s%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-            storageGroup, name, datatype, encoding));
-    statement.close();
+    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      statement.execute(String
+          .format("CREATE TIMESERIES root.%s%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
+              storageGroup, name, datatype, encoding));
+    }
   }
 
   public static void addDatapoint(String name, ImmutableSortedMap<String, String> tags, String type,
       Long timestamp, String value) throws SQLException {
 
     if (null == tags) {
+      LOGGER.error("metric {} have no tag", name);
       return;
     }
 
-    HashMap<String, Integer> metricTags = tagOrder.get(name);
-    HashMap<Integer, String> mapping = getMapping(name, tags);
+    HashMap<Integer, String> orderTagKeyMap = getMapping(name, tags);
+    Map<String, Integer> metricTags = tagOrder.get(name);
 
     if (type.equals("string")) {
       value = String.format("\"%s\"", value);
@@ -103,7 +117,7 @@ public class MetricsManager {
     int i = 0;
     int counter = 0;
     while (i < metricTags.size() && counter < tags.size()) {
-      String path = tags.get(mapping.get(i));
+      String path = tags.get(orderTagKeyMap.get(i));
       pathBuilder.append(".");
       if (null == path) {
         pathBuilder.append("d");
@@ -118,53 +132,49 @@ public class MetricsManager {
             pathBuilder.toString(), name, timestamp, value);
 
     PreparedStatement pst = null;
-    ResultSet rs = null;
     try {
       pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
       pst.executeUpdate();
-      rs = pst.getResultSet();
     } catch (IoTDBSQLException e) {
       LOGGER.warn(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
       createNewMetric(String.format("%s.%s", pathBuilder.toString(), name), type);
       pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
       pst.executeUpdate();
-      rs = pst.getResultSet();
     } catch (SQLException e) {
       LOGGER.error("Add data points failed because ", e);
       throw e;
     } finally {
-      close(pst, rs);
+      close(pst);
     }
   }
 
   private static HashMap<Integer, String> getMapping(String name, Map<String, String> tags) {
-    HashMap<String, Integer> metricTags = tagOrder.get(name);
+    Map<String, Integer> tagKeyOrderMap = tagOrder.get(name);
     HashMap<Integer, String> mapping = new HashMap<>();
     HashMap<String, Integer> cache = new HashMap<>();
-    if (null == metricTags) {
-      metricTags = new HashMap<>();
-      Integer marker = 0;
-      for (Map.Entry<String, String> tag : tags.entrySet()) {
-        metricTags.put(tag.getKey(), marker);
-        mapping.put(marker, tag.getKey());
-        cache.put(tag.getKey(), marker);
-        marker++;
+    if (null == tagKeyOrderMap) {
+      tagKeyOrderMap = new HashMap<>();
+      Integer order = 0;
+      for (String tagKey : tags.keySet()) {
+        tagKeyOrderMap.put(tagKey, order);
+        mapping.put(order, tagKey);
+        cache.put(tagKey, order);
+        order++;
       }
-      tagOrder.put(name, metricTags);
+      tagOrder.put(name, tagKeyOrderMap);
+      persistMappingCache(name, cache);
     } else {
       for (Map.Entry<String, String> tag : tags.entrySet()) {
-        Integer pos = metricTags.get(tag.getKey());
-        if (null != pos) {
-          mapping.put(pos, tag.getKey());
-        } else {
-          pos = metricTags.size();
-          metricTags.put(tag.getKey(), pos);
-          mapping.put(pos, tag.getKey());
+        Integer pos = tagKeyOrderMap.get(tag.getKey());
+        if (null == pos) {
+          pos = tagKeyOrderMap.size();
+          tagKeyOrderMap.put(tag.getKey(), pos);
           cache.put(tag.getKey(), pos);
+          persistMappingCache(name, cache);
         }
+        mapping.put(pos, tag.getKey());
       }
     }
-    persistMappingCache(name, cache);
     return mapping;
   }
 
@@ -182,21 +192,14 @@ public class MetricsManager {
     }
   }
 
-  private static void close(Statement statement, ResultSet resultSet) {
-    if (resultSet != null) {
-      try {
-        resultSet.close();
-      } catch (SQLException e) {
-        LOGGER.warn(
-            String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-      }
-    }
-    if (statement != null)
+  private static void close(Statement statement) {
+    if (statement != null) {
       try {
         statement.close();
       } catch (SQLException e) {
         LOGGER.warn(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
       }
+    }
   }
 
 }
