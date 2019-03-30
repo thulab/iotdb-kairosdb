@@ -18,9 +18,9 @@ public class MetricsManager {
   private static final String ERROR_OUTPUT_FORMATTER = "%s: %s";
 
   private static final HashMap<String, HashMap<String, Integer>> tagOrder = new HashMap<>();
-  private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
+  private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY";
   private static final String ENCODING_PLAIN = "PLAIN";
-  private static int storageGroupSize = 50;
+  private static int storageGroupSize = 10;
   private MetricsManager() {
   }
 
@@ -45,7 +45,8 @@ public class MetricsManager {
 
       if (rs.next()) {
         statement = IoTDBUtil.getConnection().createStatement();
-        statement.execute(String.format("SELECT * FROM %s", "root.SYSTEM.TAG_NAME_INFO"));
+        statement.execute(String.format("SELECT metric_name,tag_name,tag_order FROM %s",
+            "root.SYSTEM.TAG_NAME_INFO"));
         rs = statement.getResultSet();
         while (rs.next()) {
           String name = rs.getString(2);
@@ -55,11 +56,24 @@ public class MetricsManager {
           HashMap<String, Integer> temp = tagOrder.get(name);
           temp.put(tagName, pos);
         }
+        statement.execute(String.format("SELECT storage_group_size FROM %s",
+            "root.SYSTEM.TAG_NAME_INFO"));
+        rs = statement.getResultSet();
+        if (rs.next()) {
+          storageGroupSize = rs.getInt(2);
+        } else {
+          LOGGER.error("Database metadata has broken, please reload a new database.");
+          System.exit(1);
+        }
       } else {
         statement.execute(String.format("SET STORAGE GROUP TO root.%s", "SYSTEM"));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", ENCODING_PLAIN));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", ENCODING_PLAIN));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", "RLE"));
+        statement.execute(String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", "RLE"));
+        statement.execute(String.format(
+            "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, storage_group_size) values(%s, %s);",
+            new Date().getTime(), storageGroupSize));
         for (int i = 0; i < storageGroupSize; i++) {
           statement.execute(String.format("SET STORAGE GROUP TO root.srg_%s", i));
         }
@@ -94,8 +108,8 @@ public class MetricsManager {
       return;
     }
 
-    HashMap<String, Integer> metricTags = tagOrder.get(name);
     HashMap<Integer, String> mapping = getMapping(name, tags);
+    HashMap<String, Integer> metricTags = tagOrder.get(name);
 
     if (type.equals("string")) {
       value = String.format("\"%s\"", value);
