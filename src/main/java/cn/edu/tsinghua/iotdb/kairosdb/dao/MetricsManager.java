@@ -20,18 +20,21 @@ public class MetricsManager {
   private static final HashMap<String, HashMap<String, Integer>> tagOrder = new HashMap<>();
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
   private static final String ENCODING_PLAIN = "PLAIN";
-  private static String storageGroup = "default";
+  private static int storageGroupSize = 50;
   private MetricsManager() {
   }
 
-  public static void loadMetadata(String storageGroup) {
-    if (null != storageGroup) {
-      MetricsManager.storageGroup = storageGroup;
+  public static void loadMetadata(int storageGroupSize) {
+    if (storageGroupSize > 0) {
+      MetricsManager.storageGroupSize = storageGroupSize;
+    } else {
+      LOGGER.warn("Storage group size must be larger than zero and has been set to default value({}).",
+          storageGroupSize);
     }
     loadMetadata();
   }
 
-  private static void loadMetadata() {
+  public static void loadMetadata() {
     LOGGER.info("Start loading system data.");
     Statement statement = null;
     ResultSet rs = null;
@@ -48,11 +51,8 @@ public class MetricsManager {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
           Integer pos = rs.getInt(4);
+          tagOrder.computeIfAbsent(name, k -> new HashMap<>());
           HashMap<String, Integer> temp = tagOrder.get(name);
-          if (null == temp) {
-            temp = new HashMap<>();
-            tagOrder.put(name, temp);
-          }
           temp.put(tagName, pos);
         }
       } else {
@@ -60,7 +60,9 @@ public class MetricsManager {
         statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", ENCODING_PLAIN));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", ENCODING_PLAIN));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", "RLE"));
-        statement.execute(String.format("SET STORAGE GROUP TO root.%s", storageGroup));
+        for (int i = 0; i < storageGroupSize; i++) {
+          statement.execute(String.format("SET STORAGE GROUP TO root.srg_%s", i));
+        }
       }
 
     } catch (SQLException e) {
@@ -81,7 +83,7 @@ public class MetricsManager {
     Statement statement = IoTDBUtil.getConnection().createStatement();
     statement.execute(String
         .format("CREATE TIMESERIES root.%s%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-            storageGroup, name, datatype, encoding));
+            getStorageGroupName(name), name, datatype, encoding));
     statement.close();
   }
 
@@ -114,7 +116,7 @@ public class MetricsManager {
       i++;
     }
     String insertingSql = String
-        .format("insert into root.%s%s(timestamp,%s) values(%s,%s);", storageGroup,
+        .format("insert into root.%s%s(timestamp,%s) values(%s,%s);", getStorageGroupName(name),
             pathBuilder.toString(), name, timestamp, value);
 
     PreparedStatement pst = null;
@@ -180,6 +182,15 @@ public class MetricsManager {
         LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
       }
     }
+  }
+
+  private static String getStorageGroupName(String metricName) {
+    if (metricName == null) {
+      LOGGER.error("MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
+      return "srg_null";
+    }
+    int hashCode = metricName.hashCode();
+    return String.format("srg_%s", Math.abs(hashCode) % storageGroupSize);
   }
 
   private static void close(Statement statement, ResultSet resultSet) {

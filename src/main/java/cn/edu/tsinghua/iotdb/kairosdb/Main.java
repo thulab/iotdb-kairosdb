@@ -17,7 +17,6 @@ public class Main {
 
   private static final String USER = "root";
   private static final String PSW = "root";
-  private static final String STORAGE_GROUP = "default";
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static Config config;
   private static URI baseURI = getBaseURI();
@@ -37,7 +36,7 @@ public class Main {
     LOGGER.info("Ready to connect to IoTDB.");
     IoTDBUtil.initConnection(config.HOST, config.PORT, USER, PSW);
     LOGGER.info("Connected successfully.");
-    MetricsManager.loadMetadata(STORAGE_GROUP);
+    MetricsManager.loadMetadata();
   }
 
   public static void main(String[] argv) throws Exception {
