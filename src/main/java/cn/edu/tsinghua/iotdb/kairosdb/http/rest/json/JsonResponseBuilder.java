@@ -23,7 +23,7 @@ import javax.ws.rs.core.Response;
 
 public class JsonResponseBuilder {
 
-  private List<String> errorMessages = new ArrayList<String>();
+  private List<String> errorMessages = new ArrayList<>();
   private int status;
 
   public JsonResponseBuilder(Response.Status status) {
@@ -46,8 +46,9 @@ public class JsonResponseBuilder {
     for (String msg : errorMessages) {
       stringBuilder.append("\"");
       stringBuilder.append(msg);
-      stringBuilder.append("\"");
+      stringBuilder.append("\",");
     }
+    stringBuilder.deleteCharAt(stringBuilder.length()-1);
     stringBuilder.append("]}");
 
     return Response
