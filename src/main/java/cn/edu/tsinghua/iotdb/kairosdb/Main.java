@@ -4,10 +4,14 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.sql.SQLException;
+import java.util.Enumeration;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -24,19 +28,30 @@ public class Main {
   private static URI baseURI;
 
   private static URI getBaseURI() {
-    InetAddress addr = null;
+    InetAddress ip;
+    String restIp = "localhost";
+    Enumeration allNetInterfaces = null;
     try {
-      addr = InetAddress.getLocalHost();
-    } catch (UnknownHostException e) {
-      LOGGER.error("can not get localhost address because ", e);
+      allNetInterfaces = NetworkInterface.getNetworkInterfaces();
+    } catch (SocketException e) {
+      LOGGER.error("Get Network interfaces failed because ", e);
     }
-    String ip;
-    if (addr == null) {
-      ip = "localhost";
-    } else {
-      ip = addr.getHostAddress();
+    if (allNetInterfaces != null) {
+      while (allNetInterfaces.hasMoreElements())
+      {
+        NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
+        Enumeration addresses = netInterface.getInetAddresses();
+        while (addresses.hasMoreElements())
+        {
+          ip = (InetAddress) addresses.nextElement();
+          if (ip instanceof Inet4Address)
+          {
+            restIp =  ip.getHostAddress();
+          }
+        }
+      }
     }
-    return UriBuilder.fromUri("http://" + ip + "/").port(Integer.parseInt(config.REST_PORT)).build();
+    return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT)).build();
   }
 
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
