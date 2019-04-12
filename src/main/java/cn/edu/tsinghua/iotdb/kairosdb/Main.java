@@ -9,7 +9,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URI;
-import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.util.Enumeration;
 import javax.ws.rs.core.UriBuilder;
@@ -37,21 +36,19 @@ public class Main {
       LOGGER.error("Get Network interfaces failed because ", e);
     }
     if (allNetInterfaces != null) {
-      while (allNetInterfaces.hasMoreElements())
-      {
+      while (allNetInterfaces.hasMoreElements()) {
         NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
         Enumeration addresses = netInterface.getInetAddresses();
-        while (addresses.hasMoreElements())
-        {
+        while (addresses.hasMoreElements()) {
           ip = (InetAddress) addresses.nextElement();
-          if (ip instanceof Inet4Address)
-          {
-            restIp =  ip.getHostAddress();
+          if (ip instanceof Inet4Address && !ip.getHostAddress().equals("127.0.0.1")) {
+            restIp = ip.getHostAddress();
           }
         }
       }
     }
-    return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT)).build();
+    return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT))
+        .build();
   }
 
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
