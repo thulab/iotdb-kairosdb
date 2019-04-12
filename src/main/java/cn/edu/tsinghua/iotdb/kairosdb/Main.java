@@ -4,7 +4,9 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -17,13 +19,24 @@ public class Main {
 
   private static final String USER = "root";
   private static final String PSW = "root";
-  private static final String STORAGE_GROUP = "default";
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static Config config;
-  private static URI baseURI = getBaseURI();
+  private static URI baseURI;
 
   private static URI getBaseURI() {
-    return UriBuilder.fromUri("http://localhost/").port(6666).build();
+    InetAddress addr = null;
+    try {
+      addr = InetAddress.getLocalHost();
+    } catch (UnknownHostException e) {
+      LOGGER.error("can not get localhost address because ", e);
+    }
+    String ip;
+    if (addr == null) {
+      ip = "localhost";
+    } else {
+      ip = addr.getHostAddress();
+    }
+    return UriBuilder.fromUri("http://" + ip + "/").port(Integer.parseInt(config.REST_PORT)).build();
   }
 
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
@@ -46,7 +59,7 @@ public class Main {
       return;
     }
     config = ConfigDescriptor.getInstance().getConfig();
-
+    baseURI = getBaseURI();
     LOGGER.info("host={},port={}", config.HOST, config.PORT);
     HttpServer server = startServer();
     LOGGER.info("IoTDB REST server has been available at {}.", baseURI);
