@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
+package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 public class QueryException extends Exception
 {

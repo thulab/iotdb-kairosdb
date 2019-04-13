@@ -1,7 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.BeanValidationException;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -10,6 +9,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.validation.ConstraintViolation;
@@ -50,24 +50,12 @@ public class QueryParser {
       if (!violations.isEmpty()) {
         throw new BeanValidationException(violations, null);
       }
+      List<QueryMetric> metrics = query.getQueryMetrics();
+      if (metrics == null) {
+        throw new BeanValidationException(new SimpleConstraintViolation("metric[]", "must have a size of at least 1"), contextPrefix + "query");
+      }
     } catch (ContextualJsonSyntaxException e) {
       throw new BeanValidationException(new SimpleConstraintViolation(e.getContext(), e.getMessage()), "query");
-    }
-
-    JsonElement queryPlugins = obj.get("plugins");
-    if (queryPlugins != null) {
-      JsonArray pluginArray = queryPlugins.getAsJsonArray();
-      if (pluginArray.size() > 0) {
-//        parsePlugins("", query, pluginArray);
-      }
-    }
-    JsonArray metricsArray = obj.getAsJsonArray("metrics");
-    if (metricsArray == null) {
-      throw new BeanValidationException(new SimpleConstraintViolation("metric[]", "must have a size of at least 1"), contextPrefix + "query");
-    }
-
-    for (int I = 0; I < metricsArray.size(); I++) {
-
     }
 
     return query;
