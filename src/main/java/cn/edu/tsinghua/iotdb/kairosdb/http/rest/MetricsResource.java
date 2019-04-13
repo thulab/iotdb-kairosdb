@@ -1,9 +1,11 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.Query;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -41,15 +43,19 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
 
   //These two are used to track rate of ingestion
-  private final AtomicInteger m_ingestedDataPoints = new AtomicInteger();
-  private final AtomicInteger m_ingestTime = new AtomicInteger();
+  private final AtomicInteger ingestedDataPoints = new AtomicInteger();
+  private final AtomicInteger ingestTime = new AtomicInteger();
 
   //Used for parsing incoming metrics
   private final Gson gson;
 
+  private final QueryParser queryParser;
+
 
   @Inject
-  public MetricsResource() {
+  public MetricsResource(QueryParser queryParser) {
+    this.queryParser = checkNotNull(queryParser);
+
     GsonBuilder builder = new GsonBuilder();
     gson = builder.disableHtmlEscaping().create();
   }
@@ -94,8 +100,8 @@ public class MetricsResource {
           new InputStreamReader(stream, StandardCharsets.UTF_8), gson);
       ValidationErrors validationErrors = parser.parse();
 
-      m_ingestedDataPoints.addAndGet(parser.getDataPointCount());
-      m_ingestTime.addAndGet(parser.getIngestTime());
+      ingestedDataPoints.addAndGet(parser.getDataPointCount());
+      ingestTime.addAndGet(parser.getIngestTime());
 
       if (!validationErrors.hasErrors()) {
         return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
@@ -143,8 +149,19 @@ public class MetricsResource {
   }
 
   private Response runQuery(String jsonStr) {
-    Query query;
-    query = gson.fromJson(jsonStr, Query.class);
+    boolean queryFailed = false;
+
+    try {
+      if (jsonStr == null)
+        throw new BeanValidationException(new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"), "");
+
+//      Query mainQuery = queryParser.parseQueryMetric(jsonStr);
+
+    } catch (BeanValidationException e) {
+      queryFailed = true;
+      JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+      return builder.addErrors(e.getErrorMessages()).build();
+    }
 
     return null;
   }

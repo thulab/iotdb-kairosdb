@@ -42,7 +42,7 @@ public class JsonResponseBuilder {
 
   public Response build() {
     StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append("{\"errors:\"[");
+    stringBuilder.append("{\"errors\":[");
     for (String msg : errorMessages) {
       stringBuilder.append("\"");
       stringBuilder.append(msg);
