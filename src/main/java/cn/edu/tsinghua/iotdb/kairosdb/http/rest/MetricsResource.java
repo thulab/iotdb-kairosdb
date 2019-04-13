@@ -3,8 +3,12 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
+import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -46,7 +50,6 @@ public class MetricsResource {
 
   //Used for parsing incoming metrics
   private final Gson gson;
-
 
   @Inject
   public MetricsResource() {
@@ -131,20 +134,34 @@ public class MetricsResource {
   @GET
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path(QUERY_URL)
-  public Response getQuery(@QueryParam("query") String json) throws Exception {
+  public Response getQuery(@QueryParam("query") String json) {
     return runQuery(json);
   }
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path(QUERY_URL)
-  public Response postQuery(String json) throws Exception {
+  public Response postQuery(String json) {
     return runQuery(json);
   }
 
   private Response runQuery(String jsonStr) {
-    Query query;
-    query = gson.fromJson(jsonStr, Query.class);
+    try {
+      if (jsonStr == null)
+        throw new BeanValidationException(new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"), "");
+
+      QueryParser parser = new QueryParser();
+      Query query = parser.parseQueryMetric(jsonStr);
+      QueryExecutor executor = new QueryExecutor(query);
+      QueryResult result = executor.execute();
+
+    } catch (BeanValidationException e) {
+      JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+      return builder.addErrors(e.getErrorMessages()).build();
+    } catch (QueryException e) {
+      JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+      return builder.addError(e.getMessage()).build();
+    }
 
     return null;
   }

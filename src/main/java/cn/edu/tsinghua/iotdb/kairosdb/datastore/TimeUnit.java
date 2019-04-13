@@ -38,6 +38,32 @@ public enum TimeUnit {
     throw new IllegalArgumentException("No enum constant for " + value);
   }
 
+  public static long getUnitTime(TimeUnit unit) {
+    if (unit == null) {
+      return 0;
+    }
+    switch (unit) {
+      case MILLISECONDS:
+        return 1L;
+      case SECONDS:
+        return 1000L;
+      case MINUTES:
+        return 60000L;
+      case HOURS:
+        return 3600000L;
+      case DAYS:
+        return 86400000L;
+      case WEEKS:
+        return 604800000L;
+      case MONTHS:
+        return 2419200000L;
+      case YEARS:
+        return 29030400000L;
+      default:
+        return 0;
+    }
+  }
+
   public static boolean contains(String value) {
     for (TimeUnit unit : values()) {
       if (unit.name().equalsIgnoreCase(value)) {

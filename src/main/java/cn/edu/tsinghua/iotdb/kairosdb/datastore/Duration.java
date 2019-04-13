@@ -19,6 +19,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.datastore;
 
 import cn.edu.tsinghua.iotdb.kairosdb.annotation.FeatureProperty;
 import cn.edu.tsinghua.iotdb.kairosdb.annotation.ValidationProperty;
+import java.util.Date;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
@@ -54,6 +55,12 @@ public class Duration {
   public Duration(int value, TimeUnit unit) {
     this.value = value;
     this.unit = unit;
+  }
+
+  public long toTimeStamp() {
+    long timeNow = new Date().getTime();
+    long durationTime = value * TimeUnit.getUnitTime(unit);
+    return timeNow - durationTime;
   }
 
   public long getValue() {
@@ -92,4 +99,5 @@ public class Duration {
     result = 31 * result + (unit != null ? unit.hashCode() : 0);
     return result;
   }
+
 }

@@ -24,7 +24,7 @@ public class IoTDBUtil {
     connection = DriverManager.getConnection(String.format(URL, host, port), user, password);
   }
 
-  static Connection getConnection() {
+  public static Connection getConnection() {
     return connection;
   }
 

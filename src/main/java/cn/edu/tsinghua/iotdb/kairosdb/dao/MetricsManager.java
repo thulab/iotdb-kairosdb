@@ -275,7 +275,7 @@ public class MetricsManager {
    * @param metricName The name of the specific metric
    * @return The corresponding storage group name of the given metric
    */
-  private static String getStorageGroupName(String metricName) {
+  public static String getStorageGroupName(String metricName) {
     if (metricName == null) {
       LOGGER.error("MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
@@ -299,4 +299,7 @@ public class MetricsManager {
     }
   }
 
+  public static Map<String, Map<String, Integer>> getTagOrder() {
+    return tagOrder;
+  }
 }
