@@ -22,4 +22,23 @@ public class QueryMetric {
   @SerializedName("group_by")
   private List<GroupBy> groupBy;
 
+  public String getName() {
+    return name;
+  }
+
+  public Long getLimit() {
+    return limit;
+  }
+
+  public Map<String, List<String>> getTags() {
+    return tags;
+  }
+
+  public List<QueryAggregator> getAggregators() {
+    return aggregators;
+  }
+
+  public List<GroupBy> getGroupBy() {
+    return groupBy;
+  }
 }

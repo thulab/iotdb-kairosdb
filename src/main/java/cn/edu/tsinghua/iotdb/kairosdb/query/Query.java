@@ -31,5 +31,32 @@ public class Query {
   @SerializedName("metrics")
   private List<QueryMetric> queryMetrics;
 
+  public Long getStartAbsolute() {
+    return startAbsolute;
+  }
+
+  public Long getEndAbsolute() {
+    return endAbsolute;
+  }
+
+  public Duration getStartRelative() {
+    return startRelative;
+  }
+
+  public Duration getEndRelative() {
+    return endRelative;
+  }
+
+  public Long getCacheTime() {
+    return cacheTime;
+  }
+
+  public String getTimeZone() {
+    return timeZone;
+  }
+
+  public List<QueryMetric> getQueryMetrics() {
+    return queryMetrics;
+  }
 }
 
