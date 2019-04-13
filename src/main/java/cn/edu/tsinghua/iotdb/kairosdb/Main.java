@@ -4,8 +4,13 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.Enumeration;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -17,13 +22,33 @@ public class Main {
 
   private static final String USER = "root";
   private static final String PSW = "root";
-  private static final String STORAGE_GROUP = "default";
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static Config config;
-  private static URI baseURI = getBaseURI();
+  private static URI baseURI;
 
   private static URI getBaseURI() {
-    return UriBuilder.fromUri("http://localhost/").port(6666).build();
+    InetAddress ip;
+    String restIp = "localhost";
+    Enumeration allNetInterfaces = null;
+    try {
+      allNetInterfaces = NetworkInterface.getNetworkInterfaces();
+    } catch (SocketException e) {
+      LOGGER.error("Get Network interfaces failed because ", e);
+    }
+    if (allNetInterfaces != null) {
+      while (allNetInterfaces.hasMoreElements()) {
+        NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
+        Enumeration addresses = netInterface.getInetAddresses();
+        while (addresses.hasMoreElements()) {
+          ip = (InetAddress) addresses.nextElement();
+          if (ip instanceof Inet4Address && !ip.getHostAddress().equals("127.0.0.1")) {
+            restIp = ip.getHostAddress();
+          }
+        }
+      }
+    }
+    return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT))
+        .build();
   }
 
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
@@ -46,7 +71,7 @@ public class Main {
       return;
     }
     config = ConfigDescriptor.getInstance().getConfig();
-
+    baseURI = getBaseURI();
     LOGGER.info("host={},port={}", config.HOST, config.PORT);
     HttpServer server = startServer();
     LOGGER.info("IoTDB REST server has been available at {}.", baseURI);

@@ -20,7 +20,7 @@ public class ConfigDescriptor {
     loadProps();
   }
 
-  public static final ConfigDescriptor getInstance() {
+  public static ConfigDescriptor getInstance() {
     return ConfigDescriptorHolder.INSTANCE;
   }
 
@@ -31,7 +31,7 @@ public class ConfigDescriptor {
   private void loadProps() {
     String url = System.getProperty(Constants.REST_CONF, null);
     if (url != null) {
-      InputStream inputStream = null;
+      InputStream inputStream;
       try {
         inputStream = new FileInputStream(new File(url));
       } catch (FileNotFoundException e) {
@@ -43,16 +43,15 @@ public class ConfigDescriptor {
         properties.load(inputStream);
         config.HOST = properties.getProperty("HOST", "127.0.0.1");
         config.PORT = properties.getProperty("PORT", "6667");
+        config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error("load properties error: ", e);
       }
-      if (inputStream != null) {
-        try {
-          inputStream.close();
-        } catch (IOException e) {
-          LOGGER.error("Fail to close config file input stream", e);
-        }
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Fail to close config file input stream", e);
       }
     } else {
       LOGGER.warn("{} No config file path, use default config", Constants.CONSOLE_PREFIX);
