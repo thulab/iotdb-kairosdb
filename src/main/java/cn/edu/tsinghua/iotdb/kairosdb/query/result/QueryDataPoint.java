@@ -5,10 +5,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import java.lang.reflect.Type;
+import java.sql.Types;
 
 public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
 
   private Long timestamp;
+  private int type;
   private Integer intValue;
   private Double doubleValue;
   private String text;
@@ -19,16 +21,19 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
   public QueryDataPoint(Long timestamp, int value) {
     this.timestamp = timestamp;
     this.intValue = value;
+    this.type = Types.INTEGER;
   }
 
   public QueryDataPoint(Long timestamp, double value) {
     this.timestamp = timestamp;
     this.doubleValue = value;
+    this.type = Types.DOUBLE;
   }
 
   public QueryDataPoint(Long timestamp, String value) {
     this.timestamp = timestamp;
     this.text = value;
+    this.type = Types.VARCHAR;
   }
 
   public Long getTimestamp() {
@@ -45,6 +50,7 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
 
   public void setIntValue(int intValue) {
     this.intValue = intValue;
+    this.type = Types.INTEGER;
   }
 
   public Double getDoubleValue() {
@@ -53,6 +59,7 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
 
   public void setDoubleValue(double doubleValue) {
     this.doubleValue = doubleValue;
+    this.type = Types.DOUBLE;
   }
 
   public String getText() {
@@ -61,6 +68,11 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
 
   public void setText(String text) {
     this.text = text;
+    this.type = Types.VARCHAR;
+  }
+
+  public int getType() {
+    return type;
   }
 
   @Override

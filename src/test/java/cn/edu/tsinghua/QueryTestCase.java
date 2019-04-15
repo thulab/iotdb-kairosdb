@@ -178,7 +178,7 @@ public class QueryTestCase {
         throw new BeanValidationException(new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"), "");
 
       QueryParser parser = new QueryParser();
-      Query query = parser.parseQueryMetric(queryJson);
+      Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
       QueryResult result = executor.execute();
 
