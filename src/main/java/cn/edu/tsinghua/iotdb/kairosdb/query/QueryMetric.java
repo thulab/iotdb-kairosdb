@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
 import java.util.List;

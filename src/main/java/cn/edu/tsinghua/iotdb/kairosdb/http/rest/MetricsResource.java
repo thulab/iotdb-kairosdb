@@ -8,7 +8,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -46,8 +45,8 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
 
   //These two are used to track rate of ingestion
-  private final AtomicInteger m_ingestedDataPoints = new AtomicInteger();
-  private final AtomicInteger m_ingestTime = new AtomicInteger();
+  private final AtomicInteger ingestedDataPoints = new AtomicInteger();
+  private final AtomicInteger ingestTime = new AtomicInteger();
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -70,7 +69,6 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Consumes("application/gzip")
   @Path("/datapoints")
-  @Deprecated
   public Response addGzip(InputStream gzip) {
     GZIPInputStream gzipInputStream;
     try {
@@ -98,8 +96,8 @@ public class MetricsResource {
           new InputStreamReader(stream, StandardCharsets.UTF_8), gson);
       ValidationErrors validationErrors = parser.parse();
 
-      m_ingestedDataPoints.addAndGet(parser.getDataPointCount());
-      m_ingestTime.addAndGet(parser.getIngestTime());
+      ingestedDataPoints.addAndGet(parser.getDataPointCount());
+      ingestTime.addAndGet(parser.getIngestTime());
 
       if (!validationErrors.hasErrors()) {
         return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
@@ -154,13 +152,12 @@ public class MetricsResource {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
-      QueryResult result = executor.execute();
       return Response.status(Status.OK)
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", "no-cache")
           .header("Cache-Control", "no-cache")
           .header("Expires", 0)
-          .entity(parser.parseResultToJson(result))
+          .entity(parser.parseResultToJson(executor.execute()))
           .build();
 
     } catch (BeanValidationException e) {

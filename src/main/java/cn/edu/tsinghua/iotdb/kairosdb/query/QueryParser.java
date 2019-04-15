@@ -3,6 +3,8 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.BeanValidationException;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
@@ -30,6 +32,7 @@ public class QueryParser {
   public QueryParser() {
     gson = new GsonBuilder()
         .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+        .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
         .registerTypeAdapter(TimeUnit.class, new TimeUnitDeserializer())
         .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
         .create();
