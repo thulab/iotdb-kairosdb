@@ -299,7 +299,7 @@ public class MetricsManager {
     }
   }
 
-  public static Map<String, Map<String, Integer>> getTagOrder() {
-    return tagOrder;
+  public static Map<String, Integer> getTagOrder(String metricName) {
+    return tagOrder.getOrDefault(metricName, null);
   }
 }

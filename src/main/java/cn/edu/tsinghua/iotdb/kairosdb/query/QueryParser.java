@@ -1,7 +1,12 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
+import cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.BeanValidationException;
+import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -9,7 +14,6 @@ import com.google.gson.JsonParser;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import javax.inject.Inject;
 import javax.validation.ConstraintViolation;
 import javax.validation.Path;
 import javax.validation.Validation;
@@ -23,11 +27,12 @@ public class QueryParser {
   private static final Validator VALIDATOR = Validation.byProvider(ApacheValidationProvider.class).configure().buildValidatorFactory().getValidator();
 
 
-  @Inject
   public QueryParser() {
-    GsonBuilder gsonBuilder = new GsonBuilder();
-    gsonBuilder.registerTypeAdapter(Query.class, new GroupByDeserializer());
-    gson = gsonBuilder.create();
+    gson = new GsonBuilder()
+        .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+        .registerTypeAdapter(TimeUnit.class, new TimeUnitDeserializer())
+        .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+        .create();
   }
 
   public Query parseQueryMetric(String json) throws QueryException, BeanValidationException {
@@ -58,6 +63,10 @@ public class QueryParser {
     }
 
     return query;
+  }
+
+  public String parseResultToJson(QueryResult result) {
+    return gson.toJson(result);
   }
 
   private static class ContextualJsonSyntaxException extends RuntimeException {

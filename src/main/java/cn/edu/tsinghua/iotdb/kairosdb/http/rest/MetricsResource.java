@@ -34,6 +34,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,6 +155,13 @@ public class MetricsResource {
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
       QueryResult result = executor.execute();
+      return Response.status(Status.OK)
+          .header("Access-Control-Allow-Origin", "*")
+          .header("Pragma", "no-cache")
+          .header("Cache-Control", "no-cache")
+          .header("Expires", 0)
+          .entity(parser.parseResultToJson(result))
+          .build();
 
     } catch (BeanValidationException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
@@ -162,8 +170,6 @@ public class MetricsResource {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
       return builder.addError(e.getMessage()).build();
     }
-
-    return null;
   }
 
   @GET

@@ -14,7 +14,14 @@ public class GroupByDeserializer implements JsonDeserializer<GroupBy> {
       JsonDeserializationContext jsonDeserializationContext) {
 
     JsonObject obj = jsonElement.getAsJsonObject();
-    GroupByType groupByType = GroupByType.fromString(obj.get("name").getAsString());
+    if (obj == null) {
+      return null;
+    }
+    JsonElement nameEle = obj.get("name");
+    if (nameEle == null) {
+      return null;
+    }
+    GroupByType groupByType = GroupByType.fromString(nameEle.getAsString());
 
     GroupBy result = null;
 

@@ -6,7 +6,7 @@ import java.util.List;
 
 public class QuerySqlBuilder {
 
-  private static final String sqlPrefix = "SELECT %s FROM ";
+  private static final String SQL_PREFIX = "SELECT %s FROM ";
 
   private String metricName;
 
@@ -47,14 +47,14 @@ public class QuerySqlBuilder {
     return this;
   }
 
-  public String generateSql() {
-    return toString();
+  public String generateSql(long startTime, long endTime) {
+    return String.format("%s where time>%s and time<%s", toString(), startTime, endTime);
   }
 
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append(String.format(sqlPrefix, metricName));
+    builder.append(String.format(SQL_PREFIX, metricName));
     for (StringBuilder tmpBuilder : list) {
       builder.append(tmpBuilder);
       builder.append(",");

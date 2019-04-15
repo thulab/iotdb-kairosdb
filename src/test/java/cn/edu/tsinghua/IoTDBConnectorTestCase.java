@@ -46,7 +46,7 @@ public class IoTDBConnectorTestCase {
 //            ResultSet rs = state.getResultSet();
 
       Statement statement = connection.createStatement();
-      statement.execute("SELECT * FROM root.SYSTEM.TAG_NAME_INFO");
+      statement.execute("SELECT test_tag FROM root.group_1.*.server1,root.group_1.*.server2");
       ResultSet rs = statement.getResultSet();
 
       ResultSetMetaData rsmd = rs.getMetaData();

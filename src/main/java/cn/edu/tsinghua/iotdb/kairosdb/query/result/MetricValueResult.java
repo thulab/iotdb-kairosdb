@@ -31,10 +31,6 @@ public class MetricValueResult {
     this.name = name;
   }
 
-  public Map<String, List<String>> getTags() {
-    return tags;
-  }
-
   public void setTags(Map<String, List<String>> tags) {
     this.tags = tags;
   }
@@ -49,6 +45,8 @@ public class MetricValueResult {
   }
 
   public void addDataPoint(QueryDataPoint point) {
+    if (point == null)
+      return;
     values.add(point);
   }
 
