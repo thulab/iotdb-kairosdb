@@ -10,6 +10,9 @@ public class QueryAggregatorDev extends QueryAggregator
 
   private QueryAggregatorAlign align;
 
+  private long startTimestamp;
+  private long endTimestamp;
+
   private static final int VALUE_TYPE = 0;
   private static final int POS_SD_TYPE = 1;
   private static final int NEG_SD_TYPE = 2;
@@ -58,6 +61,26 @@ public class QueryAggregatorDev extends QueryAggregator
   @Override
   public QueryAggregatorAlign getAlign() {
     return align;
+  }
+
+  @Override
+  public void setStartTimestamp(long startTimestamp) {
+    this.startTimestamp = startTimestamp;
+  }
+
+  @Override
+  public long getStartTimestamp() {
+    return this.startTimestamp;
+  }
+
+  @Override
+  public void setEndTimestamp(long endTimestamp) {
+    this.endTimestamp = endTimestamp;
+  }
+
+  @Override
+  public long getEndTimestamp() {
+    return this.endTimestamp;
   }
 
   @Override

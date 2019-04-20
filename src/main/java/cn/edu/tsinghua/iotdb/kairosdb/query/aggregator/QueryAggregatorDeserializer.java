@@ -202,6 +202,6 @@ public class QueryAggregatorDeserializer implements JsonDeserializer<QueryAggreg
       return QueryAggregatorAlign.ALIGN_END_TIME;
     }
 
-    return QueryAggregatorAlign.ALIGN_END_TIME;
+    return QueryAggregatorAlign.NO_ALIGN;
   }
 }

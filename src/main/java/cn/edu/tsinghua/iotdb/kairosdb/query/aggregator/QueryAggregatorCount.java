@@ -10,6 +10,9 @@ public class QueryAggregatorCount extends QueryAggregator
 
   private QueryAggregatorAlign align;
 
+  private long startTimestamp;
+  private long endTimestamp;
+
   protected QueryAggregatorCount() {
     super(QueryAggregatorType.COUNT);
   }
@@ -32,6 +35,26 @@ public class QueryAggregatorCount extends QueryAggregator
   @Override
   public QueryAggregatorAlign getAlign() {
     return align;
+  }
+
+  @Override
+  public void setStartTimestamp(long startTimestamp) {
+    this.startTimestamp = startTimestamp;
+  }
+
+  @Override
+  public long getStartTimestamp() {
+    return this.startTimestamp;
+  }
+
+  @Override
+  public void setEndTimestamp(long endTimestamp) {
+    this.endTimestamp = endTimestamp;
+  }
+
+  @Override
+  public long getEndTimestamp() {
+    return this.endTimestamp;
   }
 
   @Override
