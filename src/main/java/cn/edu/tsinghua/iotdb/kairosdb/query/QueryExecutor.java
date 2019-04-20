@@ -2,7 +2,6 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,54 +26,33 @@ public class QueryExecutor {
 
   private Query query;
 
+  private Long startTime;
+  private Long endTime;
+
+  private Map<String, Integer> tag2pos;
+  private Map<Integer, String> pos2tag;
+
   private Map<Integer, List<String>> tmpTags;
 
   public QueryExecutor(Query query) {
     this.query = query;
+    this.startTime = query.getStartTimestamp();
+    this.endTime = query.getEndTimestamp();
   }
 
   public QueryResult execute() {
-
-    Long startTime = query.getStartAbsolute();
-    if (startTime == null) {
-      startTime = query.getStartRelative().toTimeStamp();
-    }
-    Long endTime = query.getEndAbsolute();
-    if (endTime == null) {
-      endTime = query.getEndRelative().toTimeStamp();
-    }
 
     QueryResult queryResult = new QueryResult();
 
     for (QueryMetric metric : query.getQueryMetrics()) {
 
-      MetricResult metricResult = new MetricResult();
+      if (getMetricMapping(metric)) {
 
-      Map<String, Integer> tag2pos = MetricsManager.getTagOrder(metric.getName());
-      Map<Integer, String> pos2tag = new HashMap<>();
-      boolean isOver = false;
+        MetricResult metricResult = new MetricResult();
 
-      if (tag2pos == null) {
-        isOver = true;
-        queryResult.addVoidMetricResult(metric.getName());
-      } else {
-        for (Map.Entry<String, List<String>> tag : metric.getTags().entrySet()) {
-          String tmpKey = tag.getKey();
-          Integer tempPosition = tag2pos.getOrDefault(tmpKey, null);
-          if (tempPosition == null) {
-            isOver = true;
-            queryResult.addVoidMetricResult(metric.getName());
-          }
-          pos2tag.put(tempPosition, tmpKey);
-        }
-      }
-
-      if (!isOver) {
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
 
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-
-        metricValueResult.setTags(metric.getTags());
 
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
 
@@ -92,13 +69,35 @@ public class QueryExecutor {
 
         metricResult.addResult(metricValueResult);
 
-      }
+        queryResult.addMetricResult(metricResult);
 
-      queryResult.addMetricResult(metricResult);
+      } else {
+        queryResult.addVoidMetricResult(metric.getName());
+      }
 
     }
 
     return queryResult;
+  }
+
+  private boolean getMetricMapping(QueryMetric metric) {
+    tag2pos = MetricsManager.getTagOrder(metric.getName());
+    pos2tag = new HashMap<>();
+
+    if (tag2pos == null) {
+      return false;
+    } else {
+      for (Map.Entry<String, List<String>> tag : metric.getTags().entrySet()) {
+        String tmpKey = tag.getKey();
+        Integer tempPosition = tag2pos.getOrDefault(tmpKey, null);
+        if (tempPosition == null) {
+          return false;
+        }
+        pos2tag.put(tempPosition, tmpKey);
+      }
+    }
+
+    return true;
   }
 
   private String buildSqlStatement(QueryMetric metric, Map<Integer, String> pos2tag, int maxPath,
@@ -158,32 +157,42 @@ public class QueryExecutor {
         }
       }
 
-      tmpTags = new HashMap<>();
-      for (int i = 2; i <= columnCount; i++) {
-        String[] paths = metaData.getColumnName(i).split("\\.");
-        int pathsLen = paths.length;
-        for (int j = 2; j < pathsLen - 1; j++) {
-          List<String> list = tmpTags.getOrDefault(j, null);
-          if (list == null) {
-            list = new LinkedList<>();
-            tmpTags.put(j, list);
-          }
-          if (!list.contains(paths[j])) {
-            list.add(paths[j]);
-          }
-        }
-      }
+      getTagValueFromPaths(metaData);
 
-      String type = metaData.getColumnTypeName(1);
-      if (type.equals("TEXT")) {
-        metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
-      } else {
-        metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
-      }
+      addBasicGroupByToResult(metaData, metricValueResult);
     } catch (SQLException e) {
       LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
     }
     return sampleSize;
+  }
+
+  private void getTagValueFromPaths(ResultSetMetaData metaData) throws SQLException {
+    tmpTags = new HashMap<>();
+    int columnCount = metaData.getColumnCount();
+    for (int i = 2; i <= columnCount; i++) {
+      String[] paths = metaData.getColumnName(i).split("\\.");
+      int pathsLen = paths.length;
+      for (int j = 2; j < pathsLen - 1; j++) {
+        List<String> list = tmpTags.getOrDefault(j, null);
+        if (list == null) {
+          list = new LinkedList<>();
+          tmpTags.put(j, list);
+        }
+        if (!list.contains(paths[j])) {
+          list.add(paths[j]);
+        }
+      }
+    }
+  }
+
+  private void addBasicGroupByToResult(
+      ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
+    String type = metaData.getColumnTypeName(1);
+    if (type.equals("TEXT")) {
+      metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
+    } else {
+      metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
+    }
   }
 
   private int findType(String string) {

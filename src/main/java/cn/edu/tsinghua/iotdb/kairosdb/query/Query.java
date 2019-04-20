@@ -31,20 +31,36 @@ public class Query {
   @SerializedName("metrics")
   private List<QueryMetric> queryMetrics;
 
-  public Long getStartAbsolute() {
+  private Long getStartAbsolute() {
     return startAbsolute;
   }
 
-  public Long getEndAbsolute() {
+  private Long getEndAbsolute() {
     return endAbsolute;
   }
 
-  public Duration getStartRelative() {
+  private Duration getStartRelative() {
     return startRelative;
   }
 
-  public Duration getEndRelative() {
+  private Duration getEndRelative() {
     return endRelative;
+  }
+
+  Long getStartTimestamp() {
+    Long startTimestamp = getStartAbsolute();
+    if (startTimestamp == null) {
+      startTimestamp = getStartRelative().toTimeStamp();
+    }
+    return startTimestamp;
+  }
+
+  Long getEndTimestamp() {
+    Long endTimestamp = getEndAbsolute();
+    if (endTimestamp == null) {
+      endTimestamp = getEndRelative().toTimeStamp();
+    }
+    return endTimestamp;
   }
 
   public Long getCacheTime() {
@@ -55,7 +71,7 @@ public class Query {
     return timeZone;
   }
 
-  public List<QueryMetric> getQueryMetrics() {
+  List<QueryMetric> getQueryMetrics() {
     return queryMetrics;
   }
 }
