@@ -7,6 +7,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBySerializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.Gson;
@@ -31,7 +32,9 @@ public class QueryParser {
 
   public QueryParser() {
     gson = new GsonBuilder()
+        .registerTypeAdapter(QueryMetric.class, new QueryMetric())
         .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+        .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
         .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
         .registerTypeAdapter(TimeUnit.class, new TimeUnitDeserializer())
         .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())

@@ -5,7 +5,7 @@ public class GroupByValue extends GroupBy {
   private long rangeSize;
 
   public GroupByValue() {
-    super(GroupByType.VALUE);
+    super(GroupByKind.VALUE);
   }
 
   public long getRangeSize() {

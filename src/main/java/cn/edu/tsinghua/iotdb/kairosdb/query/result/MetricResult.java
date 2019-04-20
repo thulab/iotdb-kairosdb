@@ -33,4 +33,8 @@ public class MetricResult {
     this.results.add(result);
   }
 
+  public void setResults(List<MetricValueResult> results) {
+    this.results = results;
+  }
+
 }

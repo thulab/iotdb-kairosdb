@@ -8,7 +8,7 @@ public class GroupByTags extends GroupBy {
   private List<String> tags;
 
   public GroupByTags() {
-    super(GroupByType.TAGS);
+    super(GroupByKind.TAGS);
     tags = new LinkedList<>();
   }
 

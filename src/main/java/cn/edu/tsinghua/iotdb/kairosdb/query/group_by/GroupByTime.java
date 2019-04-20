@@ -10,7 +10,7 @@ public class GroupByTime extends GroupBy {
   private Duration rangeSize;
 
   public GroupByTime() {
-    super(GroupByType.TIME);
+    super(GroupByKind.TIME);
   }
 
   public int getGroupCount() {

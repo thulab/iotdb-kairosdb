@@ -1,23 +1,33 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.group_by;
 
-import static cn.edu.tsinghua.iotdb.kairosdb.util.Preconditions.checkNotNullOrEmpty;
+import com.google.gson.annotations.SerializedName;
 
-public enum GroupByType {
+public class GroupByType extends GroupBy {
 
-  TAGS,
-  TIME,
-  VALUE,
-  BIN;
+  @SerializedName("type")
+  private String type;
 
-  public static GroupByType fromString(String typeStr) {
-    checkNotNullOrEmpty(typeStr);
-    for (GroupByType type : values()) {
-      if (type.toString().equalsIgnoreCase(typeStr)) {
-        return type;
-      }
-    }
-
-    throw new IllegalArgumentException("No enum constant for " + typeStr);
+  public GroupByType() {
+    super(GroupByKind.TYPE);
   }
 
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
+  }
+
+  public static GroupByType getNumberTypeInstance() {
+    GroupByType groupByType = new GroupByType();
+    groupByType.setType("number");
+    return groupByType;
+  }
+
+  public static GroupByType getTextTypeInstance() {
+    GroupByType groupByType = new GroupByType();
+    groupByType.setType("text");
+    return groupByType;
+  }
 }

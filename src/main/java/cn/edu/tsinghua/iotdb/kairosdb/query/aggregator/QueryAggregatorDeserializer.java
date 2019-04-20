@@ -168,7 +168,7 @@ public class QueryAggregatorDeserializer implements JsonDeserializer<QueryAggreg
           break;
         default:
           LOGGER.error("QueryAggregatorDeserializer.deserialize: unexpected aggregator type");
-          throw new JsonParseException("unexpected aggregator typ");
+          throw new JsonParseException("unexpected aggregator type");
       }
     } catch (IllegalArgumentException e) {
       throw new JsonParseException(String.format("Invalid aggregator name [%s]", name));

@@ -5,13 +5,14 @@ import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import java.lang.reflect.Type;
 
 public class GroupByDeserializer implements JsonDeserializer<GroupBy> {
 
   @Override
   public GroupBy deserialize(JsonElement jsonElement, Type type,
-      JsonDeserializationContext jsonDeserializationContext) {
+      JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
 
     JsonObject obj = jsonElement.getAsJsonObject();
     if (obj == null) {
@@ -21,11 +22,14 @@ public class GroupByDeserializer implements JsonDeserializer<GroupBy> {
     if (nameEle == null) {
       return null;
     }
-    GroupByType groupByType = GroupByType.fromString(nameEle.getAsString());
+    GroupByKind groupByKind = GroupByKind.fromString(nameEle.getAsString());
 
     GroupBy result = null;
 
-    switch (groupByType) {
+    switch (groupByKind) {
+      case TYPE:
+        result = deserializeGroupByType(obj);
+        break;
       case TAGS:
         result = deserializeGroupByTags(obj);
         break;
@@ -42,6 +46,21 @@ public class GroupByDeserializer implements JsonDeserializer<GroupBy> {
         break;
     }
 
+    return result;
+  }
+
+  private GroupBy deserializeGroupByType(JsonObject groupByObj) throws JsonParseException {
+    GroupByType result = new GroupByType();
+    JsonElement strEle = groupByObj.get("type");
+    if (strEle == null) {
+      throw new JsonParseException("Among grouping by type, type must be specified.");
+    }
+    String str = strEle.getAsString();
+    if (!str.equals("number") && !str.equals("text")) {
+      throw new JsonParseException(
+          "Among grouping by type, type must be one of the [\"number\", \"text\"].");
+    }
+    result.setType(str);
     return result;
   }
 

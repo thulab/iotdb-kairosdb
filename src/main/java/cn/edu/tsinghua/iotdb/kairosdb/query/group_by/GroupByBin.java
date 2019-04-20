@@ -8,7 +8,7 @@ public class GroupByBin extends GroupBy {
   private List<String> bins;
 
   public GroupByBin() {
-    super(GroupByType.BIN);
+    super(GroupByKind.BIN);
     bins = new LinkedList<>();
   }
 

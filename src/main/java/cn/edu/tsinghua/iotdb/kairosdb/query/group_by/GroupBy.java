@@ -2,14 +2,14 @@ package cn.edu.tsinghua.iotdb.kairosdb.query.group_by;
 
 public abstract class GroupBy {
 
-  private final GroupByType type;
+  private final GroupByKind kind;
 
-  public GroupBy(GroupByType type) {
-    this.type = type;
+  public GroupBy(GroupByKind kind) {
+    this.kind = kind;
   }
 
-  public GroupByType getType() {
-    return type;
+  public GroupByKind getKind() {
+    return kind;
   }
 
 }

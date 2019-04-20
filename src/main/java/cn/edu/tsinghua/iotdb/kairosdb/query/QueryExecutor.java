@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
@@ -13,8 +15,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +27,8 @@ public class QueryExecutor {
   static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
 
   private Query query;
+
+  private Map<Integer, List<String>> tmpTags;
 
   public QueryExecutor(Query query) {
     this.query = query;
@@ -68,9 +74,22 @@ public class QueryExecutor {
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
 
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
+
         metricValueResult.setTags(metric.getTags());
 
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
+
+
+        if (tmpTags != null) {
+          for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
+            pos2tag.put(entry.getValue(), entry.getKey());
+          }
+
+          for (Map.Entry<Integer, List<String>> entry :tmpTags.entrySet()) {
+            metricValueResult.setTag(pos2tag.get(entry.getKey()-2), entry.getValue());
+          }
+        }
+
         metricResult.addResult(metricValueResult);
 
       }
@@ -137,6 +156,29 @@ public class QueryExecutor {
           metricValueResult.addDataPoint(dataPoint);
           metaData.getColumnType(i);
         }
+      }
+
+      tmpTags = new HashMap<>();
+      for (int i = 2; i <= columnCount; i++) {
+        String[] paths = metaData.getColumnName(i).split("\\.");
+        int pathsLen = paths.length;
+        for (int j = 2; j < pathsLen - 1; j++) {
+          List<String> list = tmpTags.getOrDefault(j, null);
+          if (list == null) {
+            list = new LinkedList<>();
+            tmpTags.put(j, list);
+          }
+          if (!list.contains(paths[j])) {
+            list.add(paths[j]);
+          }
+        }
+      }
+
+      String type = metaData.getColumnTypeName(1);
+      if (type.equals("TEXT")) {
+        metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
+      } else {
+        metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
       }
     } catch (SQLException e) {
       LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
