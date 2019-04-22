@@ -6,6 +6,7 @@ public class Config {
   public String PORT = "6667";
   public int STORAGE_GROUP_SIZE = 50;
   public String REST_PORT = "6666";
+  public int MAX_ROLLUP = 100;
 
   Config() {
 

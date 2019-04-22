@@ -57,7 +57,7 @@ public class MetricsResource {
     gson = builder.disableHtmlEscaping().create();
   }
 
-  static Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder) {
+  public static Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder) {
     responseBuilder.header("Access-Control-Allow-Origin", "*");
     responseBuilder.header("Pragma", "no-cache");
     responseBuilder.header("Cache-Control", "no-cache");

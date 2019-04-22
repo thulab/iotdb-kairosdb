@@ -1,8 +1,16 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import static cn.edu.tsinghua.iotdb.kairosdb.http.rest.MetricsResource.setHeaders;
 import static cn.edu.tsinghua.iotdb.kairosdb.util.Preconditions.checkNotNullOrEmpty;
 
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpParser;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStore;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpsExecutor;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollupResponse;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -12,6 +20,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.Response.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +29,9 @@ import org.slf4j.LoggerFactory;
 public class RollUpResource {
 
   private static final Logger logger = LoggerFactory.getLogger(RollUpResource.class);
+  private final RollUpParser parser = new RollUpParser();
+  private RollUpStore store = new RollUpStoreImpl();
+  private static final String RESOURCE_URL = "/api/v1/rollups/";
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
@@ -26,13 +39,19 @@ public class RollUpResource {
     checkNotNullOrEmpty(json);
     try {
 
-      return null;
+      RollUp task = parser.parseRollupTask(json);
+      store.write(task);
+      ResponseBuilder responseBuilder = Response.status(Status.OK)
+          .entity(parser.getGson().toJson(createResponse(task)));
+      setHeaders(responseBuilder);
+      return responseBuilder.build();
     } catch (Exception e) {
       logger.error("Failed to add roll-up.", e);
       return MetricsResource.setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(new ErrorResponse(e.getMessage()))).build();
     }
   }
+
 
   @GET
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
@@ -52,8 +71,26 @@ public class RollUpResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("{id}")
   public Response delete(@PathParam("id") String id) {
-    checkNotNullOrEmpty(id);
-    return null;
+    try {
+      checkNotNullOrEmpty(id);
+      System.out.println(id);
+      RollUp task = store.read(id);
+      if (task != null) {
+        RollUpsExecutor.getInstance().delete(id);
+        store.remove(id);
+        return setHeaders(Response.status(Status.NO_CONTENT)).build();
+      } else {
+        ResponseBuilder responseBuilder = Response.status(Status.NOT_FOUND)
+            .entity(new ErrorResponse("Resource not found for id " + id));
+        setHeaders(responseBuilder);
+        return responseBuilder.build();
+      }
+    } catch (Exception e) {
+      logger.error("Failed to delete roll-up.", e);
+      return setHeaders(
+          Response.status(Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage())))
+          .build();
+    }
   }
 
   @PUT
@@ -63,6 +100,10 @@ public class RollUpResource {
     checkNotNullOrEmpty(id);
     checkNotNullOrEmpty(json);
     return null;
+  }
+
+  private RollupResponse createResponse(RollUp task) {
+    return new RollupResponse(task.getId(), task.getName(), RESOURCE_URL + task.getId());
   }
 
 }

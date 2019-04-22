@@ -64,6 +64,32 @@ public enum TimeUnit {
     }
   }
 
+  public static java.util.concurrent.TimeUnit getUnitTimeInRollUp(TimeUnit unit) {
+    if (unit == null) {
+      return java.util.concurrent.TimeUnit.SECONDS;
+    }
+    switch (unit) {
+      case MILLISECONDS:
+        return java.util.concurrent.TimeUnit.MILLISECONDS;
+      case SECONDS:
+        return java.util.concurrent.TimeUnit.SECONDS;
+      case MINUTES:
+        return java.util.concurrent.TimeUnit.MINUTES;
+      case HOURS:
+        return java.util.concurrent.TimeUnit.HOURS;
+      case DAYS:
+        return java.util.concurrent.TimeUnit.DAYS;
+      case WEEKS:
+        return java.util.concurrent.TimeUnit.DAYS;
+      case MONTHS:
+        return java.util.concurrent.TimeUnit.DAYS;
+      case YEARS:
+        return java.util.concurrent.TimeUnit.DAYS;
+      default:
+        return java.util.concurrent.TimeUnit.SECONDS;
+    }
+  }
+
   public static boolean contains(String value) {
     for (TimeUnit unit : values()) {
       if (unit.name().equalsIgnoreCase(value)) {
