@@ -50,7 +50,7 @@ public class Query {
   Long getStartTimestamp() {
     Long startTimestamp = getStartAbsolute();
     if (startTimestamp == null) {
-      startTimestamp = getStartRelative().toTimeStamp();
+      startTimestamp = getStartRelative().toRelatedTimestamp();
     }
     return startTimestamp;
   }
@@ -58,7 +58,7 @@ public class Query {
   Long getEndTimestamp() {
     Long endTimestamp = getEndAbsolute();
     if (endTimestamp == null) {
-      endTimestamp = getEndRelative().toTimeStamp();
+      endTimestamp = getEndRelative().toRelatedTimestamp();
     }
     return endTimestamp;
   }

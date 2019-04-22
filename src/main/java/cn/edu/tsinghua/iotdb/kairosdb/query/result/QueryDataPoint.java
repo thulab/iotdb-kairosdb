@@ -18,6 +18,10 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
   public QueryDataPoint() {
   }
 
+  public QueryDataPoint(Long timestamp) {
+    this.timestamp = timestamp;
+  }
+
   public QueryDataPoint(Long timestamp, int value) {
     this.timestamp = timestamp;
     this.intValue = value;
@@ -73,6 +77,10 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint> {
 
   public int getType() {
     return type;
+  }
+
+  public boolean isInteger() {
+    return this.type == Types.INTEGER;
   }
 
   @Override

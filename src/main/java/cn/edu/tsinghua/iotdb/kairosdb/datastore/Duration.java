@@ -57,10 +57,14 @@ public class Duration {
     this.unit = unit;
   }
 
-  public long toTimeStamp() {
+  public long toRelatedTimestamp() {
     long timeNow = new Date().getTime();
-    long durationTime = value * TimeUnit.getUnitTime(unit);
+    long durationTime = toTimestamp();
     return timeNow - durationTime;
+  }
+
+  public long toTimestamp() {
+    return value * TimeUnit.getUnitTime(unit);
   }
 
   public long getValue() {

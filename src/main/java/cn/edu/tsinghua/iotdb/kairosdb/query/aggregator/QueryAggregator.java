@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 
 public abstract class QueryAggregator {
@@ -14,6 +15,6 @@ public abstract class QueryAggregator {
     return type;
   }
 
-  public abstract MetricResult doAggregate(MetricResult result);
+  public abstract MetricResult doAggregate(MetricResult result) throws QueryException;
 
 }

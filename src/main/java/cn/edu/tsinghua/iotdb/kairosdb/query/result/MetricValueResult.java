@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.query.result;
 
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
+import java.sql.Types;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,16 +29,41 @@ public class MetricValueResult {
     values = new LinkedList<>();
   }
 
+  public List<List<QueryDataPoint>> splitDataPoint(long startTimestamp, long step) {
+    List<List<QueryDataPoint>> result = new LinkedList<>();
+
+    List<QueryDataPoint> tmpList = new LinkedList<>();
+
+    Long curTimestamp = startTimestamp + step;
+
+    for (QueryDataPoint point : values) {
+      if (point.getTimestamp() < startTimestamp) {
+        continue;
+      }
+      if (point.getTimestamp() < curTimestamp) {
+        tmpList.add(point);
+      } else {
+        if (!tmpList.isEmpty()) {
+          result.add(tmpList);
+          tmpList = new LinkedList<>();
+        }
+        curTimestamp += ((point.getTimestamp() - curTimestamp) / step + 1) * step;
+        tmpList.add(point);
+      }
+    }
+    if (!tmpList.isEmpty()) {
+      result.add(tmpList);
+    }
+
+    return result;
+  }
+
   public String getName() {
     return name;
   }
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public void setGroupBy(List<GroupBy> groupBy) {
-    this.groupBy = groupBy;
   }
 
   public void addGroupBy(GroupBy groupBy) {
@@ -50,8 +76,8 @@ public class MetricValueResult {
     this.groupBy.add(groupBy);
   }
 
-  public void setTags(Map<String, List<String>> tags) {
-    this.tags = tags;
+  public List<GroupBy> getGroupBy() {
+    return groupBy;
   }
 
   public void addTag(String key, String value) {
@@ -71,6 +97,17 @@ public class MetricValueResult {
     if (point == null)
       return;
     values.add(point);
+  }
+
+  public List<QueryDataPoint> getDatapoints() {
+    return values;
+  }
+
+  public boolean isTextType() {
+    if (getDatapoints().isEmpty()) {
+      return false;
+    }
+    return getDatapoints().get(0).getType() == Types.VARCHAR;
   }
 
 }

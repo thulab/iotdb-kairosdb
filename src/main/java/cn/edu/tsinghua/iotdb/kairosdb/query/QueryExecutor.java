@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -40,7 +42,7 @@ public class QueryExecutor {
     this.endTime = query.getEndTimestamp();
   }
 
-  public QueryResult execute() {
+  public QueryResult execute() throws QueryException {
 
     QueryResult queryResult = new QueryResult();
 
@@ -56,7 +58,6 @@ public class QueryExecutor {
 
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
 
-
         if (tmpTags != null) {
           for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
             pos2tag.put(entry.getValue(), entry.getKey());
@@ -68,6 +69,8 @@ public class QueryExecutor {
         }
 
         metricResult.addResult(metricValueResult);
+
+        metricResult = doAggregations(metric, metricResult);
 
         queryResult.addMetricResult(metricResult);
 
@@ -193,6 +196,20 @@ public class QueryExecutor {
     } else {
       metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
     }
+  }
+
+  private MetricResult doAggregations(QueryMetric metric, MetricResult result)
+      throws QueryException {
+
+    for (QueryAggregator aggregator : metric.getAggregators()) {
+      if (aggregator instanceof QueryAggregatorAlignable) {
+        ((QueryAggregatorAlignable) aggregator).setStartTimestamp(startTime);
+        ((QueryAggregatorAlignable) aggregator).setEndTimestamp(endTime);
+      }
+      result = aggregator.doAggregate(result);
+    }
+
+    return result;
   }
 
   private int findType(String string) {
