@@ -2,6 +2,9 @@ package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
+import java.util.LinkedList;
+import java.util.List;
 
 public abstract class QueryAggregator {
 
@@ -16,5 +19,39 @@ public abstract class QueryAggregator {
   }
 
   public abstract MetricResult doAggregate(MetricResult result) throws QueryException;
+
+  static MetricResult useMethodAggregate(QueryAggregatorAlignable aggregator, MetricResult result)
+      throws QueryException {
+    List<MetricValueResult> valueResults = result.getResults();
+
+    List<MetricValueResult> newValueResults = new LinkedList<>();
+
+    for (MetricValueResult valueResult : valueResults) {
+
+      if (valueResult.isTextType()) {
+        continue;
+      }
+
+      MetricValueResult newValueResult = aggregator.aggregate(valueResult);
+
+      newValueResults.add(newValueResult);
+
+    }
+
+    result.setResults(newValueResults);
+
+    return result;
+  }
+
+  static long computeTimestampByAlign(QueryAggregatorAlignable aggregator, long timestamp, long step) {
+    switch (aggregator.getAlign()) {
+      case ALIGN_START_TIME:
+        return (timestamp / step) * step + aggregator.getStartTimestamp();
+      case ALIGN_END_TIME:
+        return (timestamp / step) * step + aggregator.getStartTimestamp() + step;
+      default:
+        return timestamp;
+    }
+  }
 
 }

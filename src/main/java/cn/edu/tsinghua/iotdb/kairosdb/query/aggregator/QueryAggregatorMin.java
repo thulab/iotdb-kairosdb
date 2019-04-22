@@ -1,7 +1,11 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.Duration;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import java.util.List;
 
 public class QueryAggregatorMin extends QueryAggregator
     implements QueryAggregatorSampling, QueryAggregatorAlignable {
@@ -13,8 +17,41 @@ public class QueryAggregatorMin extends QueryAggregator
   private long startTimestamp;
   private long endTimestamp;
 
-  protected QueryAggregatorMin() {
+  QueryAggregatorMin() {
     super(QueryAggregatorType.MIN);
+  }
+
+  @Override
+  public MetricResult doAggregate(MetricResult result) throws QueryException {
+    return useMethodAggregate(this, result);
+  }
+
+  @Override
+  public MetricValueResult aggregate(MetricValueResult valueResult) {
+    MetricValueResult newValueResult = new MetricValueResult(valueResult.getName());
+
+    long step = getSampling().toTimestamp();
+
+    List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
+
+    for (List<QueryDataPoint> points : splitPoints) {
+
+      QueryDataPoint tPoint = null;
+      for (QueryDataPoint point : points) {
+        if (tPoint == null) {
+          tPoint = point;
+          continue;
+        }
+        if (point.compareTo(tPoint) < 0) {
+          tPoint = point;
+        }
+      }
+
+      newValueResult.addDataPoint(tPoint);
+
+    }
+
+    return newValueResult;
   }
 
   @Override
@@ -55,11 +92,6 @@ public class QueryAggregatorMin extends QueryAggregator
   @Override
   public long getEndTimestamp() {
     return this.endTimestamp;
-  }
-
-  @Override
-  public MetricResult doAggregate(MetricResult result) {
-    return result;
   }
 
 }

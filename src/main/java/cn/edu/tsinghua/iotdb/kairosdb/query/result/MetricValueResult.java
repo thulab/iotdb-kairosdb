@@ -103,6 +103,10 @@ public class MetricValueResult {
     return values;
   }
 
+  public void setValues(List<QueryDataPoint> values) {
+    this.values = values;
+  }
+
   public boolean isTextType() {
     if (getDatapoints().isEmpty()) {
       return false;
