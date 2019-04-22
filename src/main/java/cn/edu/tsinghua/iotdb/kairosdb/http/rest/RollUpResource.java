@@ -4,6 +4,7 @@ import static cn.edu.tsinghua.iotdb.kairosdb.http.rest.MetricsResource.setHeader
 import static cn.edu.tsinghua.iotdb.kairosdb.util.Preconditions.checkNotNullOrEmpty;
 
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
+import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpParser;
@@ -73,23 +74,18 @@ public class RollUpResource {
   public Response delete(@PathParam("id") String id) {
     try {
       checkNotNullOrEmpty(id);
-      System.out.println(id);
-      RollUp task = store.read(id);
-      if (task != null) {
+      if (RollUpsExecutor.getInstance().containsRollup(id)) {
         RollUpsExecutor.getInstance().delete(id);
         store.remove(id);
         return setHeaders(Response.status(Status.NO_CONTENT)).build();
       } else {
-        ResponseBuilder responseBuilder = Response.status(Status.NOT_FOUND)
-            .entity(new ErrorResponse("Resource not found for id " + id));
-        setHeaders(responseBuilder);
-        return responseBuilder.build();
+        JsonResponseBuilder builder = new JsonResponseBuilder(Status.BAD_REQUEST);
+        return builder.addError("Resource not found for id " + id).build();
       }
     } catch (Exception e) {
       logger.error("Failed to delete roll-up.", e);
-      return setHeaders(
-          Response.status(Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage())))
-          .build();
+      JsonResponseBuilder builder = new JsonResponseBuilder(Status.BAD_REQUEST);
+      return builder.addError(e.getMessage()).build();
     }
   }
 

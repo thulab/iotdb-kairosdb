@@ -29,6 +29,10 @@ public class RollUpsExecutor {
     return RollUpsExecutorHolder.INSTANCE;
   }
 
+  public boolean containsRollup(String id){
+    return rollUpTasks.containsKey(id);
+  }
+
   public void create(RollUp rollUp) throws RollUpException {
     if (rollUpTasks.size() <= config.MAX_ROLLUP) {
       long intervalValue = getIntervalValue(rollUp.getInterval());
