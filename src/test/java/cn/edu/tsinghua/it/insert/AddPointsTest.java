@@ -49,12 +49,10 @@ public class AddPointsTest {
             + "s\":{\"host\":\"server2\",\"data_center\":\"DC1\"}}]";
 
     HttpUtil httpUtil = new HttpUtil(url);
-
     try {
       Response response = httpUtil.post(data);
       int statusCode = response.code();
-      System.out.println(statusCode);
-
+      assert statusCode == 204;
     } catch (IOException e) {
       e.printStackTrace();
     }
