@@ -6,20 +6,20 @@ public class QueryAggregatorSaveAs extends QueryAggregator {
 
   private String metricName;
 
-  protected QueryAggregatorSaveAs() {
+  QueryAggregatorSaveAs() {
     super(QueryAggregatorType.SAVE_AS);
   }
 
   @Override
   public MetricResult doAggregate(MetricResult result) {
-    return null;
+    return result;
   }
 
   public String getMetricName() {
     return metricName;
   }
 
-  public void setMetricName(String metricName) {
+  void setMetricName(String metricName) {
     this.metricName = metricName;
   }
 

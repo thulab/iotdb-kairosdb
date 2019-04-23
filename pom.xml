@@ -53,6 +53,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+      <version>3.14.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>cn.edu.tsinghua</groupId>
       <artifactId>iotdb-jdbc</artifactId>
       <version>0.7.0</version>
