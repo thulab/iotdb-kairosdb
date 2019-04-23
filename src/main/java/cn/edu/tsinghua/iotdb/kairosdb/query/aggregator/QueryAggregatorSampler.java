@@ -2,6 +2,10 @@ package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import java.util.LinkedList;
+import java.util.List;
 
 public class QueryAggregatorSampler extends QueryAggregator {
 
@@ -15,17 +19,48 @@ public class QueryAggregatorSampler extends QueryAggregator {
 
   private TimeUnit unit;
 
-  protected QueryAggregatorSampler() {
+  QueryAggregatorSampler() {
     super(QueryAggregatorType.SAMPLER);
   }
 
   @Override
   public MetricResult doAggregate(MetricResult result) {
-    return null;
-  }
+    List<MetricValueResult> valueResults = result.getResults();
 
-  public void setUnit(TimeUnit unit) {
-    this.unit = unit;
+    List<MetricValueResult> newValueResults = new LinkedList<>();
+
+    for (MetricValueResult valueResult : valueResults) {
+
+      List<QueryDataPoint> points = valueResult.getDatapoints();
+
+      List<QueryDataPoint> newPoints = new LinkedList<>();
+
+      if (valueResult.isTextType() || points.isEmpty()) {
+        continue;
+      }
+
+      QueryDataPoint tmpPoint = points.get(0);
+      points.remove(tmpPoint);
+
+      for (QueryDataPoint point : points) {
+        long preTimestamp = tmpPoint.getTimestamp();
+        long postTimestamp = point.getTimestamp();
+
+        double rate = TimeUnit.getUnitTime(unit) / (double) (postTimestamp - preTimestamp);
+
+        newPoints.add(new QueryDataPoint(postTimestamp, point.getAsDouble() * rate));
+
+        tmpPoint = point;
+      }
+
+
+      valueResult.setValues(newPoints);
+
+    }
+
+    result.setResults(newValueResults);
+
+    return result;
   }
 
   public void setUnit(String unitStr) {

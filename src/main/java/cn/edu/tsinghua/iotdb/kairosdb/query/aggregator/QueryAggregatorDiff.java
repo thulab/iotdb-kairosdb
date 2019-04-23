@@ -1,15 +1,52 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import java.util.LinkedList;
+import java.util.List;
 
 public class QueryAggregatorDiff extends QueryAggregator {
 
-  protected QueryAggregatorDiff() {
+  QueryAggregatorDiff() {
     super(QueryAggregatorType.DIFF);
   }
 
   @Override
   public MetricResult doAggregate(MetricResult result) {
-    return null;
+
+    List<MetricValueResult> valueResults = result.getResults();
+
+    List<MetricValueResult> newValueResults = new LinkedList<>();
+
+    for (MetricValueResult valueResult : valueResults) {
+
+      List<QueryDataPoint> points = valueResult.getDatapoints();
+
+      if (valueResult.isTextType() || points.isEmpty()) {
+        continue;
+      }
+
+      List<QueryDataPoint> newPoints = new LinkedList<>();
+
+      QueryDataPoint tmpPoint = points.get(0);
+      points.remove(tmpPoint);
+
+      for (QueryDataPoint point : points) {
+        newPoints.add(new QueryDataPoint(point.getTimestamp(),
+            point.getAsDouble() - tmpPoint.getAsDouble()));
+
+        tmpPoint = point;
+      }
+
+
+      valueResult.setValues(newPoints);
+
+    }
+
+    result.setResults(newValueResults);
+
+    return result;
   }
+
 }
