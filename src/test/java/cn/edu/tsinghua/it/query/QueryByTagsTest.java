@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.it.query;
 
+import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
 import java.io.IOException;
 import okhttp3.Response;
@@ -7,7 +8,8 @@ import org.junit.Test;
 
 public class QueryByTagsTest {
 
-  private String url = "http://192.168.130.185:6666/api/v1/datapoints/query";
+  private RestService mainThread = new RestService();
+  private String url = mainThread.getUrlPrefix() + "/api/v1/datapoints/query";
 
   @Test
   public void queryWithoutTags() {

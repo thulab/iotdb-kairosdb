@@ -26,6 +26,27 @@ public class HttpUtil {
     return client.newCall(request).execute();
   }
 
+  public Response delete() throws IOException {
+    Request request = new Request.Builder()
+        .url(url)
+        .delete()
+        .build();
+
+    OkHttpClient client = new OkHttpClient();
+    return client.newCall(request).execute();
+  }
+
+  public Response put(String json) throws IOException {
+    RequestBody body = RequestBody.create(JSON, json);
+    Request request = new Request.Builder()
+        .url(url)
+        .put(body)
+        .build();
+
+    OkHttpClient client = new OkHttpClient();
+    return client.newCall(request).execute();
+  }
+
   public Response post(String json) throws IOException {
     RequestBody body = RequestBody.create(JSON, json);
     Request request = new Request.Builder()

@@ -17,6 +17,16 @@ public class RollUp implements Runnable{
 
   private String id;
 
+  private String json;
+
+  public String getJson() {
+    return json;
+  }
+
+  public void setJson(String json) {
+    this.json = json;
+  }
+
   public String getName() {
     return name;
   }
@@ -39,8 +49,8 @@ public class RollUp implements Runnable{
 
   @Override
   public void run() {
-    System.out.println("id = " + id + ", Thread name: " + Thread.currentThread().getName() + Thread.currentThread().getId());
-    System.out.println("name = " + name + ", execution_interval: " + interval.getValue() + interval.getUnit());
+    System.out.print("id = " + id + ", Thread name: " + Thread.currentThread().getName() + Thread.currentThread().getId());
+    System.out.println(" name = " + name + ", execution_interval: " + interval.getValue() + " " + interval.getUnit());
   }
 
 }

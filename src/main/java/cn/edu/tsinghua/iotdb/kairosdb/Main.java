@@ -4,13 +4,9 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
+import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
 import java.net.URI;
 import java.sql.SQLException;
-import java.util.Enumeration;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -27,26 +23,7 @@ public class Main {
   private static URI baseURI;
 
   private static URI getBaseURI() {
-    InetAddress ip;
-    String restIp = "localhost";
-    Enumeration allNetInterfaces = null;
-    try {
-      allNetInterfaces = NetworkInterface.getNetworkInterfaces();
-    } catch (SocketException e) {
-      LOGGER.error("Get Network interfaces failed because ", e);
-    }
-    if (allNetInterfaces != null) {
-      while (allNetInterfaces.hasMoreElements()) {
-        NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
-        Enumeration addresses = netInterface.getInetAddresses();
-        while (addresses.hasMoreElements()) {
-          ip = (InetAddress) addresses.nextElement();
-          if (ip instanceof Inet4Address && !ip.getHostAddress().equals("127.0.0.1")) {
-            restIp = ip.getHostAddress();
-          }
-        }
-      }
-    }
+    String restIp = AddressUtil.getLocalIpAddress();
     return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT))
         .build();
   }
@@ -65,17 +42,32 @@ public class Main {
     MetricsManager.loadMetadata();
   }
 
-  public static void main(String[] argv) throws Exception {
+  private static HttpServer startServer(String[] argv) throws SQLException, ClassNotFoundException {
     CommandCli cli = new CommandCli();
     if (!cli.init(argv)) {
-      return;
+      System.exit(1);
     }
     config = ConfigDescriptor.getInstance().getConfig();
     baseURI = getBaseURI();
-    LOGGER.info("host={},port={}", config.HOST, config.PORT);
-    HttpServer server = startServer();
+    LOGGER.info("host = {}, port = {}", config.HOST, config.PORT);
+    return startServer();
+  }
+
+  public static void main(String[] argv) {
+    HttpServer server = null;
+    try {
+      server = startServer(argv);
+    } catch (Exception e) {
+      LOGGER.error("启动IKR服务失败，请检查是否启动了IoTDB服务以及相关配置参数是否正确", e);
+      System.exit(1);
+    }
     LOGGER.info("IoTDB REST server has been available at {}.", baseURI);
-    Thread.currentThread().join();
+    try {
+      Thread.currentThread().join();
+    } catch (InterruptedException e) {
+      LOGGER.error("主线程出现异常", e);
+      Thread.currentThread().interrupt();
+    }
     server.shutdown();
     IoTDBUtil.closeConnection();
   }

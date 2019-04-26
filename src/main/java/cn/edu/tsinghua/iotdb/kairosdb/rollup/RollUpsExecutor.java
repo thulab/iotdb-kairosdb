@@ -9,12 +9,9 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RollUpsExecutor {
 
-  static final Logger LOGGER = LoggerFactory.getLogger(RollUpsExecutor.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private Map<String, ScheduledFuture> rollUpTasks = new HashMap<>();
   private ScheduledThreadPoolExecutor executor = (ScheduledThreadPoolExecutor) Executors
@@ -29,7 +26,7 @@ public class RollUpsExecutor {
     return RollUpsExecutorHolder.INSTANCE;
   }
 
-  public boolean containsRollup(String id){
+  public boolean containsRollup(String id) {
     return rollUpTasks.containsKey(id);
   }
 
@@ -39,12 +36,9 @@ public class RollUpsExecutor {
       ScheduledFuture scheduledFuture = executor.scheduleAtFixedRate(rollUp, 1, intervalValue,
           TimeUnit.getUnitTimeInRollUp(rollUp.getInterval().getUnit()));
       rollUpTasks.put(rollUp.getId(), scheduledFuture);
-
-
     } else {
       throw new RollUpException("Rollup tasks pool has reached maximum capacity.");
     }
-
   }
 
   private long getIntervalValue(Duration duration) {
@@ -61,13 +55,13 @@ public class RollUpsExecutor {
   }
 
   public void delete(String id) {
-    System.out.println("RollUpsExecutor line 61: execute rollUpTasks.get(id).cancel(true)");
     rollUpTasks.get(id).cancel(true);
     rollUpTasks.remove(id);
   }
 
-  public void update(RollUp rollUp) {
-
+  public void update(RollUp rollUp) throws RollUpException {
+    delete(rollUp.getId());
+    create(rollUp);
   }
 
 }

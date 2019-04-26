@@ -6,12 +6,12 @@ import static cn.edu.tsinghua.iotdb.kairosdb.util.Preconditions.checkNotNullOrEm
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
-import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpParser;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStore;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpsExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollupResponse;
+import java.util.Map;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -33,15 +33,17 @@ public class RollUpResource {
   private final RollUpParser parser = new RollUpParser();
   private RollUpStore store = new RollUpStoreImpl();
   private static final String RESOURCE_URL = "/api/v1/rollups/";
+  private static final String RESOURCE_NOT_FOUND = "Resource not found for id ";
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   public Response create(String json) {
     checkNotNullOrEmpty(json);
     try {
-
-      RollUp task = parser.parseRollupTask(json);
-      store.write(task);
+      String currTaskId = String.valueOf(System.currentTimeMillis());
+      RollUp task = parser.parseRollupTask(json, currTaskId);
+      RollUpsExecutor.getInstance().create(task);
+      store.write(json, currTaskId);
       ResponseBuilder responseBuilder = Response.status(Status.OK)
           .entity(parser.getGson().toJson(createResponse(task)));
       setHeaders(responseBuilder);
@@ -53,11 +55,32 @@ public class RollUpResource {
     }
   }
 
-
   @GET
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   public Response list() {
-    return null;
+    try {
+      Map<String, RollUp> tasks = store.read();
+
+      StringBuilder json = new StringBuilder();
+      json.append('[');
+      for (RollUp rollUp : tasks.values()) {
+        json.append("{\"id\":\"").append(rollUp.getId()).append("\",");
+        json.append(rollUp.getJson().substring(1)).append(",");
+      }
+
+      if (json.length() > 1) {
+        json.deleteCharAt(json.length() - 1);
+      }
+      json.append(']');
+
+      ResponseBuilder responseBuilder = Response.status(Status.OK).entity(json.toString());
+      setHeaders(responseBuilder);
+      return responseBuilder.build();
+    } catch (Exception e) {
+      logger.error("Failed to list roll-ups.", e);
+      JsonResponseBuilder builder = new JsonResponseBuilder(Status.INTERNAL_SERVER_ERROR);
+      return builder.addError(e.getMessage()).build();
+    }
   }
 
   @GET
@@ -65,7 +88,23 @@ public class RollUpResource {
   @Path("{id}")
   public Response get(@PathParam("id") String id) {
     checkNotNullOrEmpty(id);
-    return null;
+    try {
+      ResponseBuilder responseBuilder;
+      if (RollUpsExecutor.getInstance().containsRollup(id)) {
+        RollUp task = store.read(id);
+        String json = "{\"id\":\"" + task.getId() + "\"," + task.getJson().substring(1);
+        responseBuilder = Response.status(Status.OK).entity(json);
+      } else {
+        JsonResponseBuilder builder = new JsonResponseBuilder(Status.BAD_REQUEST);
+        return builder.addError(RESOURCE_NOT_FOUND + id).build();
+      }
+      setHeaders(responseBuilder);
+      return responseBuilder.build();
+    } catch (Exception e) {
+      logger.error("Failed to get roll-up.", e);
+      JsonResponseBuilder builder = new JsonResponseBuilder(Status.INTERNAL_SERVER_ERROR);
+      return builder.addError(e.getMessage()).build();
+    }
   }
 
   @DELETE
@@ -80,11 +119,11 @@ public class RollUpResource {
         return setHeaders(Response.status(Status.NO_CONTENT)).build();
       } else {
         JsonResponseBuilder builder = new JsonResponseBuilder(Status.BAD_REQUEST);
-        return builder.addError("Resource not found for id " + id).build();
+        return builder.addError(RESOURCE_NOT_FOUND + id).build();
       }
     } catch (Exception e) {
       logger.error("Failed to delete roll-up.", e);
-      JsonResponseBuilder builder = new JsonResponseBuilder(Status.BAD_REQUEST);
+      JsonResponseBuilder builder = new JsonResponseBuilder(Status.INTERNAL_SERVER_ERROR);
       return builder.addError(e.getMessage()).build();
     }
   }
@@ -95,7 +134,24 @@ public class RollUpResource {
   public Response update(@PathParam("id") String id, String json) {
     checkNotNullOrEmpty(id);
     checkNotNullOrEmpty(json);
-    return null;
+    ResponseBuilder responseBuilder;
+    try {
+      if (RollUpsExecutor.getInstance().containsRollup(id)) {
+        RollUp rollUp = parser.parseRollupTask(json, id);
+        RollUpsExecutor.getInstance().update(rollUp);
+        store.write(json, id);
+        responseBuilder = Response.status(Status.OK)
+            .entity(parser.getGson().toJson(createResponse(rollUp)));
+      } else {
+        responseBuilder = Response.status(Status.NOT_FOUND)
+            .entity(new ErrorResponse(RESOURCE_NOT_FOUND + id));
+      }
+      return responseBuilder.build();
+    } catch (Exception e) {
+      logger.error("Failed to update roll-up.", e);
+      JsonResponseBuilder builder = new JsonResponseBuilder(Status.INTERNAL_SERVER_ERROR);
+      return builder.addError(e.getMessage()).build();
+    }
   }
 
   private RollupResponse createResponse(RollUp task) {

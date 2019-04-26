@@ -3,6 +3,10 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import com.google.common.collect.ImmutableSortedMap;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,6 +32,10 @@ public class MetricsManager {
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
+
+  // The SQL will be used to create rollup persistence data
+  private static final String ROLLUP_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.ROLLUP.%s WITH DATATYPE=%s, ENCODING=%s";
+  private static final String JSON = "json";
 
   // The constants of encoding methods
   private static final String TEXT_ENCODING = "PLAIN";
@@ -80,6 +88,17 @@ public class MetricsManager {
           LOGGER.error("Database metadata has broken, please reload a new database.");
           System.exit(1);
         }
+
+        // Read the rollup tasks
+        RollUpStoreImpl rollUpStore = new RollUpStoreImpl();
+
+        try {
+          Map<String, RollUp> historyTasks = rollUpStore.read();
+          RollUpRecovery rollUpRecovery = new RollUpRecovery();
+          rollUpRecovery.recover(historyTasks);
+        } catch (RollUpException e) {
+          LOGGER.error("Recover history rollup tasks failed because ", e);
+        }
       } else {
         /* Since the TIMESERIES are not created
          * Create all the relevant TIMESERIES of metadata */
@@ -96,6 +115,9 @@ public class MetricsManager {
         for (int i = 0; i < storageGroupSize; i++) {
           statement.execute(String.format("SET STORAGE GROUP TO root.%s%s", STORAGE_GROUP_PREFIX, i));
         }
+
+        // Create timeseries to persistence rollup tasks
+        statement.execute(String.format(ROLLUP_CREATE_SQL, JSON, "TEXT", TEXT_ENCODING));
       }
 
     } catch (SQLException e) {

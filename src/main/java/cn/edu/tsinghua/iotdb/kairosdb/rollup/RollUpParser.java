@@ -1,7 +1,5 @@
 package cn.edu.tsinghua.iotdb.kairosdb.rollup;
 
-import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
-import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryMetric;
@@ -17,7 +15,6 @@ import com.google.gson.GsonBuilder;
 public class RollUpParser {
 
   private Gson gson;
-  private static final Config config = ConfigDescriptor.getInstance().getConfig();
 
   public RollUpParser() {
     gson = new GsonBuilder()
@@ -34,10 +31,10 @@ public class RollUpParser {
     return gson;
   }
 
-  public RollUp parseRollupTask(String json) throws RollUpException {
+  public RollUp parseRollupTask(String json, String id) {
     RollUp rollUp = gson.fromJson(json, RollUp.class);
-    rollUp.setId(String.valueOf(System.currentTimeMillis()));
-    RollUpsExecutor.getInstance().create(rollUp);
+    rollUp.setId(id);
+    rollUp.setJson(json);
     return rollUp;
   }
 
