@@ -33,15 +33,16 @@ public class AddPointsTest {
     restService.start();
     String url = restService.getUrlPrefix() + "/myresource";
     HttpUtil httpUtil = new HttpUtil(url);
-    try {
-      Thread.sleep(3000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+//    try {
+//      Thread.sleep(3000);
+//    } catch (InterruptedException e) {
+//      e.printStackTrace();
+//    }
     while (true) {
       try {
-        httpUtil.get();
-        break;
+        if (httpUtil.get().code() == 200) {
+          break;
+        }
       } catch (ConnectException ignored) {
       } catch (IOException e) {
         e.printStackTrace();

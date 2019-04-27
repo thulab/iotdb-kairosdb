@@ -52,6 +52,20 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint>, Comparabl
     }
   }
 
+  public String getAsString() {
+    switch (getType()) {
+      case Types.INTEGER:
+        return String.valueOf(getIntValue());
+      case Types.DOUBLE:
+        return String.valueOf(getDoubleValue());
+      case Types.VARCHAR:
+        return getText();
+      default:
+        throw new IllegalArgumentException(
+            "Among QueryDataPoint.getAsDouble(), type must be int or double");
+    }
+  }
+
   public void dividedBy(double value) {
     switch (getType()) {
       case Types.INTEGER:
@@ -69,15 +83,11 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint>, Comparabl
     return timestamp;
   }
 
-  public void setTimestamp(Long timestamp) {
-    this.timestamp = timestamp;
-  }
-
   public Integer getIntValue() {
     return intValue;
   }
 
-  public void setIntValue(int intValue) {
+  private void setIntValue(int intValue) {
     this.intValue = intValue;
     this.type = Types.INTEGER;
   }
@@ -86,18 +96,13 @@ public class QueryDataPoint implements JsonSerializer<QueryDataPoint>, Comparabl
     return doubleValue;
   }
 
-  public void setDoubleValue(double doubleValue) {
+  private void setDoubleValue(double doubleValue) {
     this.doubleValue = doubleValue;
     this.type = Types.DOUBLE;
   }
 
-  public String getText() {
+  private String getText() {
     return text;
-  }
-
-  public void setText(String text) {
-    this.text = text;
-    this.type = Types.VARCHAR;
   }
 
   public int getType() {

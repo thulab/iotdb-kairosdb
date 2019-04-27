@@ -3,15 +3,20 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import com.google.common.collect.ImmutableSortedMap;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -181,31 +186,17 @@ public class MetricsManager {
     }
 
     HashMap<Integer, String> orderTagKeyMap = getMapping(name, tags);
-    Map<String, Integer> metricTags = tagOrder.get(name);
 
     if (type.equals("string")) {
       value = String.format("\"%s\"", value);
     }
 
     // Generate the path
-    StringBuilder pathBuilder = new StringBuilder();
-    int i = 0;
-    int counter = 0;
-    while (i < metricTags.size() && counter < tags.size()) {
-      String path = tags.get(orderTagKeyMap.get(i));
-      pathBuilder.append(".");
-      if (null == path) {
-        pathBuilder.append("d");
-      } else {
-        pathBuilder.append(path);
-        counter++;
-      }
-      i++;
-    }
+    String path = generatePath(tags, orderTagKeyMap);
 
     String insertingSql = String
         .format("insert into root.%s%s(timestamp,%s) values(%s,%s);", getStorageGroupName(name),
-            pathBuilder.toString(), name, timestamp, value);
+            path, name, timestamp, value);
 
     PreparedStatement pst = null;
     try {
@@ -213,8 +204,8 @@ public class MetricsManager {
       pst.executeUpdate();
     } catch (IoTDBSQLException e) {
       try {
-        createNewMetric(name, pathBuilder.toString(), type);
-        LOGGER.info("TIMESERIES(root{}.{}) has been created.", pathBuilder, name);
+        createNewMetric(name, path, type);
+        LOGGER.info("TIMESERIES(root{}.{}) has been created.", path, name);
         pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
         pst.executeUpdate();
       } catch (IoTDBSQLException e1) {
@@ -230,6 +221,58 @@ public class MetricsManager {
       close(pst);
     }
     return null;
+  }
+
+  public static void addDataPoints(MetricResult metric, String metricName) {
+    try (Connection conn = IoTDBUtil.getNewConnection()) {
+
+      for (MetricValueResult valueResult : metric.getResults()) {
+        if ((valueResult.isTextType() && metric.getResults().size() > 1)
+        || valueResult.getDatapoints() == null || valueResult.getDatapoints().get(0) == null) {
+          continue;
+        }
+        Map<String, String> tag = new HashMap<>();
+        tag.put("saved_from", valueResult.getName());
+
+        HashMap<Integer, String> orderTagKeyMap = getMapping(metricName, tag);
+
+        String path = generatePath(tag, orderTagKeyMap);
+
+        Statement statement = conn.createStatement();
+
+        for (QueryDataPoint point : valueResult.getDatapoints()) {
+          String insertingSql = String
+              .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
+                  getStorageGroupName(metricName),
+                  path, metricName, point.getTimestamp(), point.getAsString());
+          statement.addBatch(insertingSql);
+        }
+
+        String type;
+        switch (valueResult.getDatapoints().get(0).getType()) {
+          case Types.INTEGER:
+            type = "long";
+            break;
+          case Types.DOUBLE:
+            type = "double";
+            break;
+          default:
+            type = "text";
+            break;
+        }
+
+        createNewMetric(metricName, path, type);
+
+        statement.executeBatch();
+
+        statement.close();
+
+      }
+
+
+    } catch (SQLException | ClassNotFoundException e) {
+      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    }
   }
 
   /**
@@ -289,6 +332,24 @@ public class MetricsManager {
         LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
       }
     }
+  }
+
+  private static String generatePath(Map<String, String> tags, Map<Integer, String> orderTagKeyMap) {
+    StringBuilder pathBuilder = new StringBuilder();
+    int i = 0;
+    int counter = 0;
+    while (counter < tags.size()) {
+      String path = tags.get(orderTagKeyMap.get(i));
+      pathBuilder.append(".");
+      if (null == path) {
+        pathBuilder.append("d");
+      } else {
+        pathBuilder.append(path);
+        counter++;
+      }
+      i++;
+    }
+    return pathBuilder.toString();
   }
 
   /**

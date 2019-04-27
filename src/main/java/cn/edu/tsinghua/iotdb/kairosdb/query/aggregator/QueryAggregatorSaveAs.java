@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.aggregator;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 
 public class QueryAggregatorSaveAs extends QueryAggregator {
@@ -12,6 +13,7 @@ public class QueryAggregatorSaveAs extends QueryAggregator {
 
   @Override
   public MetricResult doAggregate(MetricResult result) {
+    MetricsManager.addDataPoints(result);
     return result;
   }
 

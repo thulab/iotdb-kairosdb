@@ -13,6 +13,11 @@ public class IoTDBUtil {
 
   private static final String URL = "jdbc:iotdb://%s:%s/";
 
+  private static String host;
+  private static String port;
+  private static String user;
+  private static String password;
+
   private static Connection connection;
 
   private IoTDBUtil() {
@@ -20,8 +25,17 @@ public class IoTDBUtil {
 
   public static void initConnection(String host, String port, String user, String password)
       throws ClassNotFoundException, SQLException {
+    IoTDBUtil.host = host;
+    IoTDBUtil.port = port;
+    IoTDBUtil.user = user;
+    IoTDBUtil.password = password;
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     connection = DriverManager.getConnection(String.format(URL, host, port), user, password);
+  }
+
+  public static Connection getNewConnection() throws SQLException, ClassNotFoundException {
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    return DriverManager.getConnection(String.format(URL, host, port), user, password);
   }
 
   public static Connection getConnection() {
