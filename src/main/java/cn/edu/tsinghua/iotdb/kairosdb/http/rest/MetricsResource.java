@@ -8,6 +8,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -44,6 +45,8 @@ public class MetricsResource {
 
   private static final String QUERY_URL = "/datapoints/query";
 
+  private static final String NO_CACHE = "no-cache";
+
   //These two are used to track rate of ingestion
   private final AtomicInteger ingestedDataPoints = new AtomicInteger();
   private final AtomicInteger ingestTime = new AtomicInteger();
@@ -57,10 +60,10 @@ public class MetricsResource {
     gson = builder.disableHtmlEscaping().create();
   }
 
-  public static Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder) {
+  static Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder) {
     responseBuilder.header("Access-Control-Allow-Origin", "*");
-    responseBuilder.header("Pragma", "no-cache");
-    responseBuilder.header("Cache-Control", "no-cache");
+    responseBuilder.header("Pragma", NO_CACHE);
+    responseBuilder.header("Cache-Control", NO_CACHE);
     responseBuilder.header("Expires", 0);
     return (responseBuilder);
   }
@@ -152,12 +155,14 @@ public class MetricsResource {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
+      QueryResult result = executor.execute();
+      String entity = parser.parseResultToJson(result);
       return Response.status(Status.OK)
           .header("Access-Control-Allow-Origin", "*")
-          .header("Pragma", "no-cache")
-          .header("Cache-Control", "no-cache")
+          .header("Pragma", NO_CACHE)
+          .header("Cache-Control", NO_CACHE)
           .header("Expires", 0)
-          .entity(parser.parseResultToJson(executor.execute()))
+          .entity(entity)
           .build();
 
     } catch (BeanValidationException e) {

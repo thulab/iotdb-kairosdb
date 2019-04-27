@@ -32,7 +32,8 @@ public class QueryAggregatorSum extends QueryAggregator
 
     long step = getSampling().toTimestamp();
 
-    List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
+    List<List<QueryDataPoint>> splitPoints =
+        valueResult.splitDataPoint(getStartTimestamp(), step, getAlign());
 
     for (List<QueryDataPoint> points : splitPoints) {
 

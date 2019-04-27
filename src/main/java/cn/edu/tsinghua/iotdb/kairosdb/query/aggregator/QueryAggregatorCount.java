@@ -32,7 +32,8 @@ public class QueryAggregatorCount extends QueryAggregator
 
     long step = getSampling().toTimestamp();
 
-    List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
+    List<List<QueryDataPoint>> splitPoints =
+        valueResult.splitDataPoint(getStartTimestamp(), step, getAlign());
 
     for (List<QueryDataPoint> points : splitPoints) {
       long timestamp = computeTimestampByAlign(this, points.get(0).getTimestamp(), step);
