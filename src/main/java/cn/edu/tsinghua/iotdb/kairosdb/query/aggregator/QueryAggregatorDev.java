@@ -39,15 +39,15 @@ public class QueryAggregatorDev extends QueryAggregator
 
     long step = getSampling().toTimestamp();
 
-    List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
+    List<List<QueryDataPoint>> splitPoints =
+        valueResult.splitDataPoint(getStartTimestamp(), step, getAlign());
 
     for (List<QueryDataPoint> points : splitPoints) {
       long tmpTimestamp = computeTimestampByAlign(this, points.get(0).getTimestamp(), step);
 
       double[] result = computeStandardDeviation(points);
 
-
-      QueryDataPoint point = null;
+      QueryDataPoint point;
 
       switch (getReturnType()) {
         case VALUE_TYPE:
@@ -71,19 +71,18 @@ public class QueryAggregatorDev extends QueryAggregator
   }
 
   private double[] computeStandardDeviation(List<QueryDataPoint> points) {
-    int length = points.size();
+    int size = points.size();
     double sum = 0;
     for (QueryDataPoint point : points) {
       sum += point.getAsDouble();
     }
-    double avg = sum / length;
+    double avg = sum / size;
     sum = 0;
     for (QueryDataPoint point : points) {
       double value = point.getAsDouble();
       sum += (value - avg) * (value - avg);
     }
-    double[] result = {Math.sqrt(sum / length), avg};
-    return result;
+    return new double[]{Math.sqrt(sum), avg};
   }
 
   boolean setReturnTypeFromString(String returnType) {
@@ -106,7 +105,7 @@ public class QueryAggregatorDev extends QueryAggregator
     return true;
   }
 
-  public int getReturnType() {
+  private int getReturnType() {
     return returnType;
   }
 

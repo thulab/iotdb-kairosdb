@@ -33,6 +33,8 @@ public abstract class QueryAggregator {
       }
 
       MetricValueResult newValueResult = aggregator.aggregate(valueResult);
+      newValueResult.setTags(valueResult.getTags());
+      newValueResult.setGroupBy(valueResult.getGroupBy());
 
       newValueResults.add(newValueResult);
 
@@ -46,9 +48,9 @@ public abstract class QueryAggregator {
   static long computeTimestampByAlign(QueryAggregatorAlignable aggregator, long timestamp, long step) {
     switch (aggregator.getAlign()) {
       case ALIGN_START_TIME:
-        return (timestamp / step) * step + aggregator.getStartTimestamp();
+        return ((timestamp - 1) / step) * step + aggregator.getStartTimestamp();
       case ALIGN_END_TIME:
-        return (timestamp / step) * step + aggregator.getStartTimestamp() + step;
+        return ((timestamp + step - 1) / step) * step + aggregator.getStartTimestamp();
       default:
         return timestamp;
     }

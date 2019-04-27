@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query.result;
 
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlign;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
 import java.sql.Types;
@@ -27,6 +28,14 @@ public class MetricValueResult {
     groupBy = new LinkedList<>();
     tags = new HashMap<>();
     values = new LinkedList<>();
+  }
+
+  public List<List<QueryDataPoint>> splitDataPoint(
+      long startTimestamp, long step, QueryAggregatorAlign align) {
+    if (align == QueryAggregatorAlign.ALIGN_SAMPLING) {
+      return splitDataPoint(getDatapoints().get(0).getTimestamp(), step);
+    }
+    return splitDataPoint(startTimestamp, step);
   }
 
   public List<List<QueryDataPoint>> splitDataPoint(long startTimestamp, long step) {
@@ -78,6 +87,18 @@ public class MetricValueResult {
 
   public List<GroupBy> getGroupBy() {
     return groupBy;
+  }
+
+  public void setGroupBy(List<GroupBy> groupBy) {
+    this.groupBy = groupBy;
+  }
+
+  public Map<String, List<String>> getTags() {
+    return tags;
+  }
+
+  public void setTags(Map<String, List<String>> tags) {
+    this.tags = tags;
   }
 
   public void addTag(String key, String value) {

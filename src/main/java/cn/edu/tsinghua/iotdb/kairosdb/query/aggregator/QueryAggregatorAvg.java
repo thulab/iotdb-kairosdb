@@ -5,7 +5,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
-import java.util.LinkedList;
 import java.util.List;
 
 public class QueryAggregatorAvg extends QueryAggregator
@@ -33,7 +32,8 @@ public class QueryAggregatorAvg extends QueryAggregator
 
     long step = getSampling().toTimestamp();
 
-    List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
+    List<List<QueryDataPoint>> splitPoints =
+        valueResult.splitDataPoint(getStartTimestamp(), step, getAlign());
 
     for (List<QueryDataPoint> points : splitPoints) {
 
