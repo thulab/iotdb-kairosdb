@@ -4,12 +4,21 @@ import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
 import java.io.IOException;
 import okhttp3.Response;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class QueryByTagsTest {
 
   private RestService mainThread = new RestService();
   private String url = mainThread.getUrlPrefix() + "/api/v1/datapoints/query";
+
+  @BeforeClass
+  public static void before() {
+    RestService restService = new RestService();
+    restService.start();
+    while (!restService.isOk()) {
+    }
+  }
 
   @Test
   public void queryWithoutTags() {

@@ -4,6 +4,9 @@ import cn.edu.tsinghua.iotdb.kairosdb.Main;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
+import cn.edu.tsinghua.util.HttpUtil;
+import java.io.IOException;
+import java.net.ConnectException;
 
 public class RestService extends Thread {
 
@@ -21,5 +24,18 @@ public class RestService extends Thread {
 
   public String getUrlPrefix() {
     return "http://" + AddressUtil.getLocalIpAddress() + ":" + config.REST_PORT;
+  }
+
+  public boolean isOk() {
+    HttpUtil httpUtil = new HttpUtil(getUrlPrefix() + "/myresource");
+    try {
+      if (httpUtil.get().code() == 200) {
+        return true;
+      }
+    } catch (ConnectException ignored) {
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return false;
   }
 }

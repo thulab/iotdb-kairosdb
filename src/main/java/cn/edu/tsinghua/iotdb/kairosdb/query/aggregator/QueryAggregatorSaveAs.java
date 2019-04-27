@@ -13,7 +13,7 @@ public class QueryAggregatorSaveAs extends QueryAggregator {
 
   @Override
   public MetricResult doAggregate(MetricResult result) {
-    MetricsManager.addDataPoints(result);
+    MetricsManager.addDataPoints(result, metricName);
     return result;
   }
 
