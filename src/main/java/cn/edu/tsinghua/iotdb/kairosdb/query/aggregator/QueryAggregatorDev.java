@@ -47,7 +47,6 @@ public class QueryAggregatorDev extends QueryAggregator
 
       double[] result = computeStandardDeviation(points);
 
-
       QueryDataPoint point;
 
       switch (getReturnType()) {
@@ -72,18 +71,18 @@ public class QueryAggregatorDev extends QueryAggregator
   }
 
   private double[] computeStandardDeviation(List<QueryDataPoint> points) {
-    int length = points.size();
+    int size = points.size();
     double sum = 0;
     for (QueryDataPoint point : points) {
       sum += point.getAsDouble();
     }
-    double avg = sum / length;
+    double avg = sum / size;
     sum = 0;
     for (QueryDataPoint point : points) {
       double value = point.getAsDouble();
       sum += (value - avg) * (value - avg);
     }
-    return new double[]{Math.sqrt(sum / length), avg};
+    return new double[]{Math.sqrt(sum), avg};
   }
 
   boolean setReturnTypeFromString(String returnType) {

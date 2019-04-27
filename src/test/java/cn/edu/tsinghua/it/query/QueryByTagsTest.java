@@ -73,7 +73,7 @@ public class QueryByTagsTest {
   }
 
   @Test
-  public void queryByAggregatorSum() {
+  public void queryBySum() {
     String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\"ti"
         + "me_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\"name"
         + "\":\"sum\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"}}]}]}";
@@ -163,6 +163,116 @@ public class QueryByTagsTest {
         + "49.3],[1400000012001,49.7],[1400000014001,50.1],[1400000016001,50.5],[1400000018001,"
         + "50.9],[1400000020001,51.3],[1400000022001,51.7],[1400000024001,52.1],[1400000026001,"
         + "52.5],[1400000028001,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByAvg() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
+        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"tags\":{\"host\":["
+        + "\"server2\"]},\"aggregators\":[{\"name\":\"avg\",\"sampling\":{\"value\":2,\"unit\":\""
+        + "seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":9,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server2\"],"
+        + "\"data_center\":[\"DC1\"]},\"values\":[[1400000005000,24.25],[1400000007000,24.45],"
+        + "[1400000018000,25.5],[1400000019000,25.65],[1400000021000,25.85]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryBySumAndAvg() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
+        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\""
+        + "name\":\"sum\",\"sampling\":{\"value\":\"2\",\"unit\":\"seconds\"}},{\"name\":\"avg\","
+        + "\"sampling\":{\"value\":\"4\",\"unit\":\"seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\""
+        + ",\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],[1400000001000"
+        + ",42.2],[1400000005000,48.7],[1400000009000,49.5],[1400000013000,50.3],[1400000017000,"
+        + "51.099999999999994],[1400000021000,51.900000000000006],[1400000025000,39.45]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByDev() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
+        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\""
+        + "name\":\"dev\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"},\"return_type\":\"value"
+        + "\"}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\","
+        + "\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,0.0],[1400000001000,"
+        + "7.000357133746822],[1400000003000,0.07071067811865576],[1400000005000,"
+        + "0.07071067811865576],[1400000007000,0.07071067811865576],[1400000009000,"
+        + "0.07071067811865325],[1400000011000,0.07071067811865325],[1400000013000,"
+        + "0.07071067811865576],[1400000015000,0.07071067811865576],[1400000017000,"
+        + "0.07071067811865576],[1400000019000,0.07071067811865325],[1400000021000,"
+        + "0.07071067811865325],[1400000023000,0.07071067811865576],[1400000025000,"
+        + "0.07071067811865576],[1400000027000,0.0]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByDiff() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
+        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\""
+        + "name\":\"diff\"}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\","
+        + "\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000001000,0.8999999999999986]"
+        + ",[1400000002000,9.900000000000002],[1400000003000,0.8999999999999986],[1400000004000,"
+        + "0.10000000000000142],[1400000005000,0.09999999999999787],[1400000006000,"
+        + "0.10000000000000142],[1400000007000,0.09999999999999787],[1400000008000,"
+        + "0.10000000000000142],[1400000009000,0.10000000000000142],[1400000010000,"
+        + "0.09999999999999787],[1400000011000,0.10000000000000142],[1400000012000,"
+        + "0.09999999999999787],[1400000013000,0.10000000000000142],[1400000014000,"
+        + "0.10000000000000142],[1400000015000,0.09999999999999787],[1400000016000,"
+        + "0.10000000000000142],[1400000017000,0.09999999999999787],[1400000018000,"
+        + "0.10000000000000142],[1400000019000,0.10000000000000142],[1400000020000,"
+        + "0.09999999999999787],[1400000021000,0.10000000000000142],[1400000022000,"
+        + "0.09999999999999787],[1400000023000,0.10000000000000142],[1400000024000,"
+        + "0.10000000000000142],[1400000025000,0.09999999999999787],[1400000026000,"
+        + "0.10000000000000142],[1400000027000,0.09999999999999787]]}]}]}";
 
     try {
       Response response = new HttpUtil(url).post(data);

@@ -17,8 +17,6 @@ public class QueryAggregatorDiff extends QueryAggregator {
 
     List<MetricValueResult> valueResults = result.getResults();
 
-    List<MetricValueResult> newValueResults = new LinkedList<>();
-
     for (MetricValueResult valueResult : valueResults) {
 
       List<QueryDataPoint> points = valueResult.getDatapoints();
@@ -43,8 +41,6 @@ public class QueryAggregatorDiff extends QueryAggregator {
       valueResult.setValues(newPoints);
 
     }
-
-    result.setResults(newValueResults);
 
     return result;
   }
