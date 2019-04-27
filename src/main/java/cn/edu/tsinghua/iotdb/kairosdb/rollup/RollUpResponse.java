@@ -3,13 +3,13 @@ package cn.edu.tsinghua.iotdb.kairosdb.rollup;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RollupResponse {
+public class RollUpResponse {
 
   private String id;
   private String name;
   private Map<String, String> attributes = new HashMap<>();
 
-  public RollupResponse(String id, String name, String url) {
+  public RollUpResponse(String id, String name, String url) {
     this.id = id;
     this.name = name;
     attributes.put("url", url);

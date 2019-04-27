@@ -31,10 +31,15 @@ public class RollUpParser {
     return gson;
   }
 
-  public RollUp parseRollupTask(String json, String id) {
-    RollUp rollUp = gson.fromJson(json, RollUp.class);
-    rollUp.setId(id);
-    rollUp.setJson(json);
+  public RollUp parseRollupTask(String json, String id) throws RollUpException {
+    RollUp rollUp;
+    try {
+      rollUp = gson.fromJson(json, RollUp.class);
+      rollUp.setId(id);
+      rollUp.setJson(json);
+    } catch (Exception e) {
+      throw new RollUpException(e);
+    }
     return rollUp;
   }
 

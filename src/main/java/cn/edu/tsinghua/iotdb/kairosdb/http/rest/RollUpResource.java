@@ -10,7 +10,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpParser;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStore;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpsExecutor;
-import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollupResponse;
+import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpResponse;
 import java.util.Map;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -154,8 +154,8 @@ public class RollUpResource {
     }
   }
 
-  private RollupResponse createResponse(RollUp task) {
-    return new RollupResponse(task.getId(), task.getName(), RESOURCE_URL + task.getId());
+  private RollUpResponse createResponse(RollUp task) {
+    return new RollUpResponse(task.getId(), task.getName(), RESOURCE_URL + task.getId());
   }
 
 }
