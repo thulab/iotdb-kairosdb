@@ -17,8 +17,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.slf4j.Logger;
@@ -384,5 +386,19 @@ public class MetricsManager {
 
   public static Map<String, Integer> getTagOrder(String metricName) {
     return tagOrder.getOrDefault(metricName, null);
+  }
+
+  public static List<String> getMetricNamesList(String prefix) {
+    if(prefix.equals("")) {
+      return new ArrayList<>(tagOrder.keySet());
+    } else {
+      List<String> list = new ArrayList<>();
+      for(String name: tagOrder.keySet()){
+        if(name.startsWith(prefix)){
+          list.add(name);
+        }
+      }
+      return list;
+    }
   }
 }

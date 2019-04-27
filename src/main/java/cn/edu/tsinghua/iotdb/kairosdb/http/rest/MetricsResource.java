@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
@@ -8,6 +9,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
+import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -17,7 +19,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 import javax.inject.Inject;
@@ -146,8 +150,11 @@ public class MetricsResource {
 
   private Response runQuery(String jsonStr) {
     try {
-      if (jsonStr == null)
-        throw new BeanValidationException(new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"), "");
+      if (jsonStr == null) {
+        throw new BeanValidationException(
+            new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"),
+            "");
+      }
 
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
@@ -173,7 +180,15 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/metricnames")
   public Response getMetricNames(@QueryParam("prefix") String prefix) {
-    return null;
+    Map<String, Object> metricNameResultMap = new HashMap<>();
+    System.out.println("prefix=" + prefix);
+    List<String> metricNameResultList = MetricsManager.getMetricNamesList(prefix);
+    metricNameResultMap.put("results", metricNameResultList);
+    String result = JSON.toJSONString(metricNameResultMap);
+    System.out.println("result=" + result);
+    Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(result);
+    setHeaders(responseBuilder);
+    return responseBuilder.build();
   }
 
   @GET
