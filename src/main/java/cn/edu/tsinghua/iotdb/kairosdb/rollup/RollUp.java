@@ -1,10 +1,19 @@
 package cn.edu.tsinghua.iotdb.kairosdb.rollup;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.Duration;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class RollUp implements Runnable{
+public class RollUp implements Runnable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RollUp.class);
 
   @SerializedName("name")
   private String name;
@@ -49,10 +58,20 @@ public class RollUp implements Runnable{
 
   @Override
   public void run() {
+    for (RollUpQuery rollUpQuery : rollups) {
+      QueryExecutor executor = new QueryExecutor(rollUpQuery.getQuery());
+      try {
+        QueryResult queryResult = executor.execute();
+        for (MetricResult metricResult : queryResult.getQueries()) {
+          MetricsManager.addDataPoints(metricResult, rollUpQuery.getSaveAs());
+        }
+      } catch (QueryException e) {
+        LOGGER.error("Execute Roll-up query failed because ", e);
+      }
+    }
 
-
-    System.out.print("id = " + id + ", Thread name: " + Thread.currentThread().getName() + Thread.currentThread().getId());
-    System.out.println(" name = " + name + ", execution_interval: " + interval.getValue() + " " + interval.getUnit());
+    LOGGER.info("Roll-up id: {}, name: {}, execution_interval: {} {}",
+        id, name, interval.getValue(), interval.getUnit());
   }
 
 }

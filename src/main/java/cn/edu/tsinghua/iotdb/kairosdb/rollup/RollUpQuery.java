@@ -11,4 +11,12 @@ public class RollUpQuery {
   @SerializedName("query")
   private Query query;
 
+  public String getSaveAs() {
+    return saveAs;
+  }
+
+  public Query getQuery() {
+    return query;
+  }
+
 }

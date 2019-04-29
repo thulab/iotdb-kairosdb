@@ -169,7 +169,7 @@ public class RollupTest {
   }
 
   @Test
-  public void testGetRollup(){
+  public void testGetRollup() {
     String url = restService.getUrlPrefix() + "/api/v1/rollups";
     try {
       String id1 = sendRollupTaskJson(rollupJson);
