@@ -164,6 +164,14 @@ public class MetricsManager {
     }
   }
 
+  private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
+    try {
+      createNewMetric(metricName, path, type);
+    } catch (SQLException e) {
+      LOGGER.info(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    }
+  }
+
   /**
    * Add a new datapoint to database,
    * and automatically create corresponding TIMESERIES to store it.
@@ -176,7 +184,7 @@ public class MetricsManager {
    * @return Null if the datapoint has been correctly insert, otherwise, the errors in ValidationErrors
    * @throws SQLException The SQLException will be thrown when unexpected error occurs
    */
-  public static ValidationErrors addDatapoint(String name, ImmutableSortedMap<String, String> tags,
+  public static ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
       String type, Long timestamp, String value) throws SQLException {
     ValidationErrors validationErrors = new ValidationErrors();
     if (null == tags) {
@@ -261,7 +269,7 @@ public class MetricsManager {
             break;
         }
 
-        createNewMetric(metricName, path, type);
+        createNewMetricAndIgnoreErrors(metricName, path, type);
 
         statement.executeBatch();
 
