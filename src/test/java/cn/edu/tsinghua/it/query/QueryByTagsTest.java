@@ -226,7 +226,7 @@ public class QueryByTagsTest {
   public void queryByDev() {
     String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
         + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\""
-        + "name\":\"dev\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"},\"return_type\":\"value"
+        + "name\":\"dev\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"},\"return_type\":\"%s"
         + "\"}]}]}";
 
     String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
@@ -241,11 +241,53 @@ public class QueryByTagsTest {
         + "0.07071067811865576],[1400000027000,0.0]]}]}]}";
 
     try {
-      Response response = new HttpUtil(url).post(data);
+      Response response = new HttpUtil(url).post(String.format(data, "value"));
       assert response.code() == 200;
       assert response.body() != null;
       String result = response.body().string();
       assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    String expect2 = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\","
+        + "\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],[1400000001000"
+        + ",25.15035713374682],[1400000003000,24.120710678118655],[1400000005000,"
+        + "24.320710678118655],[1400000007000,24.520710678118654],[1400000009000,"
+        + "24.720710678118653],[1400000011000,24.920710678118656],[1400000013000,"
+        + "25.120710678118655],[1400000015000,25.320710678118655],[1400000017000,"
+        + "25.520710678118654],[1400000019000,25.720710678118653],[1400000021000,"
+        + "25.920710678118656],[1400000023000,26.120710678118655],[1400000025000,"
+        + "26.320710678118655],[1400000027000,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(String.format(data, "pos_sd"));
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect2.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    String expect3 = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\","
+        + "\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],"
+        + "[1400000001000,11.149642866253178],[1400000003000,23.979289321881346],"
+        + "[1400000005000,24.179289321881345],[1400000007000,24.379289321881345],"
+        + "[1400000009000,24.579289321881344],[1400000011000,24.779289321881347],"
+        + "[1400000013000,24.979289321881346],[1400000015000,25.179289321881345],"
+        + "[1400000017000,25.379289321881345],[1400000019000,25.579289321881344],"
+        + "[1400000021000,25.779289321881347],[1400000023000,25.979289321881346],"
+        + "[1400000025000,26.179289321881345],[1400000027000,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(String.format(data, "neg_sd"));
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect3.equals(result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -273,6 +315,106 @@ public class QueryByTagsTest {
         + "0.09999999999999787],[1400000023000,0.10000000000000142],[1400000024000,"
         + "0.10000000000000142],[1400000025000,0.09999999999999787],[1400000026000,"
         + "0.10000000000000142],[1400000027000,0.09999999999999787]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByFirst() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\"ti"
+        + "me_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\"name"
+        + "\":\"first\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\""
+        + ",\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],"
+        + "[1400000001000,13.2],[1400000003000,24.0],[1400000005000,24.2],[1400000007000,24.4],"
+        + "[1400000009000,24.6],[1400000011000,24.8],[1400000013000,25.0],[1400000015000,25.2],"
+        + "[1400000017000,25.4],[1400000019000,25.6],[1400000021000,25.8],[1400000023000,26.0],"
+        + "[1400000025000,26.2],[1400000027000,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByLast() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\"ti"
+        + "me_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\"name"
+        + "\":\"last\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\""
+        + ",\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],"
+        + "[1400000002000,23.1],[1400000004000,24.1],[1400000006000,24.3],[1400000008000,24.5],"
+        + "[1400000010000,24.7],[1400000012000,24.9],[1400000014000,25.1],[1400000016000,25.3],"
+        + "[1400000018000,25.5],[1400000020000,25.7],[1400000022000,25.9],[1400000024000,26.1],"
+        + "[1400000026000,26.3],[1400000027000,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByMax() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\"ti"
+        + "me_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\"name"
+        + "\":\"max\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\""
+        + ",\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],"
+        + "[1400000002000,23.1],[1400000004000,24.1],[1400000006000,24.3],[1400000008000,24.5],"
+        + "[1400000010000,24.7],[1400000012000,24.9],[1400000014000,25.1],[1400000016000,25.3],"
+        + "[1400000018000,25.5],[1400000020000,25.7],[1400000022000,25.9],[1400000024000,26.1],"
+        + "[1400000026000,26.3],[1400000027000,26.4]]}]}]}";
+
+    try {
+      Response response = new HttpUtil(url).post(data);
+      assert response.code() == 200;
+      assert response.body() != null;
+      String result = response.body().string();
+      assert expect.equals(result);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void queryByMin() {
+    String data = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\"ti"
+        + "me_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\"name"
+        + "\":\"min\",\"sampling\":{\"value\":2,\"unit\":\"seconds\"}}]}]}";
+
+    String expect = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
+        + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\""
+        + ",\"server2\"],\"data_center\":[\"DC1\"]},\"values\":[[1400000000000,12.3],"
+        + "[1400000001000,13.2],[1400000003000,24.0],[1400000005000,24.2],[1400000007000,24.4],"
+        + "[1400000009000,24.6],[1400000011000,24.8],[1400000013000,25.0],[1400000015000,25.2],"
+        + "[1400000017000,25.4],[1400000019000,25.6],[1400000021000,25.8],[1400000023000,26.0],"
+        + "[1400000025000,26.2],[1400000027000,26.4]]}]}]}";
 
     try {
       Response response = new HttpUtil(url).post(data);
