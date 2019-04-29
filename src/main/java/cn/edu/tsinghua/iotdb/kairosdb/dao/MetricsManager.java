@@ -289,6 +289,41 @@ public class MetricsManager {
     }
   }
 
+  public static void deleteMetric(String metricName) {
+    try (Connection conn = IoTDBUtil.getNewConnection()) {
+
+      Statement statement = conn.createStatement();
+
+      Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
+
+      if (mapping == null) {
+        return;
+      }
+
+      String groupName = getStorageGroupName(metricName);
+
+      int size = mapping.size();
+
+      for (int i = 0; i <= size; i++) {
+        StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.");
+        builder.append(groupName).append(".");
+        for (int j = 0; j < i; j++) {
+          builder.append("*.");
+        }
+        builder.append(metricName);
+        try {
+          statement.execute(builder.toString());
+        } catch (SQLException ignore) {
+        }
+      }
+
+      tagOrder.remove(metricName);
+
+    } catch (SQLException | ClassNotFoundException e) {
+      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    }
+  }
+
   /**
    * Get or generate the mapping rule from position to tag_key of the given metric name and tags.
    *

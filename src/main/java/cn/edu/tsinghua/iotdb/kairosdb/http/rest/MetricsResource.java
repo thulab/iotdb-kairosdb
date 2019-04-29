@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
@@ -195,7 +196,7 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/metric/{metricName}")
   public Response metricDelete(@PathParam("metricName") String metricName) {
-    // delete the metric
+    MetricsManager.deleteMetric(metricName);
     return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
   }
 

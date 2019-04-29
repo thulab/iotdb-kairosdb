@@ -104,7 +104,7 @@ public class MetadataManager {
     return list;
   }
 
-  public void deleteValue(String service, String serviceKey, String key)
+  public synchronized void deleteValue(String service, String serviceKey, String key)
       throws MetadataException {
     try (Statement statement = conn.createStatement()) {
       statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
