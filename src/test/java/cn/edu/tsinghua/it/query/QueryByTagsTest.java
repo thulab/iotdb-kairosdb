@@ -1,5 +1,8 @@
 package cn.edu.tsinghua.it.query;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
 import java.io.IOException;
@@ -41,10 +44,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -63,10 +66,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -88,10 +91,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -114,10 +117,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -140,10 +143,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -166,10 +169,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -189,10 +192,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -213,10 +216,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -242,10 +245,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(String.format(data, "value"));
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -263,10 +266,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(String.format(data, "pos_sd"));
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect2.equals(result);
+      assertEquals(expect2, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -284,10 +287,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(String.format(data, "neg_sd"));
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect3.equals(result);
+      assertEquals(expect3, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -318,10 +321,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -343,10 +346,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -368,10 +371,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -393,10 +396,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -418,10 +421,10 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect.equals(result);
+      assertEquals(expect, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -460,16 +463,16 @@ public class QueryByTagsTest {
 
     try {
       Response response = new HttpUtil(url).post(query1);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       String result = response.body().string();
-      assert expect1.equals(result);
+      assertEquals(expect1, result);
 
       response = new HttpUtil(url).post(query2);
-      assert response.code() == 200;
-      assert response.body() != null;
+      assertEquals(200, response.code());
+      assertNotNull(response.body());
       result = response.body().string();
-      assert expect2.equals(result);
+      assertEquals(expect2, result);
     } catch (IOException e) {
       e.printStackTrace();
     }
