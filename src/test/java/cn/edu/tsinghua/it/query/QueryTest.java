@@ -10,7 +10,7 @@ import okhttp3.Response;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class QueryByTagsTest {
+public class QueryTest {
 
   private static String url;
 

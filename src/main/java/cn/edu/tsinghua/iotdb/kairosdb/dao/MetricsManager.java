@@ -37,6 +37,7 @@ public class MetricsManager {
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
+  private static final String METADATA_SERVICE_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.METADATA_SERVICE.%s WITH DATATYPE=%s, ENCODING=%s";
 
   // The SQL will be used to create rollup persistence data
   private static final String ROLLUP_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.ROLLUP.%s WITH DATATYPE=%s, ENCODING=%s";
@@ -111,6 +112,11 @@ public class MetricsManager {
         statement.execute(String.format(SYSTEM_CREATE_SQL, "metric_name", "TEXT", TEXT_ENCODING));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", TEXT_ENCODING));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", INT32_ENCODING));
+
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service_key", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key_value", "TEXT", TEXT_ENCODING));
 
         // Initialize the storage group with STORAGE_GROUP_SIZE which is specified by config.properties
         statement.execute(String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", INT32_ENCODING));
