@@ -141,7 +141,7 @@ public class DataPointsParser {
         }
 
         try {
-          ValidationErrors tErrors = MetricsManager.addDatapoint(metric.getName(), tags, type, metric.getTimestamp(),
+          ValidationErrors tErrors = MetricsManager.addDataPoint(metric.getName(), tags, type, metric.getTimestamp(),
               metric.getValue().getAsString());
           if (null != tErrors) {
             validationErrors.add(tErrors);
@@ -197,7 +197,7 @@ public class DataPointsParser {
             }
 
             try {
-              ValidationErrors tErrors = MetricsManager.addDatapoint(metric.getName(), tags, type, timestamp,
+              ValidationErrors tErrors = MetricsManager.addDataPoint(metric.getName(), tags, type, timestamp,
                   dataPoint[1].getAsString());
               if (null != tErrors) {
                 validationErrors.add(tErrors);
@@ -244,7 +244,7 @@ public class DataPointsParser {
     private String m_name;
     private String m_attribute;
 
-    public Context(int count) {
+    Context(int count) {
       m_count = count;
     }
 
@@ -282,7 +282,7 @@ public class DataPointsParser {
     private String m_name;
     private String m_attribute;
 
-    public SubContext(Context context, String contextName) {
+    SubContext(Context context, String contextName) {
       m_context = context;
       m_contextName = contextName;
     }
@@ -353,7 +353,7 @@ public class DataPointsParser {
       return tags;
     }
 
-    public JsonElement[][] getDatapoints() {
+    JsonElement[][] getDatapoints() {
       return datapoints;
     }
 

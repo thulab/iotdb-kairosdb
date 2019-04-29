@@ -30,7 +30,7 @@ public class MetricsManagerTestCase {
     try {
       initDB();
       MetricsManager
-          .addDatapoint(name, ImmutableSortedMap.copyOf(tags), "string", timestamp, value);
+          .addDataPoint(name, ImmutableSortedMap.copyOf(tags), "string", timestamp, value);
     } catch (Exception e) {
       LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
     }

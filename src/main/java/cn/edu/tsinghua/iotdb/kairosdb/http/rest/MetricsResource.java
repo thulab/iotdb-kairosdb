@@ -208,7 +208,7 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/metric/{metricName}")
   public Response metricDelete(@PathParam("metricName") String metricName) {
-    // delete the metric
+    MetricsManager.deleteMetric(metricName);
     return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
   }
 

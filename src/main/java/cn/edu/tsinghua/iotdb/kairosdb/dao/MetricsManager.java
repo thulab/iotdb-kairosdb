@@ -39,6 +39,7 @@ public class MetricsManager {
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
+  private static final String METADATA_SERVICE_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.METADATA_SERVICE.%s WITH DATATYPE=%s, ENCODING=%s";
 
   // The SQL will be used to create rollup persistence data
   private static final String ROLLUP_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.ROLLUP.%s WITH DATATYPE=%s, ENCODING=%s";
@@ -114,6 +115,11 @@ public class MetricsManager {
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", TEXT_ENCODING));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", INT32_ENCODING));
 
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service_key", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key", "TEXT", TEXT_ENCODING));
+        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key_value", "TEXT", TEXT_ENCODING));
+
         // Initialize the storage group with STORAGE_GROUP_SIZE which is specified by config.properties
         statement.execute(String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", INT32_ENCODING));
         statement.execute(String.format(
@@ -166,6 +172,14 @@ public class MetricsManager {
     }
   }
 
+  private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
+    try {
+      createNewMetric(metricName, path, type);
+    } catch (SQLException e) {
+      LOGGER.info(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    }
+  }
+
   /**
    * Add a new datapoint to database,
    * and automatically create corresponding TIMESERIES to store it.
@@ -178,7 +192,7 @@ public class MetricsManager {
    * @return Null if the datapoint has been correctly insert, otherwise, the errors in ValidationErrors
    * @throws SQLException The SQLException will be thrown when unexpected error occurs
    */
-  public static ValidationErrors addDatapoint(String name, ImmutableSortedMap<String, String> tags,
+  public static ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
       String type, Long timestamp, String value) throws SQLException {
     ValidationErrors validationErrors = new ValidationErrors();
     if (null == tags) {
@@ -263,7 +277,7 @@ public class MetricsManager {
             break;
         }
 
-        createNewMetric(metricName, path, type);
+        createNewMetricAndIgnoreErrors(metricName, path, type);
 
         statement.executeBatch();
 
@@ -271,6 +285,41 @@ public class MetricsManager {
 
       }
 
+
+    } catch (SQLException | ClassNotFoundException e) {
+      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    }
+  }
+
+  public static void deleteMetric(String metricName) {
+    try (Connection conn = IoTDBUtil.getNewConnection()) {
+
+      Statement statement = conn.createStatement();
+
+      Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
+
+      if (mapping == null) {
+        return;
+      }
+
+      String groupName = getStorageGroupName(metricName);
+
+      int size = mapping.size();
+
+      for (int i = 0; i <= size; i++) {
+        StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.");
+        builder.append(groupName).append(".");
+        for (int j = 0; j < i; j++) {
+          builder.append("*.");
+        }
+        builder.append(metricName);
+        try {
+          statement.execute(builder.toString());
+        } catch (SQLException ignore) {
+        }
+      }
+
+      tagOrder.remove(metricName);
 
     } catch (SQLException | ClassNotFoundException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
