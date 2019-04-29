@@ -49,6 +49,8 @@ public class RollUp implements Runnable{
 
   @Override
   public void run() {
+
+
     System.out.print("id = " + id + ", Thread name: " + Thread.currentThread().getName() + Thread.currentThread().getId());
     System.out.println(" name = " + name + ", execution_interval: " + interval.getValue() + " " + interval.getUnit());
   }

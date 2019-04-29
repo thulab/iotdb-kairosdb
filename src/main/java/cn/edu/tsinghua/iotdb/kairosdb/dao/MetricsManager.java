@@ -389,7 +389,7 @@ public class MetricsManager {
   }
 
   public static List<String> getMetricNamesList(String prefix) {
-    if(prefix.equals("")) {
+    if(prefix == null) {
       return new ArrayList<>(tagOrder.keySet());
     } else {
       List<String> list = new ArrayList<>();

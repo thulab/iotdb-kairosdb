@@ -186,11 +186,9 @@ public class MetricsResource {
   @Path("/metricnames")
   public Response getMetricNames(@QueryParam("prefix") String prefix) {
     Map<String, Object> metricNameResultMap = new HashMap<>();
-    System.out.println("prefix=" + prefix);
     List<String> metricNameResultList = MetricsManager.getMetricNamesList(prefix);
     metricNameResultMap.put("results", metricNameResultList);
     String result = JSON.toJSONString(metricNameResultMap);
-    System.out.println("result=" + result);
     Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(result);
     setHeaders(responseBuilder);
     return responseBuilder.build();
