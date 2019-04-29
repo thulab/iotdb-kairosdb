@@ -49,10 +49,10 @@ public class RollupTest {
   public static void before() {
     restService = new RestService();
     restService.start();
-    try {
-      Thread.sleep(3000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    while (true) {
+      if (restService.isOk()) {
+        break;
+      }
     }
   }
 
@@ -157,13 +157,11 @@ public class RollupTest {
     String url = restService.getUrlPrefix() + "/api/v1/rollups";
     HttpUtil httpUtil = new HttpUtil(url);
     try {
-      String id1 = sendRollupTaskJson(rollupJson);
       String id2 = sendRollupTaskJson(updatedRollupJson);
       Response response = httpUtil.get();
       assert response.body() != null;
       String res = response.body().string();
-      String expected = "[{\"id\":\"" + id2 + "\"," + updatedRollupJson.substring(1) + "," +
-          "{\"id\":\"" + id1 + "\"," + rollupJson.substring(1) + "]";
+      String expected = "[{\"id\":\"" + id2 + "\"," + updatedRollupJson.substring(1) + "]";
       assertEquals(expected, res);
     } catch (Exception e) {
       e.printStackTrace();
