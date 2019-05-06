@@ -20,7 +20,7 @@ public class MetadataManager {
 
   private Connection conn;
 
-  private static final String NULL_STRING = "NULL0000None";
+  private static final String NULL_STRING = "NULL";
 
   public static synchronized MetadataManager getInstance() {
     if (manager == null) {

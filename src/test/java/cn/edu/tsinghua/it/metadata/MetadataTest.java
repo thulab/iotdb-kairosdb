@@ -27,7 +27,15 @@ public class MetadataTest {
   }
 
   @Test
-  public void addValue() {
+  public void testMetadataService() {
+    addValue();
+    getValue();
+    listKeys();
+    listServiceKeys();
+    deleteKey();
+  }
+
+  private void addValue() {
     try {
       Response response = new HttpUtil(getUrl("t_service", "t_service_key", "t_key")).post("value");
       assertEquals(204, response.code());
@@ -41,13 +49,14 @@ public class MetadataTest {
       assertEquals(204, response.code());
       response = new HttpUtil(getUrl("t_service", "t_service_key2", "t_key4")).post("value6");
       assertEquals(204, response.code());
+
+      getValue();
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
-  @Test
-  public void getValue() {
+  private void getValue() {
     try {
       Response response = new HttpUtil(getUrl("t_service", "t_service_key", "t_key")).get();
       assertEquals(200, response.code());
@@ -75,8 +84,7 @@ public class MetadataTest {
     }
   }
 
-  @Test
-  public void listServiceKeys() {
+  private void listServiceKeys() {
     try {
       Response response = new HttpUtil(getUrl("t_service", null, null)).get();
       assertEquals(200, response.code());
@@ -91,8 +99,7 @@ public class MetadataTest {
     }
   }
 
-  @Test
-  public void listKeys() {
+  private void listKeys() {
     try {
       Response response = new HttpUtil(getUrl("t_service", "t_service_key", null)).get();
       assertEquals(200, response.code());
@@ -109,8 +116,7 @@ public class MetadataTest {
     }
   }
 
-  @Test
-  public void deleteKey() {
+  private void deleteKey() {
     try {
       Response response = new HttpUtil(getUrl("t_service", "t_service_key", "t_key")).get();
       assertEquals(200, response.code());
