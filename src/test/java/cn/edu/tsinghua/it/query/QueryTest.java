@@ -13,7 +13,7 @@ import org.junit.Test;
 public class QueryTest {
 
   private static String url;
-  private static final boolean isPrinting = true;
+  private static final boolean isPrinting = false;
 
   @BeforeClass
   public static void before() {

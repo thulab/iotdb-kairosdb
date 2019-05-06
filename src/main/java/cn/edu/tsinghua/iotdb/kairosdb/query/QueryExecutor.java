@@ -186,6 +186,7 @@ public class QueryExecutor {
       ResultSet rs = statement.getResultSet();
       ResultSetMetaData metaData = rs.getMetaData();
       int columnCount = metaData.getColumnCount();
+      boolean[] paths = new boolean[columnCount - 1];
       while (rs.next()) {
         long timestamp = rs.getLong(1);
         for (int i = 2; i <= columnCount; i++) {
@@ -194,6 +195,7 @@ public class QueryExecutor {
             continue;
           }
           sampleSize++;
+          paths[i - 2] = true;
           QueryDataPoint dataPoint = null;
           switch (findType(value)) {
             case Types.INTEGER:
@@ -215,7 +217,7 @@ public class QueryExecutor {
         }
       }
 
-      getTagValueFromPaths(metaData);
+      getTagValueFromPaths(metaData, paths);
 
       addBasicGroupByToResult(metaData, metricValueResult);
     } catch (SQLException e) {
@@ -224,10 +226,13 @@ public class QueryExecutor {
     return sampleSize;
   }
 
-  private void getTagValueFromPaths(ResultSetMetaData metaData) throws SQLException {
+  private void getTagValueFromPaths(ResultSetMetaData metaData, boolean[] hasPaths) throws SQLException {
     tmpTags = new HashMap<>();
     int columnCount = metaData.getColumnCount();
     for (int i = 2; i <= columnCount; i++) {
+      if (!hasPaths[i - 2]) {
+        continue;
+      }
       String[] paths = metaData.getColumnName(i).split("\\.");
       int pathsLen = paths.length;
       for (int j = 2; j < pathsLen - 1; j++) {
