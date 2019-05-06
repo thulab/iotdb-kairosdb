@@ -60,15 +60,7 @@ public class QueryExecutor {
 
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
 
-        if (tmpTags != null) {
-          for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
-            pos2tag.put(entry.getValue(), entry.getKey());
-          }
-
-          for (Map.Entry<Integer, List<String>> entry :tmpTags.entrySet()) {
-            metricValueResult.setTag(pos2tag.get(entry.getKey()-2), entry.getValue());
-          }
-        }
+        setTags(metricValueResult);
 
         if (metricResult.getSampleSize() == 0) {
           queryResult.addVoidMetricResult(metric.getName());
@@ -100,29 +92,8 @@ public class QueryExecutor {
           statement.execute(querySql);
 
           ResultSet rs = statement.getResultSet();
-          ResultSetMetaData rsmd = rs.getMetaData();
 
-          String[] paths = new String[rsmd.getColumnCount() - 1];
-          int[] types = new int[rsmd.getColumnCount() - 1];
-
-          for (int i = 2; i <= rsmd.getColumnCount(); i++) {
-            paths[i - 2] = rsmd.getColumnName(i);
-            types[i - 2] = rsmd.getColumnType(i);
-          }
-
-          DeleteSqlBuilder builder;
-          builder = new DeleteSqlBuilder();
-
-          while (rs.next()) {
-            String timestamp = rs.getString(1);
-            for (int i = 2; i <= rsmd.getColumnCount(); i++) {
-              if (rs.getString(i) != null) {
-                builder.appendDataPoint(paths[i - 2], timestamp);
-              }
-            }
-          }
-
-          List<String> sqlList = builder.build(paths, types);
+          List<String> sqlList = buildDeleteSql(rs);
           statement = conn.createStatement();
           for (String sql : sqlList) {
             statement.addBatch(sql);
@@ -172,6 +143,32 @@ public class QueryExecutor {
     }
 
     return sqlBuilder.generateSql(startTime, endTime);
+  }
+
+  private List<String> buildDeleteSql(ResultSet rs) throws SQLException {
+    ResultSetMetaData metaData = rs.getMetaData();
+
+    String[] paths = new String[metaData.getColumnCount() - 1];
+    int[] types = new int[metaData.getColumnCount() - 1];
+
+    for (int i = 2; i <= metaData.getColumnCount(); i++) {
+      paths[i - 2] = metaData.getColumnName(i);
+      types[i - 2] = metaData.getColumnType(i);
+    }
+
+    DeleteSqlBuilder builder;
+    builder = new DeleteSqlBuilder();
+
+    while (rs.next()) {
+      String timestamp = rs.getString(1);
+      for (int i = 2; i <= metaData.getColumnCount(); i++) {
+        if (rs.getString(i) != null) {
+          builder.appendDataPoint(paths[i - 2], timestamp);
+        }
+      }
+    }
+
+    return builder.build(paths, types);
   }
 
   private long getValueResult(String sql, MetricValueResult metricValueResult) {
@@ -244,6 +241,18 @@ public class QueryExecutor {
         if (!list.contains(paths[j])) {
           list.add(paths[j]);
         }
+      }
+    }
+  }
+
+  private void setTags(MetricValueResult metricValueResult) {
+    if (tmpTags != null) {
+      for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
+        pos2tag.put(entry.getValue(), entry.getKey());
+      }
+
+      for (Map.Entry<Integer, List<String>> entry :tmpTags.entrySet()) {
+        metricValueResult.setTag(pos2tag.get(entry.getKey()-2), entry.getValue());
       }
     }
   }

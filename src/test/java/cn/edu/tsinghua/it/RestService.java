@@ -12,6 +12,10 @@ public class RestService extends Thread {
 
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
 
+  private static final String INSERT_URL = "/api/v1/datapoints";
+  private static final String QUERY_URL = "/api/v1/datapoints/query";
+  private static final String DELETE_URL = "/api/v1/datapoints/delete";
+
   @Override
   public void run() {
     String[] argv = {"-cf", "conf/config.properties"};
@@ -37,5 +41,17 @@ public class RestService extends Thread {
       e.printStackTrace();
     }
     return false;
+  }
+
+  public String getInsertUrl() {
+    return getUrlPrefix() + INSERT_URL;
+  }
+
+  public String getQueryUrl() {
+    return getUrlPrefix() + QUERY_URL;
+  }
+
+  public String getDeleteUrl() {
+    return getUrlPrefix() + DELETE_URL;
   }
 }

@@ -13,9 +13,11 @@ public class AddPointsTest {
 
   private static String url;
 
+  private static RestService restService;
+
   @BeforeClass
   public static void before() {
-    RestService restService = new RestService();
+    restService = new RestService();
     url = restService.getUrlPrefix() + "/api/v1/datapoints";
     restService.start();
     while (true) {
@@ -39,7 +41,7 @@ public class AddPointsTest {
             + "19000,25.6],[1400000020000,25.7],[1400000021000,25.8],[1400000022000,25.9]],\"tag"
             + "s\":{\"host\":\"server2\",\"data_center\":\"DC1\"}}]";
 
-    HttpUtil httpUtil = new HttpUtil(url);
+    HttpUtil httpUtil = new HttpUtil(restService.getInsertUrl());
     try {
       Response response = httpUtil.post(data);
       int statusCode = response.code();
