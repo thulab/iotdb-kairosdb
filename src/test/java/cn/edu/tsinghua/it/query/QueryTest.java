@@ -13,6 +13,7 @@ import org.junit.Test;
 public class QueryTest {
 
   private static String url;
+  private static final boolean isPrinting = true;
 
   @BeforeClass
   public static void before() {
@@ -44,10 +45,16 @@ public class QueryTest {
 
     try {
       Response response = new HttpUtil(url).post(data);
-      assertEquals(200, response.code());
-      assertNotNull(response.body());
-      String result = response.body().string();
-      assertEquals(expect, result);
+      if (isPrinting) {
+        if (response.body() != null) {
+          System.out.println(response.body().string());
+        }
+      } else {
+        assertEquals(200, response.code());
+        assertNotNull(response.body());
+        String result = response.body().string();
+        assertEquals(expect, result);
+      }
     } catch (IOException e) {
       e.printStackTrace();
     }

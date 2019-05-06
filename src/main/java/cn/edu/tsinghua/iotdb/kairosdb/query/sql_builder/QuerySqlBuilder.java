@@ -1,6 +1,7 @@
-package cn.edu.tsinghua.iotdb.kairosdb.query;
+package cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import java.util.LinkedList;
 import java.util.List;
 

@@ -133,8 +133,20 @@ public class MetricsResource {
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/datapoints/delete")
-  public Response delete(String json) {
-    return null;
+  public Response delete(String queryJson) {
+    if (queryJson == null) {
+      return Response.status(Status.BAD_REQUEST).build();
+    }
+
+    try {
+      QueryParser parser = new QueryParser();
+      Query query = parser.parseQueryMetric(queryJson);
+      new QueryExecutor(query).delete();
+    } catch (QueryException | BeanValidationException e) {
+      return Response.status(Status.BAD_REQUEST).build();
+    }
+
+    return Response.status(Status.NO_CONTENT).build();
   }
 
   @GET

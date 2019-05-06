@@ -6,6 +6,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;
@@ -313,10 +314,7 @@ public class MetricsManager {
           builder.append("*.");
         }
         builder.append(metricName);
-        try {
-          statement.execute(builder.toString());
-        } catch (SQLException ignore) {
-        }
+        executeAndIgnoreException(statement, builder.toString());
       }
 
       tagOrder.remove(metricName);
@@ -416,6 +414,14 @@ public class MetricsManager {
     }
     int hashCode = metricName.hashCode();
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
+  }
+
+  private static void executeAndIgnoreException(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignore) {
+      // Ignore
+    }
   }
 
   /**

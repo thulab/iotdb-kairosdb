@@ -9,6 +9,8 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
+import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
+import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -24,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class QueryExecutor {
 
-  static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
 
   private Query query;
 
@@ -68,11 +70,15 @@ public class QueryExecutor {
           }
         }
 
-        metricResult.addResult(metricValueResult);
+        if (metricResult.getSampleSize() == 0) {
+          queryResult.addVoidMetricResult(metric.getName());
+        } else {
+          metricResult.addResult(metricValueResult);
 
-        metricResult = doAggregations(metric, metricResult);
+          metricResult = doAggregations(metric, metricResult);
 
-        queryResult.addMetricResult(metricResult);
+          queryResult.addMetricResult(metricResult);
+        }
 
       } else {
         queryResult.addVoidMetricResult(metric.getName());
@@ -81,6 +87,55 @@ public class QueryExecutor {
     }
 
     return queryResult;
+  }
+
+  public void delete() {
+    for (QueryMetric metric : query.getQueryMetrics()) {
+
+      if (getMetricMapping(metric)) {
+        String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
+
+        try (Connection conn = IoTDBUtil.getNewConnection()) {
+          Statement statement = conn.createStatement();
+          statement.execute(querySql);
+
+          ResultSet rs = statement.getResultSet();
+          ResultSetMetaData rsmd = rs.getMetaData();
+
+          String[] paths = new String[rsmd.getColumnCount() - 1];
+          int[] types = new int[rsmd.getColumnCount() - 1];
+
+          for (int i = 2; i <= rsmd.getColumnCount(); i++) {
+            paths[i - 2] = rsmd.getColumnName(i);
+            types[i - 2] = rsmd.getColumnType(i);
+          }
+
+          DeleteSqlBuilder builder;
+          builder = new DeleteSqlBuilder();
+
+          while (rs.next()) {
+            String timestamp = rs.getString(1);
+            for (int i = 2; i <= rsmd.getColumnCount(); i++) {
+              if (rs.getString(i) != null) {
+                builder.appendDataPoint(paths[i - 2], timestamp);
+              }
+            }
+          }
+
+          List<String> sqlList = builder.build(paths, types);
+          statement = conn.createStatement();
+          for (String sql : sqlList) {
+            statement.addBatch(sql);
+          }
+          statement.executeBatch();
+
+        } catch (SQLException | ClassNotFoundException e) {
+          LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
+        }
+
+      }
+
+    }
   }
 
   private boolean getMetricMapping(QueryMetric metric) {
@@ -135,7 +190,7 @@ public class QueryExecutor {
         long timestamp = rs.getLong(1);
         for (int i = 2; i <= columnCount; i++) {
           String value = rs.getString(i);
-          if (value == null) {
+          if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value.equals("2.147483646E9")) {
             continue;
           }
           sampleSize++;

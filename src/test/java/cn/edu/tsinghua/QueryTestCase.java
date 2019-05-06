@@ -4,13 +4,12 @@ import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.BeanValidationException;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
-import cn.edu.tsinghua.iotdb.kairosdb.query.QuerySqlBuilder;
+import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
@@ -22,7 +21,6 @@ import com.google.gson.GsonBuilder;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
-import javax.ws.rs.core.Response;
 
 public class QueryTestCase {
 
