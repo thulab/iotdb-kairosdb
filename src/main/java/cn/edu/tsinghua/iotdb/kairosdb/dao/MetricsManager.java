@@ -6,7 +6,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;

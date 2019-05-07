@@ -135,7 +135,7 @@ public class MetricsResource {
   @Path("/datapoints/delete")
   public Response delete(String queryJson) {
     if (queryJson == null) {
-      return Response.status(Status.BAD_REQUEST).build();
+      return setHeaders(Response.status(Status.BAD_REQUEST)).build();
     }
 
     try {
@@ -143,10 +143,10 @@ public class MetricsResource {
       Query query = parser.parseQueryMetric(queryJson);
       new QueryExecutor(query).delete();
     } catch (QueryException | BeanValidationException e) {
-      return Response.status(Status.BAD_REQUEST).build();
+      return setHeaders(Response.status(Status.BAD_REQUEST)).build();
     }
 
-    return Response.status(Status.NO_CONTENT).build();
+    return setHeaders(Response.status(Status.NO_CONTENT)).build();
   }
 
   @GET
