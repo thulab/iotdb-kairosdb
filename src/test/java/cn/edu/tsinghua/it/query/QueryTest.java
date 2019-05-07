@@ -487,7 +487,7 @@ public class QueryTest {
   public void queryBySaveAs() {
     String query1 = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
         + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_query\",\"aggregators\":[{\""
-        + "name\":\"save_as\",\"metric_name\":\"test_save_as\"}]}]}";
+        + "name\":\"save_as\",\"metric_name\":\"save_as_test\"}]}]}";
 
     String expect1 = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_query\",\""
         + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"host\":[\"server1\","
@@ -501,9 +501,9 @@ public class QueryTest {
         + "26.2],[1400000026000,26.3],[1400000027000,26.4]]}]}]}";
 
     String query2 = "{\"start_absolute\":1,\"end_relative\":{\"value\":\"5\",\"unit\":\"days\"},\""
-        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"test_save_as\"}]}";
+        + "time_zone\":\"Asia/Kabul\",\"metrics\":[{\"name\":\"save_as_test\"}]}";
 
-    String expect2 = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"test_save_as\",\""
+    String expect2 = "{\"queries\":[{\"sample_size\":28,\"results\":[{\"name\":\"save_as_test\",\""
         + "group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"saved_from\":[\""
         + "test_query\"]},\"values\":[[1400000000000,12.3],[1400000001000,13.2],[1400000002000,"
         + "23.1],[1400000003000,24.0],[1400000004000,24.1],[1400000005000,24.2],[1400000006000,"

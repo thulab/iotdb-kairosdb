@@ -1,21 +1,15 @@
 package cn.edu.tsinghua.it.health;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
-import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
-import com.alibaba.fastjson.JSON;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.Map;
 import okhttp3.Response;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class HealthChecksTest {
+
   private static RestService restService = new RestService();
 
   @BeforeClass
@@ -30,7 +24,7 @@ public class HealthChecksTest {
   }
 
   @Test
-  public void testStatus(){
+  public void testStatus() {
     String url = restService.getUrlPrefix() + "/api/v1/health/status";
     HttpUtil httpUtil = new HttpUtil(url);
     try {
@@ -46,7 +40,7 @@ public class HealthChecksTest {
   }
 
   @Test
-  public void testCheck(){
+  public void testCheck() {
     String url = restService.getUrlPrefix() + "/api/v1/health/check";
     HttpUtil httpUtil = new HttpUtil(url);
     try {
