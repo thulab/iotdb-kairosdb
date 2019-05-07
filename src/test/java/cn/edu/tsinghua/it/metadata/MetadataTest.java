@@ -89,7 +89,8 @@ public class MetadataTest {
       Response response = new HttpUtil(getUrl("t_service", null, null)).get();
       assertEquals(200, response.code());
       assertNotNull(response.body());
-      assertEquals("{\"results\":[\"t_service_key\",\"t_service_key2\"]}", response.body().string());
+      assertEquals("{\"results\":[\"t_service_key\",\"t_service_key2\"]}",
+          response.body().string());
       response = new HttpUtil(getUrl("t_service2", null, null)).get();
       assertEquals(200, response.code());
       assertNotNull(response.body());
