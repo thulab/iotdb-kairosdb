@@ -60,7 +60,11 @@ public class MetadataManager {
       statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
       ResultSet rs = statement.getResultSet();
       if (rs.next()) {
-        return rs.getString(2);
+        String value = rs.getString(2);
+        if (value.equals(NULL_STRING)) {
+          return null;
+        }
+        return value;
       }
     } catch (SQLException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
