@@ -13,6 +13,9 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
 
   private float percentile;
 
+  private long startTimestamp;
+  private long endTimestamp;
+
   QueryAggregatorPercentile() {
     super(QueryAggregatorType.PERCENTILE);
   }
@@ -73,21 +76,21 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
 
   @Override
   public void setStartTimestamp(long startTimestamp) {
-    throw new UnsupportedOperationException();
+    this.startTimestamp = startTimestamp;
   }
 
   @Override
   public long getStartTimestamp() {
-    return 0;
+    return startTimestamp;
   }
 
   @Override
   public void setEndTimestamp(long endTimestamp) {
-    throw new UnsupportedOperationException();
+    this.endTimestamp = endTimestamp;
   }
 
   @Override
   public long getEndTimestamp() {
-    return 0;
+    return endTimestamp;
   }
 }

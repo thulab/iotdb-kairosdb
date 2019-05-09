@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.Duration;
 import com.google.gson.annotations.SerializedName;
+import java.util.Date;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
@@ -57,8 +58,10 @@ public class Query {
 
   Long getEndTimestamp() {
     Long endTimestamp = getEndAbsolute();
-    if (endTimestamp == null) {
+    if (endTimestamp == null && getEndRelative() != null) {
       endTimestamp = getEndRelative().toRelatedTimestamp();
+    } else {
+      endTimestamp = new Date().getTime();
     }
     return endTimestamp;
   }

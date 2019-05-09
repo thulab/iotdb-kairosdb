@@ -30,8 +30,6 @@ public class QueryAggregatorRate extends QueryAggregator {
   public MetricResult doAggregate(MetricResult result) {
     List<MetricValueResult> valueResults = result.getResults();
 
-    List<MetricValueResult> newValueResults = new LinkedList<>();
-
     for (MetricValueResult valueResult : valueResults) {
 
       List<QueryDataPoint> newPoints = new LinkedList<>();
@@ -62,7 +60,7 @@ public class QueryAggregatorRate extends QueryAggregator {
 
     }
 
-    result.setResults(newValueResults);
+    result.setResults(valueResults);
 
     return result;
   }
