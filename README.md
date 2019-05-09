@@ -94,6 +94,7 @@ $ cd iotdb-kairosdb
 $ vim conf/config.properties
 ```
 配置HOST和PORT，对应IoTDB所在的IP和端口
+
 5. 后台启动 IKR
 ```
 $ nohup ./start-rest-service.sh &
