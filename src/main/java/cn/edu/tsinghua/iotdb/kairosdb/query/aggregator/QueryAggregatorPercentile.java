@@ -5,6 +5,8 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import java.sql.Types;
+import java.util.Comparator;
 import java.util.List;
 
 public class QueryAggregatorPercentile extends QueryAggregator implements QueryAggregatorSampling, QueryAggregatorAlignable {
@@ -39,7 +41,26 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
 
     for (List<QueryDataPoint> points : splitPoints) {
 
-      newValueResult.addDataPoint(points.get((int) (points.size() * getPercentile())));
+      if (points.isEmpty() || points.get(0).getType() == Types.VARCHAR) {
+        continue;
+      }
+
+      long timestamp = points.get(0).getTimestamp();
+
+      points.sort(Comparator.comparingDouble(QueryDataPoint::getAsDouble));
+
+      double pos = (points.size() + 1) * percentile - 1;
+
+      int floor = (int) pos;
+
+      double value = points.get(0).getAsDouble();
+      if (points.size() > 1) {
+        double preValue = points.get(floor).getAsDouble();
+        value =
+            preValue + (points.get(floor + 1).getAsDouble() - preValue) * (pos - floor);
+      }
+
+      newValueResult.addDataPoint(new QueryDataPoint(timestamp, value));
 
     }
 
