@@ -50,7 +50,7 @@ public class QueryAggregatorRate extends QueryAggregator {
         double rate = TimeUnit.getUnitTime(unit) / (double) (postTimestamp - preTimestamp);
 
         newPoints.add(new QueryDataPoint(postTimestamp,
-            (tmpPoint.getAsDouble() - point.getAsDouble()) * rate));
+            (point.getAsDouble()) * rate - tmpPoint.getAsDouble()));
 
         tmpPoint = point;
       }
