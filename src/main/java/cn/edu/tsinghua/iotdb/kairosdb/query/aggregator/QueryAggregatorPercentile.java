@@ -5,13 +5,17 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import cn.edu.tsinghua.iotdb.kairosdb.util.DoubleUtil;
+import java.sql.Types;
+import java.util.Comparator;
 import java.util.List;
 
-public class QueryAggregatorPercentile extends QueryAggregator implements QueryAggregatorSampling, QueryAggregatorAlignable {
+public class QueryAggregatorPercentile extends QueryAggregator implements QueryAggregatorSampling,
+    QueryAggregatorAlignable {
 
   private Duration sampling;
 
-  private float percentile;
+  private double percentile;
 
   private long startTimestamp;
   private long endTimestamp;
@@ -39,7 +43,36 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
 
     for (List<QueryDataPoint> points : splitPoints) {
 
-      newValueResult.addDataPoint(points.get((int) (points.size() * getPercentile())));
+      if (points.isEmpty() || points.get(0).getType() == Types.VARCHAR) {
+        continue;
+      }
+
+      long timestamp = points.get(0).getTimestamp();
+
+      points.sort(Comparator.comparingDouble(QueryDataPoint::getAsDouble));
+
+      double value = points.get(0).getAsDouble();
+      if (percentile == 1.0) {
+        value = points.get(points.size() - 1).getAsDouble();
+      } else if (points.size() > 2) {
+
+        double pos = DoubleUtil
+            .sub(DoubleUtil.mul(DoubleUtil.add(points.size(), 1.0), percentile), 1.0);
+
+        int floor = (int) pos;
+
+        double preValue = points.get(floor).getAsDouble();
+        if (floor < points.size() - 1) {
+          value =
+              DoubleUtil.add(preValue, DoubleUtil
+                  .mul(DoubleUtil.sub(points.get(floor + 1).getAsDouble(), preValue),
+                      DoubleUtil.sub(pos, floor)));
+        } else {
+          value = preValue;
+        }
+      }
+
+      newValueResult.addDataPoint(new QueryDataPoint(timestamp, value));
 
     }
 
@@ -56,11 +89,11 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
     return sampling;
   }
 
-  void setPercentile(float percentile) {
+  void setPercentile(double percentile) {
     this.percentile = percentile;
   }
 
-  private float getPercentile() {
+  private double getPercentile() {
     return percentile;
   }
 

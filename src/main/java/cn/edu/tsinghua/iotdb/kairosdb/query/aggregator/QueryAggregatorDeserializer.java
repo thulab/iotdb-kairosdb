@@ -98,7 +98,7 @@ public class QueryAggregatorDeserializer implements JsonDeserializer<QueryAggreg
           if (percentileEle == null) {
             throw new JsonParseException("Among aggregator percentile, [percentile] must be specified");
           }
-          percentileAggregator.setPercentile(percentileEle.getAsFloat());
+          percentileAggregator.setPercentile(percentileEle.getAsDouble());
           aggregator = percentileAggregator;
           break;
         case SUM:

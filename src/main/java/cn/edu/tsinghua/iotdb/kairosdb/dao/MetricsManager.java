@@ -175,8 +175,8 @@ public class MetricsManager {
   private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
     try {
       createNewMetric(metricName, path, type);
-    } catch (SQLException e) {
-      LOGGER.info(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+    } catch (SQLException ignore) {
+      // ignore the exception
     }
   }
 
