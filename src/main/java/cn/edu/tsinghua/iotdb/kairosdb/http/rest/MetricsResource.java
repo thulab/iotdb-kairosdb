@@ -104,7 +104,6 @@ public class MetricsResource {
       ValidationErrors validationErrors = parser.parse();
 
       ingestedDataPoints.addAndGet(parser.getDataPointCount());
-      ingestTime.addAndGet(parser.getIngestTime());
 
       if (!validationErrors.hasErrors()) {
         return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();

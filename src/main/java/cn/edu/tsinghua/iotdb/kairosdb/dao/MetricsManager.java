@@ -44,6 +44,7 @@ public class MetricsManager {
   // The SQL will be used to create rollup persistence data
   private static final String ROLLUP_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.ROLLUP.%s WITH DATATYPE=%s, ENCODING=%s";
   private static final String JSON = "json";
+  private static final String TABLE_MAP_KEY_SPLIT = "%";
 
   // The constants of encoding methods
   private static final String TEXT_ENCODING = "PLAIN";
@@ -54,6 +55,11 @@ public class MetricsManager {
   // Storage group relevant config
   private static int storageGroupSize = config.STORAGE_GROUP_SIZE;
   private static final String STORAGE_GROUP_PREFIX = "group_";
+
+  // <hash(timestamp-path), <metric, value>>
+  private static Map<String, Map<String, String>> tableMap = new HashMap<>();
+  // <path, type>
+  private static Map<String, String> seriesPaths = new HashMap<>();
 
   private MetricsManager() {
   }
@@ -168,8 +174,27 @@ public class MetricsManager {
     try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
       statement.execute(String
           .format("CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-              getStorageGroupName(metricName), path, metricName, datatype, encoding));
+              getStorageGroupName(path), path, metricName, datatype, encoding));
     }
+  }
+
+  private static String createTimeSeriesSql(String seriesPath, String type) {
+    String datatype;
+    String encoding;
+    switch (type) {
+      case "long":
+        datatype = "INT64";
+        encoding = INT64_ENCODING;
+        break;
+      case "double":
+        datatype = "DOUBLE";
+        encoding = DOUBLE_ENCODING;
+        break;
+      default:
+        datatype = "TEXT";
+        encoding = TEXT_ENCODING;
+    }
+    return String.format("CREATE TIMESERIES %s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", seriesPath, datatype, encoding);
   }
 
   private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
@@ -190,7 +215,6 @@ public class MetricsManager {
    * @param timestamp The timestamp of the datapoint
    * @param value The value of the datapoint
    * @return Null if the datapoint has been correctly insert, otherwise, the errors in ValidationErrors
-   * @throws SQLException The SQLException will be thrown when unexpected error occurs
    */
   public static ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
       String type, Long timestamp, String value) throws SQLException {
@@ -210,33 +234,53 @@ public class MetricsManager {
     // Generate the path
     String path = generatePath(tags, orderTagKeyMap);
 
-    String insertingSql = String
-        .format("insert into root.%s%s(timestamp,%s) values(%s,%s);", getStorageGroupName(name),
-            path, name, timestamp, value);
+    seriesPaths.put(String.format("root.%s%s.%s", getStorageGroupName(path), path, name), type);
 
-    PreparedStatement pst = null;
-    try {
-      pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
-      pst.executeUpdate();
-    } catch (IoTDBSQLException e) {
-      try {
-        createNewMetric(name, path, type);
-        LOGGER.info("TIMESERIES(root{}.{}) has been created.", path, name);
-        pst = IoTDBUtil.getPreparedStatement(insertingSql, null);
-        pst.executeUpdate();
-      } catch (IoTDBSQLException e1) {
-        validationErrors.addErrorMessage(
-            String.format(ERROR_OUTPUT_FORMATTER, e1.getClass().getName(), e1.getMessage()));
-        return validationErrors;
-      }
-    } catch (SQLException e) {
-      validationErrors.addErrorMessage(
-          String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-      return validationErrors;
-    } finally {
-      close(pst);
+    String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
+    if(tableMap.containsKey(tableMapKey)){
+      tableMap.get(tableMapKey).put(name, value);
+    } else {
+      Map<String, String> metricValueMap = new HashMap<>();
+      metricValueMap.put(name, value);
+      tableMap.put(tableMapKey, metricValueMap);
     }
-    return null;
+
+    return validationErrors;
+  }
+
+  public static void createTimeSeries() throws SQLException{
+    try(Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      for(Map.Entry<String, String> entry: seriesPaths.entrySet()){
+        LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
+        statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
+      }
+      statement.executeBatch();
+    }
+  }
+
+  public static void sendMetricsData() throws SQLException {
+    try(Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
+        StringBuilder valuePartBuilder = new StringBuilder(" values(");
+        String timestamp = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[0];
+        String path = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[1];
+        String sqlPrefix = String.format("insert into root.%s%s", getStorageGroupName(path), path);
+        valuePartBuilder.append(timestamp);
+        for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
+          sensorPartBuilder.append(",").append(subEntry.getKey());
+          valuePartBuilder.append(",").append(subEntry.getValue());
+        }
+        sensorPartBuilder.append(")");
+        valuePartBuilder.append(")");
+        sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
+        LOGGER.info("SQL: {}", sqlBuilder);
+        statement.addBatch(sqlBuilder.toString());
+      }
+      LOGGER.info("batch size: {}", tableMap.size());
+      statement.executeBatch();
+    }
   }
 
   public static void addDataPoints(MetricResult metric, String metricName) {
@@ -259,7 +303,7 @@ public class MetricsManager {
         for (QueryDataPoint point : valueResult.getDatapoints()) {
           String insertingSql = String
               .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
-                  getStorageGroupName(metricName),
+                  getStorageGroupName(path),
                   path, metricName, point.getTimestamp(), point.getAsString());
           statement.addBatch(insertingSql);
         }

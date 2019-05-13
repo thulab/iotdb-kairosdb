@@ -16,9 +16,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.sql.SQLException;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class DataPointsParser {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataPointsParser.class);
 
   private final Reader inputStream;
   private final Gson gson;
@@ -43,10 +47,8 @@ public class DataPointsParser {
 
     long start = System.currentTimeMillis();
     ValidationErrors validationErrors = new ValidationErrors();
-
     try (JsonReader reader = new JsonReader(inputStream)) {
       int metricCount = 0;
-
       if (reader.peek().equals(JsonToken.BEGIN_ARRAY)) {
         try {
           reader.beginArray();
@@ -71,8 +73,25 @@ public class DataPointsParser {
     } catch (EOFException e) {
       validationErrors.addErrorMessage("Invalid json. No content due to end of input.");
     }
-
     ingestTime = (int) (System.currentTimeMillis() - start);
+    long id = System.currentTimeMillis();
+    LOGGER.info("请求id:{}, 解析整个写入请求的JSON时间: {} ms", id, ingestTime);
+
+    start = System.currentTimeMillis();
+    try {
+      MetricsManager.sendMetricsData();
+    } catch (SQLException e) {
+      try {
+        MetricsManager.createTimeSeries();
+        MetricsManager.sendMetricsData();
+      } catch (SQLException ex) {
+        LOGGER.error("Very Bad Exception occur:", ex);
+        validationErrors.addErrorMessage(
+            String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
+      }
+    }
+    long elapse = System.currentTimeMillis() - start;
+    LOGGER.info("请求id:{}, IoTDB JDBC 执行时间: {} ms", id, elapse);
 
     return validationErrors;
   }
