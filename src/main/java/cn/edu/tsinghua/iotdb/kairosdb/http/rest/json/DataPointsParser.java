@@ -83,6 +83,7 @@ public class DataPointsParser {
     } catch (SQLException e) {
       try {
         MetricsManager.createTimeSeries();
+        MetricsManager.clearSeriesPathMap();
         MetricsManager.sendMetricsData();
       } catch (SQLException ex) {
         LOGGER.error("Very Bad Exception occur:", ex);
@@ -90,6 +91,7 @@ public class DataPointsParser {
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
+    MetricsManager.clearTableMap();
     long elapse = System.currentTimeMillis() - start;
     LOGGER.info("请求id:{}, IoTDB JDBC 执行时间: {} ms", id, elapse);
 

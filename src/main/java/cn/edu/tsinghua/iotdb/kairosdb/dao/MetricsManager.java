@@ -258,6 +258,14 @@ public class MetricsManager {
     }
   }
 
+  public static void clearSeriesPathMap() {
+    seriesPaths.clear();
+  }
+
+  public static void clearTableMap() {
+    tableMap.clear();
+  }
+
   public static void sendMetricsData() throws SQLException {
     try(Statement statement = IoTDBUtil.getConnection().createStatement()) {
       for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
