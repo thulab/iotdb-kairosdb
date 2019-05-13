@@ -283,10 +283,10 @@ public class MetricsManager {
         sensorPartBuilder.append(")");
         valuePartBuilder.append(")");
         sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-        LOGGER.info("SQL: {}", sqlBuilder);
+        //LOGGER.info("SQL: {}", sqlBuilder);
         statement.addBatch(sqlBuilder.toString());
       }
-      LOGGER.info("batch size: {}", tableMap.size());
+      //LOGGER.info("batch size: {}", tableMap.size());
       statement.executeBatch();
     }
   }
