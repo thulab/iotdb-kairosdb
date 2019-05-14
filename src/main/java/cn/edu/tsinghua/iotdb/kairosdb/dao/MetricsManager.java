@@ -12,7 +12,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import com.google.common.collect.ImmutableSortedMap;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -22,7 +21,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,7 @@ public class MetricsManager {
   private static final String ERROR_OUTPUT_FORMATTER = "%s: %s";
 
   // The metadata maintained in the memory
-  private static final HashMap<String, Map<String, Integer>> tagOrder = new HashMap<>();
+  private static final Map<String, Map<String, Integer>> tagOrder = new ConcurrentHashMap<>();
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
@@ -57,17 +56,17 @@ public class MetricsManager {
   private static final String STORAGE_GROUP_PREFIX = "group_";
 
   // <hash(timestamp-path), <metric, value>>
-  private static Map<String, Map<String, String>> tableMap = new HashMap<>();
+  private static final Map<String, Map<String, String>> tableMap = new ConcurrentHashMap<>();
   // <path, type>
-  private static Map<String, String> seriesPaths = new HashMap<>();
+  private static final Map<String, String> seriesPaths = new ConcurrentHashMap<>();
 
   private MetricsManager() {
   }
 
   /**
-   * Load all of the metadata from database into memory.
-   * If the storage groups of metadata exist, load out the content.
-   * If the storage groups of metadata don't exist, create all of the TIMESERIES for persistent.
+   * Load all of the metadata from database into memory. If the storage groups of metadata exist,
+   * load out the content. If the storage groups of metadata don't exist, create all of the
+   * TIMESERIES for persistent.
    */
   public static void loadMetadata() {
     LOGGER.info("Start loading system data.");
@@ -81,7 +80,8 @@ public class MetricsManager {
         /* Since the TIMESERIES are created
          * Recover the tag_key-potion mapping */
         statement = IoTDBUtil.getConnection().createStatement();
-        statement.execute(String.format("SELECT metric_name,tag_name,tag_order FROM %s", "root.SYSTEM.TAG_NAME_INFO"));
+        statement.execute(String
+            .format("SELECT metric_name,tag_name,tag_order FROM %s", "root.SYSTEM.TAG_NAME_INFO"));
         rs = statement.getResultSet();
         while (rs.next()) {
           String name = rs.getString(2);
@@ -121,18 +121,23 @@ public class MetricsManager {
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_name", "TEXT", TEXT_ENCODING));
         statement.execute(String.format(SYSTEM_CREATE_SQL, "tag_order", "INT32", INT32_ENCODING));
 
-        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service", "TEXT", TEXT_ENCODING));
-        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "service_key", "TEXT", TEXT_ENCODING));
+        statement
+            .execute(String.format(METADATA_SERVICE_CREATE_SQL, "service", "TEXT", TEXT_ENCODING));
+        statement.execute(
+            String.format(METADATA_SERVICE_CREATE_SQL, "service_key", "TEXT", TEXT_ENCODING));
         statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key", "TEXT", TEXT_ENCODING));
-        statement.execute(String.format(METADATA_SERVICE_CREATE_SQL, "key_value", "TEXT", TEXT_ENCODING));
+        statement.execute(
+            String.format(METADATA_SERVICE_CREATE_SQL, "key_value", "TEXT", TEXT_ENCODING));
 
         // Initialize the storage group with STORAGE_GROUP_SIZE which is specified by config.properties
-        statement.execute(String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", INT32_ENCODING));
+        statement.execute(
+            String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", INT32_ENCODING));
         statement.execute(String.format(
             "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, storage_group_size) values(%s, %s);",
             new Date().getTime(), storageGroupSize));
         for (int i = 0; i < storageGroupSize; i++) {
-          statement.execute(String.format("SET STORAGE GROUP TO root.%s%s", STORAGE_GROUP_PREFIX, i));
+          statement
+              .execute(String.format("SET STORAGE GROUP TO root.%s%s", STORAGE_GROUP_PREFIX, i));
         }
 
         // Create timeseries to persistence rollup tasks
@@ -155,7 +160,8 @@ public class MetricsManager {
    * @param type The type of incoming data
    * @throws SQLException The exception will be throw when some errors occur while creating
    */
-  private static void createNewMetric(String metricName, String path, String type) throws SQLException {
+  private static void createNewMetric(String metricName, String path, String type)
+      throws SQLException {
     String datatype;
     String encoding;
     switch (type) {
@@ -194,7 +200,9 @@ public class MetricsManager {
         datatype = "TEXT";
         encoding = TEXT_ENCODING;
     }
-    return String.format("CREATE TIMESERIES %s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", seriesPath, datatype, encoding);
+    return String
+        .format("CREATE TIMESERIES %s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", seriesPath,
+            datatype, encoding);
   }
 
   private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
@@ -206,15 +214,16 @@ public class MetricsManager {
   }
 
   /**
-   * Add a new datapoint to database,
-   * and automatically create corresponding TIMESERIES to store it.
+   * Add a new datapoint to database, and automatically create corresponding TIMESERIES to store
+   * it.
    *
    * @param name The name of the metric
    * @param tags The tags of the datapoint(at least one)
    * @param type The type of the datapoint value(int, double, text)
    * @param timestamp The timestamp of the datapoint
    * @param value The value of the datapoint
-   * @return Null if the datapoint has been correctly insert, otherwise, the errors in ValidationErrors
+   * @return Null if the datapoint has been correctly insert, otherwise, the errors in
+   * ValidationErrors
    */
   public static ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
       String type, Long timestamp, String value) throws SQLException {
@@ -237,7 +246,7 @@ public class MetricsManager {
     seriesPaths.put(String.format("root.%s%s.%s", getStorageGroupName(path), path, name), type);
 
     String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
-    if(tableMap.containsKey(tableMapKey)){
+    if (tableMap.containsKey(tableMapKey)) {
       tableMap.get(tableMapKey).put(name, value);
     } else {
       Map<String, String> metricValueMap = new HashMap<>();
@@ -248,9 +257,9 @@ public class MetricsManager {
     return validationErrors;
   }
 
-  public static void createTimeSeries() throws SQLException{
-    try(Statement statement = IoTDBUtil.getConnection().createStatement()) {
-      for(Map.Entry<String, String> entry: seriesPaths.entrySet()){
+  public static void createTimeSeries() throws SQLException {
+    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
         LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
       }
@@ -267,7 +276,7 @@ public class MetricsManager {
   }
 
   public static void sendMetricsData() throws SQLException {
-    try(Statement statement = IoTDBUtil.getConnection().createStatement()) {
+    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
       for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
         StringBuilder sqlBuilder = new StringBuilder();
         StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
@@ -296,7 +305,7 @@ public class MetricsManager {
 
       for (MetricValueResult valueResult : metric.getResults()) {
         if ((valueResult.isTextType() && metric.getResults().size() > 1)
-        || valueResult.getDatapoints() == null || valueResult.getDatapoints().get(0) == null) {
+            || valueResult.getDatapoints() == null || valueResult.getDatapoints().get(0) == null) {
           continue;
         }
         Map<String, String> tag = new HashMap<>();
@@ -432,7 +441,8 @@ public class MetricsManager {
     }
   }
 
-  private static String generatePath(Map<String, String> tags, Map<Integer, String> orderTagKeyMap) {
+  private static String generatePath(Map<String, String> tags,
+      Map<Integer, String> orderTagKeyMap) {
     StringBuilder pathBuilder = new StringBuilder();
     int i = 0;
     int counter = 0;
@@ -458,7 +468,8 @@ public class MetricsManager {
    */
   public static String getStorageGroupName(String metricName) {
     if (metricName == null) {
-      LOGGER.error("MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
+      LOGGER.error(
+          "MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
     }
     int hashCode = metricName.hashCode();
@@ -493,12 +504,12 @@ public class MetricsManager {
   }
 
   public static List<String> getMetricNamesList(String prefix) {
-    if(prefix == null) {
+    if (prefix == null) {
       return new ArrayList<>(tagOrder.keySet());
     } else {
       List<String> list = new ArrayList<>();
-      for(String name: tagOrder.keySet()){
-        if(name.startsWith(prefix)){
+      for (String name : tagOrder.keySet()) {
+        if (name.startsWith(prefix)) {
           list.add(name);
         }
       }

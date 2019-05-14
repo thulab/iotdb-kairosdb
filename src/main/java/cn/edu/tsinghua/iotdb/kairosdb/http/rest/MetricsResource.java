@@ -34,6 +34,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -76,58 +78,77 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Consumes("application/gzip")
   @Path("/datapoints")
-  public Response addGzip(InputStream gzip) {
-    GZIPInputStream gzipInputStream;
+  public void addGzip(InputStream gzip, @Suspended final AsyncResponse asyncResponse) {
+    GZIPInputStream gzipInputStream = null;
     try {
       gzipInputStream = new GZIPInputStream(gzip);
     } catch (IOException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-      return builder.addError(e.getMessage()).build();
+      asyncResponse.resume(builder.addError(e.getMessage()).build());
     }
-    return (add(null, gzipInputStream));
+    add(null, gzipInputStream, asyncResponse);
   }
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/datapoints")
-  public Response add(@Context HttpHeaders httpheaders, InputStream stream) {
-    try {
-      if (httpheaders != null) {
-        List<String> requestHeader = httpheaders.getRequestHeader("Content-Encoding");
-        if (requestHeader != null && requestHeader.contains("gzip")) {
-          stream = new GZIPInputStream(stream);
-        }
+  public void add(@Context HttpHeaders httpheaders, final InputStream stream, @Suspended final AsyncResponse asyncResponse) {
+    final InputStream[] inputStream = new InputStream[1];
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        asyncResponse.resume(veryExpensiveOperation());
       }
 
-      DataPointsParser parser = new DataPointsParser(
-          new InputStreamReader(stream, StandardCharsets.UTF_8), gson);
-      ValidationErrors validationErrors = parser.parse();
+      private Response veryExpensiveOperation() {
+        try {
+          if (httpheaders != null) {
+            List<String> requestHeader = httpheaders.getRequestHeader("Content-Encoding");
+            if (requestHeader != null && requestHeader.contains("gzip")) {
+              inputStream[0] = new GZIPInputStream(stream);
+            } else {
+              inputStream[0] = stream;
+            }
+          } else {
+            inputStream[0] = stream;
+          }
 
-      ingestedDataPoints.addAndGet(parser.getDataPointCount());
+          DataPointsParser parser = new DataPointsParser(
+              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
+          ValidationErrors validationErrors = parser.parse();
 
-      if (!validationErrors.hasErrors()) {
-        return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
-      } else {
-        JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-        for (String errorMessage : validationErrors.getErrors()) {
-          builder.addError(errorMessage);
+          ingestedDataPoints.addAndGet(parser.getDataPointCount());
+
+          if (!validationErrors.hasErrors()) {
+            return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
+          } else {
+            JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+            for (String errorMessage : validationErrors.getErrors()) {
+              builder.addError(errorMessage);
+            }
+            return builder.build();
+          }
+        } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
+          JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+          return builder.addError(e.getMessage()).build();
+        } catch (Exception e) {
+          logger.error("Failed to add metric.", e);
+          return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+              .entity(new ErrorResponse(e.getMessage()))).build();
+
+        } catch (OutOfMemoryError e) {
+          logger.error("Out of memory error.", e);
+          return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+              .entity(new ErrorResponse(e.getMessage()))).build();
         }
-        return builder.build();
       }
-    } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
-      JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-      return builder.addError(e.getMessage()).build();
-    } catch (Exception e) {
-      logger.error("Failed to add metric.", e);
-      return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(new ErrorResponse(e.getMessage()))).build();
+    }).start();
 
-    } catch (OutOfMemoryError e) {
-      logger.error("Out of memory error.", e);
-      return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(new ErrorResponse(e.getMessage()))).build();
-    }
+
+
   }
+
+
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
