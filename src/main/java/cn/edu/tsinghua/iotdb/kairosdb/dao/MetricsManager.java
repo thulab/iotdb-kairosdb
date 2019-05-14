@@ -354,13 +354,11 @@ public class MetricsManager {
         return;
       }
 
-      String groupName = getStorageGroupName(metricName);
-
       int size = mapping.size();
 
       for (int i = 0; i <= size; i++) {
-        StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.");
-        builder.append(groupName).append(".");
+        StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.*");
+        builder.append(".");
         for (int j = 0; j < i; j++) {
           builder.append("*.");
         }

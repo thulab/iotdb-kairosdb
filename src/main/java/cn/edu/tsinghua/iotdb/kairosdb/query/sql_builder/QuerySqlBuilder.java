@@ -16,7 +16,7 @@ public class QuerySqlBuilder {
   public QuerySqlBuilder(String metricName) {
     this.metricName = metricName;
     list = new LinkedList<>();
-    list.add(new StringBuilder(String.format("root.%s", MetricsManager.getStorageGroupName(metricName))));
+    list.add(new StringBuilder("root.*"));
   }
 
   public QuerySqlBuilder append(String path) {
