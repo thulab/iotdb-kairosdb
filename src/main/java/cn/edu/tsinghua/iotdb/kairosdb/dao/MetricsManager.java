@@ -34,7 +34,7 @@ public class MetricsManager {
   private static final String ERROR_OUTPUT_FORMATTER = "%s: %s";
 
   // The metadata maintained in the memory
-  private static final Map<String, Map<String, Integer>> tagOrder = new ConcurrentHashMap<>();
+  private static final Map<String, Map<String, Integer>> tagOrder = new HashMap<>();
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";

@@ -19,7 +19,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +30,6 @@ public class DataPointsParser {
   private final Reader inputStream;
   private final Gson gson;
 
-  private int ingestTime;
   private int dataPointCount;
   // <hash(timestamp-path), <metric, value>>
   private Map<String, Map<String, String>> tableMap = new HashMap<>();
@@ -43,16 +41,11 @@ public class DataPointsParser {
   // The constants of encoding methods
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
-  private static final String INT32_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
 
   public DataPointsParser(Reader stream, Gson gson) {
     this.inputStream = stream;
     this.gson = gson;
-  }
-
-  public int getIngestTime() {
-    return ingestTime;
   }
 
   public int getDataPointCount() {
@@ -99,7 +92,6 @@ public class DataPointsParser {
     } catch (SQLException e) {
       try {
         createTimeSeries();
-        seriesPaths.clear();
         sendMetricsData();
       } catch (SQLException ex) {
         try {
@@ -112,7 +104,6 @@ public class DataPointsParser {
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
-    tableMap.clear();
     //long elapse = System.currentTimeMillis() - start;
     //LOGGER.info("请求id:{}, IoTDB JDBC 执行时间: {} ms", id, elapse);
 
@@ -143,7 +134,7 @@ public class DataPointsParser {
   public void createTimeSeries() throws SQLException {
     try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
       for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
-        LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
+        //LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
       }
       statement.executeBatch();
@@ -158,7 +149,8 @@ public class DataPointsParser {
         StringBuilder valuePartBuilder = new StringBuilder(" values(");
         String timestamp = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[0];
         String path = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[1];
-        String sqlPrefix = String.format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
+        String sqlPrefix = String
+            .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
         valuePartBuilder.append(timestamp);
         for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
           sensorPartBuilder.append(",").append(subEntry.getKey());
@@ -216,7 +208,9 @@ public class DataPointsParser {
     // Generate the path
     String path = MetricsManager.generatePath(tags, orderTagKeyMap);
 
-    seriesPaths.put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name), type);
+    seriesPaths
+        .put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name),
+            type);
 
     String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
     if (tableMap.containsKey(tableMapKey)) {
@@ -283,7 +277,8 @@ public class DataPointsParser {
         }
 
         try {
-          ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type, metric.getTimestamp(),
+          ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type,
+              metric.getTimestamp(),
               metric.getValue().getAsString());
           if (null != tErrors) {
             validationErrors.add(tErrors);
