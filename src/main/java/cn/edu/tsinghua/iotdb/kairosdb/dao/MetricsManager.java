@@ -389,7 +389,7 @@ public class MetricsManager {
    * @param tags The tags will be computed
    * @return The mapping rule from position to tag_key
    */
-  private static HashMap<Integer, String> getMapping(String name, Map<String, String> tags) {
+  public static HashMap<Integer, String> getMapping(String name, Map<String, String> tags) {
     Map<String, Integer> tagKeyOrderMap = tagOrder.get(name);
     HashMap<Integer, String> mapping = new HashMap<>();
     HashMap<String, Integer> cache = new HashMap<>();
@@ -441,7 +441,7 @@ public class MetricsManager {
     }
   }
 
-  private static String generatePath(Map<String, String> tags,
+  public static String generatePath(Map<String, String> tags,
       Map<Integer, String> orderTagKeyMap) {
     StringBuilder pathBuilder = new StringBuilder();
     int i = 0;

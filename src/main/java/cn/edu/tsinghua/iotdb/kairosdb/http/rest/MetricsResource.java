@@ -79,14 +79,14 @@ public class MetricsResource {
   @Consumes("application/gzip")
   @Path("/datapoints")
   public void addGzip(InputStream gzip, @Suspended final AsyncResponse asyncResponse) {
-    GZIPInputStream gzipInputStream = null;
+    GZIPInputStream gzipInputStream;
     try {
       gzipInputStream = new GZIPInputStream(gzip);
+      add(null, gzipInputStream, asyncResponse);
     } catch (IOException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
       asyncResponse.resume(builder.addError(e.getMessage()).build());
     }
-    add(null, gzipInputStream, asyncResponse);
   }
 
   @POST

@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
@@ -15,7 +16,10 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +33,18 @@ public class DataPointsParser {
 
   private int ingestTime;
   private int dataPointCount;
+  // <hash(timestamp-path), <metric, value>>
+  private Map<String, Map<String, String>> tableMap = new HashMap<>();
+  // <path, type>
+  private Map<String, String> seriesPaths = new HashMap<>();
+
+  private static final String TABLE_MAP_KEY_SPLIT = "%";
+
+  // The constants of encoding methods
+  private static final String TEXT_ENCODING = "PLAIN";
+  private static final String INT64_ENCODING = "TS_2DIFF";
+  private static final String INT32_ENCODING = "TS_2DIFF";
+  private static final String DOUBLE_ENCODING = "GORILLA";
 
   public DataPointsParser(Reader stream, Gson gson) {
     this.inputStream = stream;
@@ -79,23 +95,84 @@ public class DataPointsParser {
 
     //start = System.currentTimeMillis();
     try {
-      MetricsManager.sendMetricsData();
+      sendMetricsData();
     } catch (SQLException e) {
       try {
-        MetricsManager.createTimeSeries();
-        MetricsManager.clearSeriesPathMap();
-        MetricsManager.sendMetricsData();
+        createTimeSeries();
+        seriesPaths.clear();
+        sendMetricsData();
       } catch (SQLException ex) {
-        LOGGER.error("Very Bad Exception occur:", ex);
+        try {
+          sendMetricsData();
+        } catch (SQLException exc) {
+          LOGGER.error("Exception occur:", exc);
+        }
+        LOGGER.error("Exception occur:", ex);
         validationErrors.addErrorMessage(
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
-    MetricsManager.clearTableMap();
+    tableMap.clear();
     //long elapse = System.currentTimeMillis() - start;
     //LOGGER.info("请求id:{}, IoTDB JDBC 执行时间: {} ms", id, elapse);
 
     return validationErrors;
+  }
+
+  private static String createTimeSeriesSql(String seriesPath, String type) {
+    String datatype;
+    String encoding;
+    switch (type) {
+      case "long":
+        datatype = "INT64";
+        encoding = INT64_ENCODING;
+        break;
+      case "double":
+        datatype = "DOUBLE";
+        encoding = DOUBLE_ENCODING;
+        break;
+      default:
+        datatype = "TEXT";
+        encoding = TEXT_ENCODING;
+    }
+    return String
+        .format("CREATE TIMESERIES %s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", seriesPath,
+            datatype, encoding);
+  }
+
+  public void createTimeSeries() throws SQLException {
+    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
+        LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
+        statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
+      }
+      statement.executeBatch();
+    }
+  }
+
+  public void sendMetricsData() throws SQLException {
+    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+      for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
+        StringBuilder valuePartBuilder = new StringBuilder(" values(");
+        String timestamp = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[0];
+        String path = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[1];
+        String sqlPrefix = String.format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
+        valuePartBuilder.append(timestamp);
+        for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
+          sensorPartBuilder.append(",").append(subEntry.getKey());
+          valuePartBuilder.append(",").append(subEntry.getValue());
+        }
+        sensorPartBuilder.append(")");
+        valuePartBuilder.append(")");
+        sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
+        //LOGGER.info("SQL: {}", sqlBuilder);
+        statement.addBatch(sqlBuilder.toString());
+      }
+      //LOGGER.info("batch size: {}", tableMap.size());
+      statement.executeBatch();
+    }
   }
 
   private NewMetric parseMetric(JsonReader reader) {
@@ -107,6 +184,50 @@ public class DataPointsParser {
       throw new JsonSyntaxException("Invalid JSON");
     }
     return metric;
+  }
+
+  /**
+   * Add a new datapoint to database, and automatically create corresponding TIMESERIES to store
+   * it.
+   *
+   * @param name The name of the metric
+   * @param tags The tags of the datapoint(at least one)
+   * @param type The type of the datapoint value(int, double, text)
+   * @param timestamp The timestamp of the datapoint
+   * @param value The value of the datapoint
+   * @return Null if the datapoint has been correctly insert, otherwise, the errors in
+   * ValidationErrors
+   */
+  public ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
+      String type, Long timestamp, String value) throws SQLException {
+    ValidationErrors validationErrors = new ValidationErrors();
+    if (null == tags) {
+      LOGGER.error("metric {} have no tag", name);
+      validationErrors.addErrorMessage(String.format("metric %s have no tag", name));
+      return validationErrors;
+    }
+
+    HashMap<Integer, String> orderTagKeyMap = MetricsManager.getMapping(name, tags);
+
+    if (type.equals("string")) {
+      value = String.format("\"%s\"", value);
+    }
+
+    // Generate the path
+    String path = MetricsManager.generatePath(tags, orderTagKeyMap);
+
+    seriesPaths.put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name), type);
+
+    String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
+    if (tableMap.containsKey(tableMapKey)) {
+      tableMap.get(tableMapKey).put(name, value);
+    } else {
+      Map<String, String> metricValueMap = new HashMap<>();
+      metricValueMap.put(name, value);
+      tableMap.put(tableMapKey, metricValueMap);
+    }
+
+    return validationErrors;
   }
 
   private boolean validateAndAddDataPoints(NewMetric metric, ValidationErrors errors, int count) {
@@ -162,7 +283,7 @@ public class DataPointsParser {
         }
 
         try {
-          ValidationErrors tErrors = MetricsManager.addDataPoint(metric.getName(), tags, type, metric.getTimestamp(),
+          ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type, metric.getTimestamp(),
               metric.getValue().getAsString());
           if (null != tErrors) {
             validationErrors.add(tErrors);
@@ -218,7 +339,7 @@ public class DataPointsParser {
             }
 
             try {
-              ValidationErrors tErrors = MetricsManager.addDataPoint(metric.getName(), tags, type, timestamp,
+              ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type, timestamp,
                   dataPoint[1].getAsString());
               if (null != tErrors) {
                 validationErrors.add(tErrors);
