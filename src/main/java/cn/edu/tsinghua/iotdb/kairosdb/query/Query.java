@@ -66,6 +66,14 @@ public class Query {
     return endTimestamp;
   }
 
+  public void setStartAbsolute(Long startAbsolute) {
+    this.startAbsolute = startAbsolute;
+  }
+
+  public void setEndAbsolute(Long endAbsolute) {
+    this.endAbsolute = endAbsolute;
+  }
+
   public Long getCacheTime() {
     return cacheTime;
   }

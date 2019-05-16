@@ -2935,7 +2935,7 @@ $ curl http://[host]:[port]/api/v1/metadata/t_service/t_service_key/t_key2
 
 ### 2.5 Roll-up功能测试用例
 ####  2.5.1 准备数据
-使用查询测试数据作为Roll-up功能的测试数据，如果已经执行过查询测试且系统中保留有查询测试数据则该步骤可以省略，如果没有则需准备数据：
+使用查询测试数据作为Roll-up功能的测试数据，需要特别注意的是rollup任务只对从rollup任务创建时刻开始，到当前时刻内的数据进行汇总。因此以下JSON中的时间戳需要根据执行时的真实时间修改，否则将有可能查询不到rollup汇总的结果数据：
 ```
 vim insert.json
 ```
