@@ -2,6 +2,7 @@ package cn.edu.tsinghua;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import com.google.common.collect.ImmutableSortedMap;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -29,8 +30,8 @@ public class MetricsManagerTestCase {
 
     try {
       initDB();
-      MetricsManager
-          .addDataPoint(name, ImmutableSortedMap.copyOf(tags), "string", timestamp, value);
+      DataPointsParser dpp = new DataPointsParser(null, null);
+      dpp.addDataPoint(name, ImmutableSortedMap.copyOf(tags), "string", timestamp, value);
     } catch (Exception e) {
       LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
     }

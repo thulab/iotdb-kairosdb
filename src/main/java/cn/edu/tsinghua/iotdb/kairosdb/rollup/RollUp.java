@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.rollup;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.datastore.Duration;
+import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
@@ -58,8 +59,12 @@ public class RollUp implements Runnable {
 
   @Override
   public void run() {
+    long currTime = System.currentTimeMillis();
     for (RollUpQuery rollUpQuery : rollups) {
-      QueryExecutor executor = new QueryExecutor(rollUpQuery.getQuery());
+      Query query = rollUpQuery.getQuery();
+      query.setStartAbsolute(currTime - interval.toTimestamp());
+      query.setEndAbsolute(currTime);
+      QueryExecutor executor = new QueryExecutor(query);
       try {
         QueryResult queryResult = executor.execute();
         for (MetricResult metricResult : queryResult.getQueries()) {
