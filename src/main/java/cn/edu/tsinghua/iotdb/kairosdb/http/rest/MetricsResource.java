@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.MessageQueue;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
@@ -15,10 +16,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.MalformedJsonException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -113,21 +116,26 @@ public class MetricsResource {
             inputStream[0] = stream;
           }
 
-          DataPointsParser parser = new DataPointsParser(
-              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
-          ValidationErrors validationErrors = parser.parse();
+          JsonReader reader = new JsonReader(new InputStreamReader(inputStream[0], StandardCharsets.UTF_8));
+          MessageQueue.getInstance().add(reader);
 
-          ingestedDataPoints.addAndGet(parser.getDataPointCount());
+//          DataPointsParser parser = new DataPointsParser(
+//              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
+//          ValidationErrors validationErrors = parser.parse();
+//
+//          ingestedDataPoints.addAndGet(parser.getDataPointCount());
+//
+//          if (!validationErrors.hasErrors()) {
+//            return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
+//          } else {
+//            JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+//            for (String errorMessage : validationErrors.getErrors()) {
+//              builder.addError(errorMessage);
+//            }
+//            return builder.build();
+//          }
 
-          if (!validationErrors.hasErrors()) {
-            return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
-          } else {
-            JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-            for (String errorMessage : validationErrors.getErrors()) {
-              builder.addError(errorMessage);
-            }
-            return builder.build();
-          }
+          return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
         } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
           JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
           return builder.addError(e.getMessage()).build();
