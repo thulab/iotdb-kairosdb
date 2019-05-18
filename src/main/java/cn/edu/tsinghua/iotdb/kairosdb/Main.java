@@ -4,9 +4,12 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.WriteWorker;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
 import java.net.URI;
 import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -30,6 +33,16 @@ public class Main {
 
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
     initDB();
+
+    int cores = Runtime.getRuntime().availableProcessors();
+    if(config.WRITE_THREAD_NUM > 0){
+      cores = config.WRITE_THREAD_NUM;
+    }
+    ExecutorService executorService = Executors.newFixedThreadPool(cores);
+    for(int i = 0;i < cores; i++) {
+      executorService.submit(new WriteWorker());
+    }
+
     final ResourceConfig rc = new ResourceConfig()
         .packages("cn.edu.tsinghua.iotdb.kairosdb.http.rest");
     return GrizzlyHttpServerFactory.createHttpServer(baseURI, rc);

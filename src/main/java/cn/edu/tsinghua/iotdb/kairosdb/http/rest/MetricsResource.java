@@ -116,7 +116,7 @@ public class MetricsResource {
             inputStream[0] = stream;
           }
 
-          JsonReader reader = new JsonReader(new InputStreamReader(inputStream[0], StandardCharsets.UTF_8));
+          Reader reader = new InputStreamReader(inputStream[0], StandardCharsets.UTF_8);
           MessageQueue.getInstance().add(reader);
 
 //          DataPointsParser parser = new DataPointsParser(

@@ -56,6 +56,7 @@ public class DataPointsParser {
 
     //long start = System.currentTimeMillis();
     ValidationErrors validationErrors = new ValidationErrors();
+
     try (JsonReader reader = new JsonReader(inputStream)) {
       int metricCount = 0;
       if (reader.peek().equals(JsonToken.BEGIN_ARRAY)) {

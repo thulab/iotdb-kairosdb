@@ -1,11 +1,14 @@
 package cn.edu.tsinghua.iotdb.kairosdb.dao;
 
 import com.google.gson.stream.JsonReader;
+import java.io.Reader;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MessageQueue {
 
-  private ConcurrentLinkedQueue<JsonReader> queue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<Reader> queue = new ConcurrentLinkedQueue<>();
+  private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 
   private static class MessageQueueHolder {
 
@@ -16,12 +19,16 @@ public class MessageQueue {
     return MessageQueueHolder.INSTANCE;
   }
 
-  public JsonReader poll() {
+  public Reader poll() {
     return queue.poll();
   }
 
-  public void add(JsonReader jsonReader) {
+  public void add(Reader jsonReader) {
     queue.add(jsonReader);
+  }
+
+  public boolean isEmpty() {
+    return queue.isEmpty();
   }
 
 }
