@@ -25,15 +25,15 @@ public class WriteWorker extends Thread {
 
     while (true) {
       String json = MessageQueue.getInstance().poll();
+      LOGGER.info("json is: {}", json);
       if (json.length() > 1) {
         try {
 
           StringReader stringReader = new StringReader(json);
-          LOGGER.info("json is: {}", json);
           DataPointsParser parser = new DataPointsParser(stringReader, gson);
 
           parser.parse();
-        } catch (IOException e) {
+        } catch (Exception e) {
           LOGGER.error("Write worker execute parser.parse() failed because ", e);
         }
       }
