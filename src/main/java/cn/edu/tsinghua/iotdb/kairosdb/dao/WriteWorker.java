@@ -15,6 +15,7 @@ public class WriteWorker extends Thread {
   public WriteWorker() {
     GsonBuilder builder = new GsonBuilder();
     gson = builder.disableHtmlEscaping().create();
+    LOGGER.info("Worker {} has started.", Thread.currentThread().getName());
   }
 
   @Override
@@ -23,20 +24,15 @@ public class WriteWorker extends Thread {
     while (true) {
       try {
         String json = MessageQueue.getInstance().poll();
-        LOGGER.info("json is: {}", json);
         if (json != null && json.length() > 1) {
-
           StringReader stringReader = new StringReader(json);
           DataPointsParser parser = new DataPointsParser(stringReader, gson);
-
           parser.parse();
-
         }
       } catch (Exception e) {
         LOGGER.error("Write worker execute parser.parse() failed because ", e);
       }
     }
-
   }
 
 }
