@@ -24,6 +24,7 @@ public class WriteWorker extends Thread {
     while (true) {
       Reader reader = MessageQueue.getInstance().poll();
       if (reader != null) {
+        LOGGER.info("reader is not null");
         DataPointsParser parser = new DataPointsParser(reader, gson);
 
         try {
