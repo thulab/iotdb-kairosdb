@@ -3,8 +3,10 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,12 +24,14 @@ public class WriteWorker extends Thread {
   public void run() {
 
     while (true) {
-      Reader reader = MessageQueue.getInstance().poll();
-      if (reader != null) {
-        LOGGER.info("reader is not null");
-        DataPointsParser parser = new DataPointsParser(reader, gson);
-
+      String json = MessageQueue.getInstance().poll();
+      if (json.length() > 1) {
         try {
+
+          StringReader stringReader = new StringReader(json);
+          LOGGER.info("json is: {}", json);
+          DataPointsParser parser = new DataPointsParser(stringReader, gson);
+
           parser.parse();
         } catch (IOException e) {
           LOGGER.error("Write worker execute parser.parse() failed because ", e);

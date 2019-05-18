@@ -7,7 +7,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MessageQueue {
 
-  private ConcurrentLinkedQueue<Reader> queue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
   private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 
   private static class MessageQueueHolder {
@@ -19,12 +19,12 @@ public class MessageQueue {
     return MessageQueueHolder.INSTANCE;
   }
 
-  public Reader poll() {
+  public String poll() {
     return queue.poll();
   }
 
-  public void add(Reader jsonReader) {
-    queue.add(jsonReader);
+  public void add(String json) {
+    queue.add(json);
   }
 
   public boolean isEmpty() {

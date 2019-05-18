@@ -2,10 +2,8 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MessageQueue;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
 import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
@@ -16,8 +14,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.MalformedJsonException;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -117,7 +115,16 @@ public class MetricsResource {
           }
 
           Reader reader = new InputStreamReader(inputStream[0], StandardCharsets.UTF_8);
-          MessageQueue.getInstance().add(reader);
+
+
+          BufferedReader in = new BufferedReader(reader);
+          StringBuilder builder = new StringBuilder();
+          String line;
+          while ((line = in.readLine()) != null){
+            builder.append(line);
+          }
+
+          MessageQueue.getInstance().add(builder.toString());
 
 //          DataPointsParser parser = new DataPointsParser(
 //              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
