@@ -1,7 +1,9 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.Main;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MessageQueue;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.datastore.disruptor.StringEvent;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
@@ -15,6 +17,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
+import com.lmax.disruptor.RingBuffer;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -124,8 +127,16 @@ public class MetricsResource {
             builder.append(line);
           }
 
-          MessageQueue.getInstance().add(builder.toString());
+          RingBuffer<StringEvent> ringBuffer = Main.disruptor.getRingBuffer();
+          long sequence = ringBuffer.next();
+          try {
+            StringEvent event = ringBuffer.get(sequence);
+            event.set(builder.toString());
+          } finally{
+            ringBuffer.publish(sequence);
+          }
 
+          //MessageQueue.getInstance().add(builder.toString());
 //          DataPointsParser parser = new DataPointsParser(
 //              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
 //          ValidationErrors validationErrors = parser.parse();

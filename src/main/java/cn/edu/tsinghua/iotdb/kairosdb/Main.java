@@ -4,8 +4,14 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.WriteWorker;
+import cn.edu.tsinghua.iotdb.kairosdb.datastore.disruptor.StringEvent;
+import cn.edu.tsinghua.iotdb.kairosdb.datastore.disruptor.StringEventFactory;
+import cn.edu.tsinghua.iotdb.kairosdb.datastore.disruptor.StringEventHandler;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +30,7 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
   private static Config config;
   private static URI baseURI;
+  public static Disruptor<StringEvent> disruptor;
 
   private static URI getBaseURI() {
     String restIp = AddressUtil.getLocalIpAddress();
@@ -34,14 +41,18 @@ public class Main {
   private static HttpServer startServer() throws SQLException, ClassNotFoundException {
     initDB();
 
-    int cores = Runtime.getRuntime().availableProcessors();
-    if(config.WRITE_THREAD_NUM > 0){
-      cores = config.WRITE_THREAD_NUM;
-    }
-    ExecutorService executorService = Executors.newFixedThreadPool(cores);
-    for(int i = 0;i < cores; i++) {
-      executorService.submit(new WriteWorker());
-    }
+//    int cores = Runtime.getRuntime().availableProcessors();
+//    if (config.WRITE_THREAD_NUM > 0) {
+//      cores = config.WRITE_THREAD_NUM;
+//    }
+//    ExecutorService executorService = Executors.newFixedThreadPool(cores);
+    EventFactory<StringEvent> eventFactory = new StringEventFactory();
+    // Specify the size of the ring buffer, must be power of 2.
+    int ringBufferSize = 1024 * 1024;
+    disruptor = new Disruptor<>(eventFactory, ringBufferSize, DaemonThreadFactory.INSTANCE);
+    EventHandler<StringEvent> eventHandler = new StringEventHandler();
+    disruptor.handleEventsWith(eventHandler);
+    disruptor.start();
 
     final ResourceConfig rc = new ResourceConfig()
         .packages("cn.edu.tsinghua.iotdb.kairosdb.http.rest");
@@ -83,6 +94,7 @@ public class Main {
     }
     server.shutdown();
     IoTDBUtil.closeConnection();
+    disruptor.shutdown();
   }
 
 }
