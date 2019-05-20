@@ -318,7 +318,13 @@ public class MetricsManager {
    */
   private static void persistMappingCache(String metricName, Map<String, Integer> cache) {
     for (Map.Entry<String, Integer> entry : cache.entrySet()) {
-      long timestamp = new Date().getTime();
+      long timestamp = System.currentTimeMillis();
+      try {
+        Thread.sleep(2);
+      } catch (InterruptedException e) {
+        LOGGER.error("", e);
+        Thread.currentThread().interrupt();
+      }
       String sql = String.format(
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
           timestamp, metricName, entry.getKey(), entry.getValue());
