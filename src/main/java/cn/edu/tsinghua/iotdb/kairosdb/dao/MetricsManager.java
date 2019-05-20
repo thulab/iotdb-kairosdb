@@ -88,8 +88,6 @@ public class MetricsManager {
           }
         }
 
-        System.out.println("tagOrder.size(): " + tagOrder.size());
-
         // Read the size of storage group
         statement.execute(String.format("SELECT storage_group_size FROM %s",
             "root.SYSTEM.TAG_NAME_INFO"));
@@ -320,7 +318,7 @@ public class MetricsManager {
     for (Map.Entry<String, Integer> entry : cache.entrySet()) {
       long timestamp = System.currentTimeMillis();
       try {
-        Thread.sleep(2);
+        Thread.sleep(1);
       } catch (InterruptedException e) {
         LOGGER.error("", e);
         Thread.currentThread().interrupt();
@@ -352,7 +350,6 @@ public class MetricsManager {
       }
       i++;
     }
-    LOGGER.info("path: {}", pathBuilder);
     return pathBuilder.toString();
   }
 
