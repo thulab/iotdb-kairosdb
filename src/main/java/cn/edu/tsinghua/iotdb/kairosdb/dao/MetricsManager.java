@@ -79,9 +79,13 @@ public class MetricsManager {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
           Integer pos = rs.getInt(4);
-          tagOrder.computeIfAbsent(name, k -> new HashMap<>());
-          Map<String, Integer> temp = tagOrder.get(name);
-          temp.put(tagName, pos);
+          if(tagOrder.containsKey(name)){
+            tagOrder.get(name).put(tagName, pos);
+          } else {
+            Map<String, Integer> map = new HashMap<>();
+            map.put(tagName, pos);
+            tagOrder.put(name, map);
+          }
         }
 
         // Read the size of storage group
