@@ -42,7 +42,7 @@ HOST=192.168.8.16
 ```
 2. 后台启动IKR
 ```
-nohup ./start-rest-service.sh &
+> nohup ./start-rest-service.sh &
 ```
 
 ## 预创建元数据
@@ -70,7 +70,7 @@ USE_OPS=false
 
 3. 启动benchmark客户端
 ```
-> benchmark.sh
+> ./benchmark.sh
 ```
 等待执行完毕后即完成了元数据预创建阶段
 
