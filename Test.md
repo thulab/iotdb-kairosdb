@@ -2,12 +2,12 @@
 
 模拟300个车辆设备，每个车3200个传感器，采集频率200ms
 
-##IKR、IoTDB、iotdb-benchmark部署
+## IKR、IoTDB、iotdb-benchmark部署
 1. 在青云15个服务器（192.168.8.2～192.168.8.16）上部署客户端模拟器iotdb-benchmark，（每个iotdb-benchmark设置客户端参数为300/15=20）
 2. 在192.168.8.16上部署IoTDB
 3. 在青云15个服务器（192.168.8.2～192.168.8.16）上部署iotdb-kairosdb（IKR） （需要配置所有的IKR的HOST=192.168.8.16）
 
-##部署单节点IoTDB
+## 部署单节点IoTDB
 1. 修改192.168.8.16节点上iotdb的配置文件
 ```
 > nano incubator-iotdb/iotdb/iotdb/conf/iotdb-env.sh
@@ -31,7 +31,7 @@ enable_small_flush=false
 ```
 > nohup ./start-server.sh &
 ```
-##部署IKR
+## 部署IKR
 在青云15个服务器（192.168.8.2～192.168.8.16）上部署IKR，详见https://github.com/thulab/iotdb-kairosdb
 1. 修改IKR的配置文件 
 ```
@@ -45,7 +45,7 @@ HOST=192.168.8.16
 nohup ./start-rest-service.sh &
 ```
 
-##预创建元数据
+## 预创建元数据
 使用benchmark单客户端写入所有设备的一个数据点，操作步骤如下
 
 
@@ -74,7 +74,7 @@ USE_OPS=false
 ```
 等待执行完毕后即完成了元数据预创建阶段
 
-##
+## 在每台机器上启动benchmark进行写入
 在192.168.8.2～192.168.8.16的每一台机器上启动IKR和benchmark客户端进行数据写入
 设当前所在机器的ip是192.168.8.x
 1. 配置benchmark参数
