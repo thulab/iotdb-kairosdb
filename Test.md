@@ -61,7 +61,7 @@ DB_SWITCH=KairosDB
 BENCHMARK_WORK_MODE=insertTestWithDefaultPath
 CLIENT_NUMBER=1
 GROUP_NUMBER=1
-DEVICE_NUMBER=300
+DEVICE_NUMBER=1
 SENSOR_NUMBER=3200
 BATCH_SIZE=1
 USE_OPS=false
@@ -78,6 +78,9 @@ USE_OPS=false
 在192.168.8.2～192.168.8.16的每一台机器上启动IKR和benchmark客户端进行数据写入
 设当前所在机器的ip是192.168.8.x
 1. 配置benchmark参数
+```
+> nano conf/config.properties
+```
 ```
 DB_URL=http://192.168.8.x:6666
 FIRST_DEVICE_INDEX= 0 + (x - 2) * 20
@@ -96,7 +99,7 @@ CLIENT_MAX_WRT_RATE=16000
 
 2. 后台启动benchmark客户端
 ```
-> nohup benchmark.sh &
+> nohup ./benchmark.sh &
 ```
 
 3. 查看输出和日志
