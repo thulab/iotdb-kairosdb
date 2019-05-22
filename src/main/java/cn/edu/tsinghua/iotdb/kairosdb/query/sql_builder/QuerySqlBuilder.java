@@ -49,7 +49,7 @@ public class QuerySqlBuilder {
   }
 
   public String generateSql(long startTime, long endTime) {
-    return String.format("%s where time>%s and time<%s", toString(), startTime, endTime);
+    return String.format("%s where time>=%s and time<=%s", toString(), startTime, endTime);
   }
 
   @Override

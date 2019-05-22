@@ -32,38 +32,24 @@ public class Query {
   @SerializedName("metrics")
   private List<QueryMetric> queryMetrics;
 
-  private Long getStartAbsolute() {
+  Long getStartTimestamp() {
+    if (startAbsolute == null) {
+      if(startRelative == null){
+        return 0L;
+      }
+      return startRelative.toRelatedTimestamp();
+    }
     return startAbsolute;
   }
 
-  private Long getEndAbsolute() {
-    return endAbsolute;
-  }
-
-  private Duration getStartRelative() {
-    return startRelative;
-  }
-
-  private Duration getEndRelative() {
-    return endRelative;
-  }
-
-  Long getStartTimestamp() {
-    Long startTimestamp = getStartAbsolute();
-    if (startTimestamp == null) {
-      startTimestamp = getStartRelative().toRelatedTimestamp();
-    }
-    return startTimestamp;
-  }
-
   Long getEndTimestamp() {
-    Long endTimestamp = getEndAbsolute();
-    if (endTimestamp == null && getEndRelative() != null) {
-      endTimestamp = getEndRelative().toRelatedTimestamp();
-    } else {
-      endTimestamp = new Date().getTime();
+    if (endAbsolute == null) {
+      if(endRelative == null) {
+        return new Date().getTime();
+      }
+      return endRelative.toRelatedTimestamp();
     }
-    return endTimestamp;
+    return endAbsolute;
   }
 
   public void setStartAbsolute(Long startAbsolute) {
