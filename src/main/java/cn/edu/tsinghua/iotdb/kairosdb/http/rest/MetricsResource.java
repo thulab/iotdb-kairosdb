@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -52,10 +51,6 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
 
   private static final String NO_CACHE = "no-cache";
-
-  //These two are used to track rate of ingestion
-  private final AtomicInteger ingestedDataPoints = new AtomicInteger();
-  private final AtomicInteger ingestTime = new AtomicInteger();
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -92,7 +87,8 @@ public class MetricsResource {
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path("/datapoints")
-  public void add(@Context HttpHeaders httpheaders, final InputStream stream, @Suspended final AsyncResponse asyncResponse) {
+  public void add(@Context HttpHeaders httpheaders, final InputStream stream,
+      @Suspended final AsyncResponse asyncResponse) {
     final InputStream[] inputStream = new InputStream[1];
     new Thread(new Runnable() {
       @Override
@@ -116,8 +112,6 @@ public class MetricsResource {
           DataPointsParser parser = new DataPointsParser(
               new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
           ValidationErrors validationErrors = parser.parse();
-
-          ingestedDataPoints.addAndGet(parser.getDataPointCount());
 
           if (!validationErrors.hasErrors()) {
             return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
@@ -145,9 +139,7 @@ public class MetricsResource {
     }).start();
 
 
-
   }
-
 
 
   @POST

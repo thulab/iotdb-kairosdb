@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +53,9 @@ public class MetricsManager {
   private static int storageGroupSize = config.STORAGE_GROUP_SIZE;
   private static final String STORAGE_GROUP_PREFIX = "group_";
 
+  //index for persistence tag info in IoTDB
+  private static AtomicLong index = new AtomicLong(1);
+
   private MetricsManager() {
   }
 
@@ -75,6 +79,7 @@ public class MetricsManager {
         statement.execute(String
             .format("SELECT metric_name,tag_name,tag_order FROM %s", "root.SYSTEM.TAG_NAME_INFO"));
         rs = statement.getResultSet();
+        long maxIndex = 0;
         while (rs.next()) {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
@@ -86,7 +91,9 @@ public class MetricsManager {
             map.put(tagName, pos);
             tagOrder.put(name, map);
           }
+          maxIndex = rs.getLong(1);
         }
+        index.set(maxIndex + 1);
 
         // Read the size of storage group
         statement.execute(String.format("SELECT storage_group_size FROM %s",
@@ -316,16 +323,9 @@ public class MetricsManager {
    */
   private static void persistMappingCache(String metricName, Map<String, Integer> cache) {
     for (Map.Entry<String, Integer> entry : cache.entrySet()) {
-      long timestamp = System.currentTimeMillis();
-      try {
-        Thread.sleep(1);
-      } catch (InterruptedException e) {
-        LOGGER.error("", e);
-        Thread.currentThread().interrupt();
-      }
       String sql = String.format(
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
-          timestamp, metricName, entry.getKey(), entry.getValue());
+          index.getAndIncrement(), metricName, entry.getKey(), entry.getValue());
       try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
         statement.execute(sql);
       } catch (SQLException e) {

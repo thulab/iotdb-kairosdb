@@ -30,7 +30,6 @@ public class DataPointsParser {
   private final Reader inputStream;
   private final Gson gson;
 
-  private int dataPointCount;
   // <hash(timestamp-path), <metric, value>>
   private Map<String, Map<String, String>> tableMap = new HashMap<>();
   // <path, type>
@@ -46,10 +45,6 @@ public class DataPointsParser {
   public DataPointsParser(Reader stream, Gson gson) {
     this.inputStream = stream;
     this.gson = gson;
-  }
-
-  public int getDataPointCount() {
-    return dataPointCount;
   }
 
   public ValidationErrors parse() throws IOException {
@@ -343,7 +338,6 @@ public class DataPointsParser {
               validationErrors.addErrorMessage(context + " " + e.getMessage());
             }
 
-            dataPointCount++;
           }
           contextCount++;
         }
