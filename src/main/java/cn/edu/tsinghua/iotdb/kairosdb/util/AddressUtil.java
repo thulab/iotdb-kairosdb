@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.kairosdb.util;
 
-import cn.edu.tsinghua.iotdb.kairosdb.Main;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
