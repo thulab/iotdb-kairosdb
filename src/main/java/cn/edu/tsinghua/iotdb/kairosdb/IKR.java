@@ -14,11 +14,11 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Main {
+public class IKR {
 
   private static final String USER = "root";
   private static final String PSW = "root";
-  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IKR.class);
   private static Config config;
   private static URI baseURI;
 

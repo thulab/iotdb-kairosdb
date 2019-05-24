@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.it;
 
-import cn.edu.tsinghua.iotdb.kairosdb.Main;
+import cn.edu.tsinghua.iotdb.kairosdb.IKR;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
@@ -20,7 +20,7 @@ public class RestService extends Thread {
   public void run() {
     String[] argv = {"-cf", "conf/config.properties"};
     try {
-      Main.main(argv);
+      IKR.main(argv);
     } catch (Exception e) {
       e.printStackTrace();
     }

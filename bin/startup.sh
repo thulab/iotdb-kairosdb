@@ -6,7 +6,7 @@ fi
 
 echo $REST_HOME
 
-MAIN_CLASS=cn.edu.tsinghua.iotdb.kairosdb.Main
+MAIN_CLASS=cn.edu.tsinghua.iotdb.kairosdb.IKR
 
 CLASSPATH=""
 for f in ${REST_HOME}/lib/*.jar; do
