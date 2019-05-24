@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
@@ -26,7 +28,7 @@ import org.slf4j.LoggerFactory;
 public class DataPointsParser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPointsParser.class);
-
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private final Reader inputStream;
   private final Gson gson;
 
@@ -48,8 +50,13 @@ public class DataPointsParser {
   }
 
   public ValidationErrors parse() throws IOException {
+    long start = 0;
+    long id = System.currentTimeMillis();
+    long ingestTime;
 
-    //long start = System.currentTimeMillis();
+    if(config.DEBUG == 1) {
+      start = System.currentTimeMillis();
+    }
     ValidationErrors validationErrors = new ValidationErrors();
     try (JsonReader reader = new JsonReader(inputStream)) {
       int metricCount = 0;
@@ -77,11 +84,14 @@ public class DataPointsParser {
     } catch (EOFException e) {
       validationErrors.addErrorMessage("Invalid json. No content due to end of input.");
     }
-    //ingestTime = (int) (System.currentTimeMillis() - start);
-    //long id = System.currentTimeMillis();
-    //LOGGER.info("请求id:{}, 解析整个写入请求的JSON时间: {} ms", id, ingestTime);
+    if(config.DEBUG == 1) {
+      ingestTime = System.currentTimeMillis() - start;
+      LOGGER.info("请求id:,{}, parse()中解析整个写入请求的JSON时间: ,{}, ms", id, ingestTime);
+    }
 
-    //start = System.currentTimeMillis();
+    if(config.DEBUG == 1) {
+      start = System.currentTimeMillis();
+    }
     try {
       sendMetricsData();
     } catch (SQLException e) {
@@ -99,8 +109,10 @@ public class DataPointsParser {
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
-    //long elapse = System.currentTimeMillis() - start;
-    //LOGGER.info("请求id:{}, IoTDB JDBC 执行时间: {} ms", id, elapse);
+    if(config.DEBUG == 1) {
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("请求id: ,{}, parse()中IoTDB JDBC相关操作执行时间: ,{}, ms", id, elapse);
+    }
 
     return validationErrors;
   }
@@ -137,6 +149,10 @@ public class DataPointsParser {
   }
 
   public void sendMetricsData() throws SQLException {
+    long start = 0;
+    if(config.DEBUG == 2){
+      start = System.currentTimeMillis();
+    }
     try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
       for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
         StringBuilder sqlBuilder = new StringBuilder();
@@ -154,11 +170,18 @@ public class DataPointsParser {
         sensorPartBuilder.append(")");
         valuePartBuilder.append(")");
         sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-        //LOGGER.info("SQL: {}", sqlBuilder);
         statement.addBatch(sqlBuilder.toString());
       }
-      //LOGGER.info("batch size: {}", tableMap.size());
+      if(config.DEBUG == 2){
+        long elapse = System.currentTimeMillis() - start;
+        LOGGER.info("sendMetricsData() 解析tableMap并addBatch的时间: ,{}, ms", elapse);
+        start = System.currentTimeMillis();
+      }
       statement.executeBatch();
+      if(config.DEBUG == 2){
+        long elapse = System.currentTimeMillis() - start;
+        LOGGER.info("sendMetricsData() 执行statement.executeBatch()的时间: ,{}, ms", elapse);
+      }
     }
   }
 

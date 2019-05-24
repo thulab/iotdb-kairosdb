@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
@@ -46,8 +48,8 @@ import org.slf4j.LoggerFactory;
 @Path("/api/v1")
 public class MetricsResource {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetricsResource.class);
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private static final String QUERY_URL = "/datapoints/query";
 
   private static final String NO_CACHE = "no-cache";
@@ -89,6 +91,7 @@ public class MetricsResource {
   @Path("/datapoints")
   public void add(@Context HttpHeaders httpheaders, final InputStream stream,
       @Suspended final AsyncResponse asyncResponse) {
+
     final InputStream[] inputStream = new InputStream[1];
     new Thread(new Runnable() {
       @Override
@@ -97,6 +100,10 @@ public class MetricsResource {
       }
 
       private Response veryExpensiveOperation() {
+        long start = 0;
+        if(config.DEBUG == 0){
+          start = System.currentTimeMillis();
+        }
         try {
           if (httpheaders != null) {
             List<String> requestHeader = httpheaders.getRequestHeader("Content-Encoding");
@@ -111,7 +118,17 @@ public class MetricsResource {
 
           DataPointsParser parser = new DataPointsParser(
               new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
+          if(config.DEBUG == 0){
+            long elapse = System.currentTimeMillis() - start;
+            LOGGER.info("veryExpensiveOperation() 从开始到new DataPointsParser()的时间: ,{}, ms", elapse);
+            start = System.currentTimeMillis();
+          }
+
           ValidationErrors validationErrors = parser.parse();
+          if(config.DEBUG == 0){
+            long elapse = System.currentTimeMillis() - start;
+            LOGGER.info("veryExpensiveOperation() 执行parser.parse()的时间: ,{}, ms", elapse);
+          }
 
           if (!validationErrors.hasErrors()) {
             return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
@@ -126,12 +143,12 @@ public class MetricsResource {
           JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
           return builder.addError(e.getMessage()).build();
         } catch (Exception e) {
-          logger.error("Failed to add metric.", e);
+          LOGGER.error("Failed to add metric.", e);
           return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
               .entity(new ErrorResponse(e.getMessage()))).build();
 
         } catch (OutOfMemoryError e) {
-          logger.error("Out of memory error.", e);
+          LOGGER.error("Out of memory error.", e);
           return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
               .entity(new ErrorResponse(e.getMessage()))).build();
         }

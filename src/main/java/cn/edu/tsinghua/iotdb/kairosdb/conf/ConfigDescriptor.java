@@ -46,6 +46,7 @@ public class ConfigDescriptor {
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
+        config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }
