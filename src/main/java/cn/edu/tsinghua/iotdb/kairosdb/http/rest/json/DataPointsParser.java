@@ -17,6 +17,8 @@ import com.google.gson.stream.JsonToken;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ public class DataPointsParser {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPointsParser.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private final Reader inputStream;
+  private static final String URL = "jdbc:iotdb://%s:%s/";
   private final Gson gson;
 
   // <hash(timestamp-path), <metric, value>>
@@ -43,8 +46,21 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
+  private Connection connection;
 
   public DataPointsParser(Reader stream, Gson gson) {
+    try {
+      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    } catch (ClassNotFoundException e) {
+      LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
+    }
+    try {
+      connection = DriverManager
+          .getConnection(String.format(URL, config.HOST, config.PORT), "root",
+              "root");
+    } catch (SQLException e) {
+      LOGGER.error("Get new connection failed ", e);
+    }
     this.inputStream = stream;
     this.gson = gson;
   }
@@ -139,9 +155,8 @@ public class DataPointsParser {
   }
 
   public void createTimeSeries() throws SQLException {
-    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
-        //LOGGER.info("TIMESERIES {} has been created, type: {}", entry.getKey(), entry.getValue());
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
       }
       statement.executeBatch();
@@ -153,7 +168,7 @@ public class DataPointsParser {
     if(config.DEBUG == 2){
       start = System.currentTimeMillis();
     }
-    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
         StringBuilder sqlBuilder = new StringBuilder();
         StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
@@ -172,10 +187,10 @@ public class DataPointsParser {
         sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
         statement.execute(sqlBuilder.toString());
       }
-      if(config.DEBUG == 2){
-        long elapse = System.currentTimeMillis() - start;
-        LOGGER.info("sendMetricsData() 解析tableMap并execute的时间: ,{}, ms", elapse);
-      }
+    }
+    if(config.DEBUG == 2){
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("sendMetricsData() 执行的时间: ,{}, ms", elapse);
     }
   }
 
