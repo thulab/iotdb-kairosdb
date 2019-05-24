@@ -170,17 +170,11 @@ public class DataPointsParser {
         sensorPartBuilder.append(")");
         valuePartBuilder.append(")");
         sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-        statement.addBatch(sqlBuilder.toString());
+        statement.execute(sqlBuilder.toString());
       }
       if(config.DEBUG == 2){
         long elapse = System.currentTimeMillis() - start;
-        LOGGER.info("sendMetricsData() 解析tableMap并addBatch的时间: ,{}, ms", elapse);
-        start = System.currentTimeMillis();
-      }
-      statement.executeBatch();
-      if(config.DEBUG == 2){
-        long elapse = System.currentTimeMillis() - start;
-        LOGGER.info("sendMetricsData() 执行statement.executeBatch()的时间: ,{}, ms", elapse);
+        LOGGER.info("sendMetricsData() 解析tableMap并execute的时间: ,{}, ms", elapse);
       }
     }
   }
