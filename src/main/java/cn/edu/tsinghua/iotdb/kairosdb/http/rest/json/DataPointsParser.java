@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
@@ -49,18 +49,7 @@ public class DataPointsParser {
   private Connection connection;
 
   public DataPointsParser(Reader stream, Gson gson) {
-    try {
-      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    } catch (ClassNotFoundException e) {
-      LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
-    }
-    try {
-      connection = DriverManager
-          .getConnection(String.format(URL, config.HOST, config.PORT), "root",
-              "root");
-    } catch (SQLException e) {
-      LOGGER.error("Get new connection failed ", e);
-    }
+    connection = IoTDBConnectionPool.getInstance().getConnection();
     this.inputStream = stream;
     this.gson = gson;
   }

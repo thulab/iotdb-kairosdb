@@ -47,6 +47,7 @@ public class ConfigDescriptor {
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
+        config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }
@@ -61,7 +62,6 @@ public class ConfigDescriptor {
   }
 
   private static class ConfigDescriptorHolder {
-
     private static final ConfigDescriptor INSTANCE = new ConfigDescriptor();
   }
 }
