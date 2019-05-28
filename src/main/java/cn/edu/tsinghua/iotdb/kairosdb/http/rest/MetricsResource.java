@@ -1,10 +1,8 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IngestionWorker;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ErrorResponse;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.ValidationErrors;
 import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
@@ -13,16 +11,13 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.MalformedJsonException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.zip.GZIPInputStream;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -40,17 +35,13 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Path("/api/v1")
 public class MetricsResource {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetricsResource.class);
-
   private static final String QUERY_URL = "/datapoints/query";
-
   private static final String NO_CACHE = "no-cache";
+  private static final ExecutorService threadPool = Executors.newCachedThreadPool();
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -89,58 +80,8 @@ public class MetricsResource {
   @Path("/datapoints")
   public void add(@Context HttpHeaders httpheaders, final InputStream stream,
       @Suspended final AsyncResponse asyncResponse) {
-    final InputStream[] inputStream = new InputStream[1];
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        asyncResponse.resume(veryExpensiveOperation());
-      }
-
-      private Response veryExpensiveOperation() {
-        try {
-          if (httpheaders != null) {
-            List<String> requestHeader = httpheaders.getRequestHeader("Content-Encoding");
-            if (requestHeader != null && requestHeader.contains("gzip")) {
-              inputStream[0] = new GZIPInputStream(stream);
-            } else {
-              inputStream[0] = stream;
-            }
-          } else {
-            inputStream[0] = stream;
-          }
-
-          DataPointsParser parser = new DataPointsParser(
-              new InputStreamReader(inputStream[0], StandardCharsets.UTF_8), gson);
-          ValidationErrors validationErrors = parser.parse();
-
-          if (!validationErrors.hasErrors()) {
-            return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
-          } else {
-            JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-            for (String errorMessage : validationErrors.getErrors()) {
-              builder.addError(errorMessage);
-            }
-            return builder.build();
-          }
-        } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
-          JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-          return builder.addError(e.getMessage()).build();
-        } catch (Exception e) {
-          logger.error("Failed to add metric.", e);
-          return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-              .entity(new ErrorResponse(e.getMessage()))).build();
-
-        } catch (OutOfMemoryError e) {
-          logger.error("Out of memory error.", e);
-          return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-              .entity(new ErrorResponse(e.getMessage()))).build();
-        }
-      }
-    }).start();
-
-
+    threadPool.execute(new IngestionWorker(asyncResponse, httpheaders, stream, gson));
   }
-
 
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")

@@ -7,7 +7,8 @@ public class Config {
   public int STORAGE_GROUP_SIZE = 20;
   public String REST_PORT = "6666";
   public int MAX_ROLLUP = 100;
-
+  public int DEBUG = 0;
+  public int CONNECTION_NUM = 20;
   Config() {
 
   }
