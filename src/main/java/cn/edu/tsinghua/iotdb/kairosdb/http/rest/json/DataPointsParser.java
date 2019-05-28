@@ -57,7 +57,7 @@ public class DataPointsParser {
     long id = System.currentTimeMillis();
     long ingestTime;
 
-    if(config.DEBUG == 1) {
+    if (config.DEBUG == 1) {
       start = System.currentTimeMillis();
     }
     ValidationErrors validationErrors = new ValidationErrors();
@@ -87,12 +87,12 @@ public class DataPointsParser {
     } catch (EOFException e) {
       validationErrors.addErrorMessage("Invalid json. No content due to end of input.");
     }
-    if(config.DEBUG == 1) {
+    if (config.DEBUG == 1) {
       ingestTime = System.currentTimeMillis() - start;
       LOGGER.info("请求id:,{}, parse()中解析整个写入请求的JSON时间: ,{}, ms", id, ingestTime);
     }
 
-    if(config.DEBUG == 1) {
+    if (config.DEBUG == 1) {
       start = System.currentTimeMillis();
     }
     try {
@@ -112,7 +112,7 @@ public class DataPointsParser {
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
-    if(config.DEBUG == 1) {
+    if (config.DEBUG == 1) {
       long elapse = System.currentTimeMillis() - start;
       LOGGER.info("请求id: ,{}, parse()中IoTDB JDBC相关操作执行时间: ,{}, ms", id, elapse);
     }
@@ -152,7 +152,7 @@ public class DataPointsParser {
 
   public void sendMetricsData() throws SQLException {
     long start = 0;
-    if(config.DEBUG == 2){
+    if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
     try (Statement statement = connection.createStatement()) {
@@ -175,7 +175,7 @@ public class DataPointsParser {
         statement.execute(sqlBuilder.toString());
       }
     }
-    if(config.DEBUG == 2){
+    if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;
       LOGGER.info("sendMetricsData() 执行的时间: ,{}, ms", elapse);
     }

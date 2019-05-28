@@ -80,8 +80,7 @@ public class MetricsResource {
   @Path("/datapoints")
   public void add(@Context HttpHeaders httpheaders, final InputStream stream,
       @Suspended final AsyncResponse asyncResponse) {
-    IngestionWorker ingestionWorker = new IngestionWorker(asyncResponse, httpheaders, stream, gson);
-    threadPool.execute(ingestionWorker);
+    threadPool.execute(new IngestionWorker(asyncResponse, httpheaders, stream, gson));
   }
 
   @POST
