@@ -18,7 +18,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
@@ -32,7 +31,6 @@ public class DataPointsParser {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPointsParser.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private final Reader inputStream;
-  private static final String URL = "jdbc:iotdb://%s:%s/";
   private final Gson gson;
 
   // <hash(timestamp-path), <metric, value>>
