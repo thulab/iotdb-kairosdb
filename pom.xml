@@ -113,10 +113,6 @@
     </dependency>
   </dependencies>
 
-  <modules>
-    <module>tools/export</module>
-  </modules>
-
   <build>
     <resources>
       <resource>

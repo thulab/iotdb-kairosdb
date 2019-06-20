@@ -356,16 +356,16 @@ public class MetricsManager {
   /**
    * Generate a corresponding storage group name of the given metric.
    *
-   * @param metricName The name of the specific metric
+   * @param path The device path of the specific metric
    * @return The corresponding storage group name of the given metric
    */
-  public static String getStorageGroupName(String metricName) {
-    if (metricName == null) {
+  public static String getStorageGroupName(String path) {
+    if (path == null) {
       LOGGER.error(
           "MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
     }
-    int hashCode = metricName.hashCode();
+    int hashCode = path.hashCode();
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 
