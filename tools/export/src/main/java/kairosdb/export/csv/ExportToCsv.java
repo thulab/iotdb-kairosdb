@@ -4,15 +4,34 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import kairosdb.export.csv.conf.CommandCli;
 import kairosdb.export.csv.conf.Config;
 import kairosdb.export.csv.conf.ConfigDescriptor;
 import kairosdb.export.csv.conf.Constants;
 import kairosdb.export.csv.utils.TimeUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.kairosdb.client.HttpClient;
 import org.kairosdb.client.builder.DataPoint;
 import org.kairosdb.client.builder.MetricBuilder;
@@ -27,6 +46,8 @@ public class ExportToCsv {
   //private static final Logger LOGGER = LoggerFactory.getLogger(ExportToCsv.class);
   private static HttpClient client;
   private static final String STORAGE_GROUP_PREFIX = "group_";
+  private static final String CSV_FILE_NAME = "%s_%s_%s_%d.csv";
+  private static final String TSFILE_FILE_NAME = "%s_%s_%s_%d.tsfile";
   private static int storageGroupSize;
   private static final String PATH_TEMPLATE = "root.%s%s.%s";
   private static Map<Long, Map<String, Object>> dataTable = new LinkedHashMap<>();
@@ -34,6 +55,8 @@ public class ExportToCsv {
   private static String trainNumber;
   private static long startTime;
   private static long endTime;
+  private static String csvPath;
+  private static String tsFilePath;
 
 
   public static void main(String[] args) {
@@ -47,8 +70,9 @@ public class ExportToCsv {
     trainNumber = config.MACHINE_ID;
     metrics = config.METRIC_LIST.split(",");
 
-    boolean test = false;
-    if (test) {
+    boolean writeTest = false;
+    boolean show = true;
+    if (writeTest) {
       try (HttpClient client = new HttpClient(config.KAIROSDB_BASE_URL)) {
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < 200; i++) {
@@ -80,16 +104,110 @@ public class ExportToCsv {
       long loadElapse = System.currentTimeMillis() - start;
       start = System.currentTimeMillis();
       exportDataTable();
-      long exportElapse = System.currentTimeMillis() - start;
+      long exportCsvElapse = System.currentTimeMillis() - start;
+      System.out.println("开始转换CSV文件为TsFile文件...");
+      start = System.currentTimeMillis();
+      TransToTsfile.transToTsfile(csvPath, tsFilePath);
+      long exportTsFileElapse = System.currentTimeMillis() - start;
       System.out.println(
-          "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportElapse + " ms");
+          "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms, "
+              + "CSV转换为TsFile耗时 " + exportTsFileElapse + " ms");
     } else {
       System.out.println("必须指定导出数据的起止时间！");
       //LOGGER.error("必须指定导出数据的起止时间！");
     }
 
+    if(show) {
+      try {
+        readTsfile();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
 
   }
+
+  private static void readTsfile() throws IOException {
+    String filePath = tsFilePath;
+    TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
+    System.out.println("file length: " + new File(filePath).length());
+    System.out.println("file magic head: " + reader.readHeadMagic());
+    System.out.println("file magic tail: " + reader.readTailMagic());
+    System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
+    System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
+    TsFileMetaData metaData = reader.readFileMetadata();
+    // Sequential reading of one ChunkGroup now follows this order:
+    // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
+    // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
+    // judge accordingly.
+    System.out.println("[Chunk Group]");
+    System.out.println("position: " + reader.position());
+    byte marker;
+    while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+      switch (marker) {
+        case MetaMarker.CHUNK_HEADER:
+          System.out.println("\t[Chunk]");
+          System.out.println("\tposition: " + reader.position());
+          ChunkHeader header = reader.readChunkHeader();
+          System.out.println("\tMeasurement: " + header.getMeasurementID());
+          Decoder defaultTimeDecoder = Decoder.getDecoderByType(
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder),
+              TSDataType.INT64);
+          Decoder valueDecoder = Decoder
+              .getDecoderByType(header.getEncodingType(), header.getDataType());
+          for (int j = 0; j < header.getNumOfPages(); j++) {
+            valueDecoder.reset();
+            System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
+            PageHeader pageHeader = reader.readPageHeader(header.getDataType());
+            System.out.println("\t\tPage data position: " + reader.position());
+            System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
+            ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+            System.out
+                .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+            PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
+                defaultTimeDecoder);
+            while (reader1.hasNextBatch()) {
+              BatchData batchData = reader1.nextBatch();
+              while (batchData.hasNext()) {
+                System.out.println(
+                    "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
+                        .currentValue());
+                batchData.next();
+              }
+            }
+          }
+          break;
+        case MetaMarker.CHUNK_GROUP_FOOTER:
+          System.out.println("Chunk Group Footer position: " + reader.position());
+          ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
+          System.out.println("device: " + chunkGroupFooter.getDeviceID());
+          break;
+        default:
+          MetaMarker.handleUnexpectedMarker(marker);
+      }
+    }
+    System.out.println("[Metadata]");
+    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
+        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
+    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+        System.out.println(String
+            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
+                index.getOffset(), chunkGroupMetaData.getDeviceID(),
+                chunkGroupMetaDataList.size()));
+
+        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
+          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
+          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
+        }
+      }
+    }
+    reader.close();
+  }
+
 
 
   private static void loadAllMetricsOfOneTrain() {
@@ -148,10 +266,15 @@ public class ExportToCsv {
   }
 
   private static void exportDataTable() {
-    String template = "%s_%s_%s_%d.csv";
+
     String csvFileName = String
-        .format(template, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME, metrics.length);
+        .format(CSV_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
+            metrics.length);
     String path = config.EXPORT_FILE_DIR + File.separator + csvFileName;
+    csvPath = path;
+    tsFilePath = config.EXPORT_FILE_DIR + File.separator + String
+        .format(TSFILE_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
+            metrics.length);
     File file = new File(path);
 
     //LOGGER.info("正在导出{}列, {}行数据到 {} ...", metrics.length, dataTable.size(), path);
