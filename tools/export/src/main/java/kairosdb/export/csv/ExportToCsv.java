@@ -71,7 +71,7 @@ public class ExportToCsv {
     metrics = config.METRIC_LIST.split(",");
 
     boolean writeTest = false;
-    boolean show = true;
+    boolean show = false;
     if (writeTest) {
       try (HttpClient client = new HttpClient(config.KAIROSDB_BASE_URL)) {
         long startTime = System.currentTimeMillis();
