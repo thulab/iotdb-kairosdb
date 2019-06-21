@@ -58,26 +58,22 @@ public class TransToTsfile {
                   TSDataType.INT32, TSEncoding.TS_2DIFF));
               DataPoint intPoint = new IntDataPoint(sensorList.get(i), Integer.parseInt(points[i]));
               tsRecord.addTuple(intPoint);
-              //System.out.println(String.format("插入整数数据点:%s", Integer.parseInt(points[i])));
             } else {
               DataPoint intPoint = new IntDataPoint(sensorList.get(i), Integer.parseInt(points[i]));
               tsRecord.addTuple(intPoint);
-              //System.out.println(String.format("插入整数数据点:%s", Integer.parseInt(points[i])));
             }
           } else if (points[i].matches(floatRegex)) {
             if (tsDataTypes.get(i) == null) {
-              tsDataTypes.set(i, TSDataType.FLOAT);
+              tsDataTypes.set(i, TSDataType.DOUBLE);
               tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                  TSDataType.FLOAT, TSEncoding.RLE));
+                  TSDataType.DOUBLE, TSEncoding.GORILLA));
               DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
                   Float.parseFloat(points[i]));
               tsRecord.addTuple(floatPoint);
-              //System.out.println(String.format("插入浮点数据点:%s", Float.parseFloat(points[i])));
             } else {
               DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
                   Float.parseFloat(points[i]));
               tsRecord.addTuple(floatPoint);
-              //System.out.println(String.format("插入整数数据点:%s", Float.parseFloat(points[i])));
             }
           } else {
             if (!points[i].equals("")) {
@@ -88,12 +84,10 @@ public class TransToTsfile {
                 DataPoint textPoint = new StringDataPoint(sensorList.get(i),
                     Binary.valueOf(points[i]));
                 tsRecord.addTuple(textPoint);
-                //System.out.println(String.format("插入字符数据点:%s", Binary.valueOf(points[i])));
               } else {
                 DataPoint textPoint = new StringDataPoint(sensorList.get(i),
                     Binary.valueOf(points[i]));
                 tsRecord.addTuple(textPoint);
-                //System.out.println(String.format("插入字符数据点:%s", Binary.valueOf(points[i])));
               }
             }
           }
