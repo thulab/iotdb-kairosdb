@@ -20,8 +20,6 @@ import org.kairosdb.client.builder.QueryBuilder;
 import org.kairosdb.client.response.QueryResponse;
 import org.kairosdb.client.response.QueryResult;
 import org.kairosdb.client.response.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ExportToCsv {
 
@@ -50,7 +48,7 @@ public class ExportToCsv {
     metrics = config.METRIC_LIST.split(",");
 
     boolean test = false;
-    if(test) {
+    if (test) {
       try (HttpClient client = new HttpClient(config.KAIROSDB_BASE_URL)) {
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < 200; i++) {
@@ -59,7 +57,7 @@ public class ExportToCsv {
             MetricBuilder builder = MetricBuilder.getInstance();
             builder.addMetric(metric)
                 .addTag(Constants.TAG_KEY1, config.MACHINE_ID)
-                .addDataPoint(recordTime, "sdgw");
+                .addDataPoint(recordTime, "666");
             client.pushMetrics(builder);
           }
         }
@@ -72,7 +70,6 @@ public class ExportToCsv {
       }
     }
 
-
     if (!config.START_TIME.equals("") && !config.ENDED_TIME.equals("")) {
       startTime = TimeUtils.convertDateStrToTimestamp(config.START_TIME);
       endTime = TimeUtils.convertDateStrToTimestamp(config.ENDED_TIME);
@@ -84,7 +81,8 @@ public class ExportToCsv {
       start = System.currentTimeMillis();
       exportDataTable();
       long exportElapse = System.currentTimeMillis() - start;
-      System.out.println("查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportElapse + " ms");
+      System.out.println(
+          "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportElapse + " ms");
     } else {
       System.out.println("必须指定导出数据的起止时间！");
       //LOGGER.error("必须指定导出数据的起止时间！");
@@ -114,38 +112,36 @@ public class ExportToCsv {
 
       for (QueryResult query : response.getQueries()) {
         for (Result result : query.getResults()) {
-          String machineId = result.getTags().get(Constants.TAG_KEY1).get(0);
-          if (machineId != null) {
-            String sensor = result.getName();
+          if (result.getTags().get(Constants.TAG_KEY1) != null) {
+            String machineId = result.getTags().get(Constants.TAG_KEY1).get(0);
+            if (machineId != null) {
+              String sensor = result.getName();
 
-            for (DataPoint dp : result.getDataPoints()) {
-              Map<String, Object> map = dataTable.get(dp.getTimestamp());
-              if (map != null) {
-                map.put(sensor, dp.getValue());
-              } else {
-                map = new HashMap<>();
-                map.put(sensor, dp.getValue());
+              for (DataPoint dp : result.getDataPoints()) {
+                Map<String, Object> map = dataTable.get(dp.getTimestamp());
+                if (map != null) {
+                  map.put(sensor, dp.getValue());
+                } else {
+                  map = new HashMap<>();
+                  map.put(sensor, dp.getValue());
+                }
+                dataTable.put(dp.getTimestamp(), map);
               }
-              dataTable.put(dp.getTimestamp(), map);
+
             }
-
           } else {
-
-            System.out.println("查询不到对应machine_id的数据，metric: " + result.getName());
+            System.out
+                .println("查询不到对应machine_id为 " + trainNumber + " 的数据，metric: " + result.getName());
           }
-
         }
       }
-
     } catch (Exception e) {
       e.printStackTrace();
     }
-
     closeClient();
-
   }
 
-  private static String getFullPath(String sensor){
+  private static String getFullPath(String sensor) {
     String devicePath = "." + trainNumber;
     String group = getStorageGroupName(devicePath);
     return String.format(PATH_TEMPLATE, group, devicePath, sensor);
@@ -153,17 +149,18 @@ public class ExportToCsv {
 
   private static void exportDataTable() {
     String template = "%s_%s_%s_%d.csv";
-    String csvFileName = String.format(template, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME, metrics.length);
+    String csvFileName = String
+        .format(template, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME, metrics.length);
     String path = config.EXPORT_FILE_DIR + File.separator + csvFileName;
     File file = new File(path);
 
     //LOGGER.info("正在导出{}列, {}行数据到 {} ...", metrics.length, dataTable.size(), path);
-    System.out.println(String.format("正在导出%d列, %d行数据到 %s ...", metrics.length, dataTable.size(), path));
+    System.out
+        .println(String.format("正在导出%d列, %d行数据到 %s ...", metrics.length, dataTable.size(), path));
     int count = 0;
     int stage = dataTable.size() / 20;
-    int percent = 1;
     try {
-      try(FileWriter writer = new FileWriter(file)) {
+      try (FileWriter writer = new FileWriter(file)) {
         // 填写csv文件表头
         StringBuilder headBuilder = new StringBuilder();
         headBuilder.append("Time");
@@ -188,8 +185,8 @@ public class ExportToCsv {
           lineBuilder.append("\n");
           writer.write(lineBuilder.toString());
           count++;
-          if(stage > 0){
-            if(count % stage == 0) {
+          if (stage > 0) {
+            if (count % stage == 0) {
               double a = count * 100.0 / dataTable.size();
               String p = String.format("%.1f", a);
               System.out.println("已完成 " + p + "%");

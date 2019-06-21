@@ -2,9 +2,9 @@
 
 <configuration>
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
-    <file>${REST_HOME}/logs/log_error.log</file>
+    <file>${EXPORT_CSV_HOME}/logs/log_error.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${REST_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>${EXPORT_CSV_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
         class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>2MB</maxFileSize>
@@ -23,9 +23,9 @@
   </appender>
 
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
-    <file>${REST_HOME}/logs/log_warn.log</file>
+    <file>${EXPORT_CSV_HOME}/logs/log_warn.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${REST_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>${EXPORT_CSV_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
         class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>2MB</maxFileSize>
@@ -44,9 +44,9 @@
   </appender>
 
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
-    <file>${REST_HOME}/logs/log_info.log</file>
+    <file>${EXPORT_CSV_HOME}/logs/log_info.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${REST_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>${EXPORT_CSV_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
         class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>200MB</maxFileSize>
@@ -66,9 +66,9 @@
 
 
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
-    <file>${REST_HOME}/logs/log_debug.log</file>
+    <file>${EXPORT_CSV_HOME}/logs/log_debug.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${REST_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>${EXPORT_CSV_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
         class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>200MB</maxFileSize>
