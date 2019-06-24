@@ -17,5 +17,8 @@
 ```
 > ./export-csv.sh
 ```
-
-
+若要自动导出多个车的数据，则使用以下命令
+```
+> ./multi-device-export-csv.sh
+```
+修改该脚本中的```DEVICE_ID_LIST```变量可指定车号列表

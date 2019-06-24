@@ -75,8 +75,10 @@ public class ExportToCsv {
     if (writeTest) {
       try (HttpClient client = new HttpClient(config.KAIROSDB_BASE_URL)) {
         long startTime = System.currentTimeMillis();
-        for (int i = 0; i < 200; i++) {
-          long recordTime = startTime + i * 1000;
+        int dataLoop = 200;
+        for (int i = 0; i < dataLoop; i++) {
+          System.out.println(String.format("%.2f", i * 100.0 / dataLoop) + "% data prepared");
+          long recordTime = startTime + i * 200;
           for (String metric : config.METRIC_LIST.split(",")) {
             MetricBuilder builder = MetricBuilder.getInstance();
             builder.addMetric(metric)
@@ -86,7 +88,7 @@ public class ExportToCsv {
           }
         }
 //        LOGGER.info();
-        System.out.println("data prepared");
+        System.out.println("All test data prepared");
       } catch (IOException e) {
 //        LOGGER.error("prepare kairosdb data failed", e);
         System.out.println("prepare kairosdb data failed");
