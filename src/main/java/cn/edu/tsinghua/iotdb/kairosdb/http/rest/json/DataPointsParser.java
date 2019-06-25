@@ -35,7 +35,7 @@ public class DataPointsParser {
   private static AtomicLong parseJsonAccumulatedTime = new AtomicLong(0);
   private static AtomicLong jdbcAccumulatedTime = new AtomicLong(0);
   private static AtomicLong parseTotalAccumulatedTime = new AtomicLong(0);
-  private static final int OUTPUT_THRESHOLD = 10000;
+  private static final int OUTPUT_THRESHOLD = 1000;
   private final Reader inputStream;
   private final Gson gson;
 
@@ -96,7 +96,6 @@ public class DataPointsParser {
     }
     if (config.DEBUG == 1) {
       prepareSqlTime = System.currentTimeMillis() - start;
-      LOGGER.info("请求id:,{}, parse()中解析整个写入请求的JSON时间: ,{}, ms", id, prepareSqlTime);
     }
 
     if (config.DEBUG == 1) {
