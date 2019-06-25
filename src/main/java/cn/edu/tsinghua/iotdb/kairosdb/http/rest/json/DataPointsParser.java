@@ -35,7 +35,7 @@ public class DataPointsParser {
   private static AtomicLong parseJsonAccumulatedTime = new AtomicLong(0);
   private static AtomicLong jdbcAccumulatedTime = new AtomicLong(0);
   private static AtomicLong parseTotalAccumulatedTime = new AtomicLong(0);
-  private static final int OUTPUT_THRESHOLD = 1000;
+  private static final int OUTPUT_THRESHOLD = 5000;
   private final Reader inputStream;
   private final Gson gson;
 
