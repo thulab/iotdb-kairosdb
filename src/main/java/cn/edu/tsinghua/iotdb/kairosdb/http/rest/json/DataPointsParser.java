@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,11 @@ public class DataPointsParser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPointsParser.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
+  private static AtomicLong loop = new AtomicLong(0);
+  private static AtomicLong parseJsonAccumulatedTime = new AtomicLong(0);
+  private static AtomicLong jdbcAccumulatedTime = new AtomicLong(0);
+  private static AtomicLong parseTotalAccumulatedTime = new AtomicLong(0);
+  private static final int OUTPUT_THRESHOLD = 100000;
   private final Reader inputStream;
   private final Gson gson;
 
@@ -55,7 +61,8 @@ public class DataPointsParser {
   public ValidationErrors parse() throws IOException {
     long start = 0;
     long id = System.currentTimeMillis();
-    long ingestTime;
+    long prepareSqlTime = 0;
+    long jdbcTime = 0;
 
     if (config.DEBUG == 1) {
       start = System.currentTimeMillis();
@@ -88,8 +95,8 @@ public class DataPointsParser {
       validationErrors.addErrorMessage("Invalid json. No content due to end of input.");
     }
     if (config.DEBUG == 1) {
-      ingestTime = System.currentTimeMillis() - start;
-      LOGGER.info("请求id:,{}, parse()中解析整个写入请求的JSON时间: ,{}, ms", id, ingestTime);
+      prepareSqlTime = System.currentTimeMillis() - start;
+      LOGGER.info("请求id:,{}, parse()中解析整个写入请求的JSON时间: ,{}, ms", id, prepareSqlTime);
     }
 
     if (config.DEBUG == 1) {
@@ -112,9 +119,20 @@ public class DataPointsParser {
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
     }
+
     if (config.DEBUG == 1) {
-      long elapse = System.currentTimeMillis() - start;
-      LOGGER.info("请求id: ,{}, parse()中IoTDB JDBC相关操作执行时间: ,{}, ms", id, elapse);
+      jdbcTime = System.currentTimeMillis() - start;
+      long parseTotalTime = System.currentTimeMillis() - id;
+      long currLoop = loop.incrementAndGet();
+      long parse = parseJsonAccumulatedTime.addAndGet(prepareSqlTime);
+      long jdbc = jdbcAccumulatedTime.addAndGet(jdbcTime);
+      long total = parseTotalAccumulatedTime.addAndGet(parseTotalTime);
+      if (currLoop % OUTPUT_THRESHOLD == 0) {
+        LOGGER.info(
+            "loop ,{}, parse()中解析JSON及准备SQL平均耗时: ,{}, ms IoTDB JDBC平均耗时: ,{}, ms, 总平均耗时 ,{}, ms",
+            currLoop, (parse * 1.0F / currLoop), (jdbc * 1.0F / currLoop),
+            (total * 1.0F / currLoop));
+      }
     }
 
     return validationErrors;
