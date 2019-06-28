@@ -39,12 +39,10 @@ public class DataPointsParser {
   private final Reader inputStream;
   private final Gson gson;
 
-  // <hash(timestamp-path), <metric, value>>
-  private Map<String, Map<String, String>> tableMap = new HashMap<>();
+  // <timestamp-path, <metric, value>>
+  private Map<TimestampDevicePair, Map<String, String>> tableMap = new HashMap<>();
   // <path, type>
   private Map<String, DataType> seriesPaths = new HashMap<>();
-
-  private static final String TABLE_MAP_KEY_SPLIT = "%";
 
   // The constants of encoding methods
   private static final String TEXT_ENCODING = "PLAIN";
@@ -159,7 +157,7 @@ public class DataPointsParser {
             datatype, encoding);
   }
 
-  public void createTimeSeries() throws SQLException {
+  private void createTimeSeries() throws SQLException {
     try (Statement statement = connection.createStatement()) {
       for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
@@ -168,18 +166,18 @@ public class DataPointsParser {
     }
   }
 
-  public void sendMetricsData() throws SQLException {
+  private void sendMetricsData() throws SQLException {
     long start = 0;
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
     try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
+      for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
         StringBuilder sqlBuilder = new StringBuilder();
         StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
         StringBuilder valuePartBuilder = new StringBuilder(" values(");
-        String timestamp = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[0];
-        String path = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[1];
+        long timestamp = entry.getKey().getTimestamp();
+        String path = entry.getKey().getDevice();
         String sqlPrefix = String
             .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
         valuePartBuilder.append(timestamp);
@@ -243,8 +241,7 @@ public class DataPointsParser {
     seriesPaths
         .put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name),
             type);
-
-    String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
+    TimestampDevicePair tableMapKey = new TimestampDevicePair(timestamp, path);
     if (tableMap.containsKey(tableMapKey)) {
       tableMap.get(tableMapKey).put(name, value);
     } else {
