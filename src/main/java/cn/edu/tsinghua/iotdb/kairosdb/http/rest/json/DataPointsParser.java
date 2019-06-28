@@ -42,7 +42,7 @@ public class DataPointsParser {
   // <hash(timestamp-path), <metric, value>>
   private Map<String, Map<String, String>> tableMap = new HashMap<>();
   // <path, type>
-  private Map<String, String> seriesPaths = new HashMap<>();
+  private Map<String, DataType> seriesPaths = new HashMap<>();
 
   private static final String TABLE_MAP_KEY_SPLIT = "%";
 
@@ -75,6 +75,7 @@ public class DataPointsParser {
           reader.beginArray();
 
           while (reader.hasNext()) {
+
             NewMetric metric = parseMetric(reader);
             validateAndAddDataPoints(metric, validationErrors, metricCount);
             metricCount++;
@@ -137,15 +138,15 @@ public class DataPointsParser {
     return validationErrors;
   }
 
-  private static String createTimeSeriesSql(String seriesPath, String type) {
+  private static String createTimeSeriesSql(String seriesPath, DataType type) {
     String datatype;
     String encoding;
     switch (type) {
-      case "long":
-        datatype = "INT64";
+      case LONG:
+        datatype = "INT32";
         encoding = INT64_ENCODING;
         break;
-      case "double":
+      case DOUBLE:
         datatype = "DOUBLE";
         encoding = DOUBLE_ENCODING;
         break;
@@ -160,7 +161,7 @@ public class DataPointsParser {
 
   public void createTimeSeries() throws SQLException {
     try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
+      for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
       }
       statement.executeBatch();
@@ -222,7 +223,7 @@ public class DataPointsParser {
    * ValidationErrors
    */
   public ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
-      String type, Long timestamp, String value) throws SQLException {
+      DataType type, Long timestamp, String value) throws SQLException {
     ValidationErrors validationErrors = new ValidationErrors();
     if (null == tags) {
       LOGGER.error("metric {} have no tag", name);
@@ -232,7 +233,7 @@ public class DataPointsParser {
 
     HashMap<Integer, String> orderTagKeyMap = MetricsManager.getMapping(name, tags);
 
-    if (type.equals("string")) {
+    if (type.equals(DataType.STRING)) {
       value = String.format("\"%s\"", value);
     }
 
@@ -300,7 +301,7 @@ public class DataPointsParser {
       ImmutableSortedMap<String, String> tags = ImmutableSortedMap.copyOf(metric.getTags());
 
       if (metric.getTimestamp() != null && metric.getValue() != null) {
-        String type = null;
+        DataType type = null;
         try {
           type = findType(metric.getValue());
         } catch (ValidationException e) {
@@ -344,9 +345,9 @@ public class DataPointsParser {
               continue;
             }
 
-            String type = null;
+            DataType type = null;
             if (dataPoint.length > 2) {
-              type = dataPoint[2].getAsString();
+              type = toEnumType(dataPoint[2].getAsString());
             }
 
             if (!Validator
@@ -385,7 +386,20 @@ public class DataPointsParser {
     return !validationErrors.hasErrors();
   }
 
-  private String findType(JsonElement value) throws ValidationException {
+  private DataType toEnumType(String s) {
+    switch (s) {
+      case "string":
+        return DataType.STRING;
+      case "double":
+        return DataType.DOUBLE;
+      case "long":
+        return DataType.LONG;
+      default:
+        return null;
+    }
+  }
+
+  private DataType findType(JsonElement value) throws ValidationException {
     if (!value.isJsonPrimitive()) {
       throw new ValidationException("value is an invalid type");
     }
@@ -396,13 +410,19 @@ public class DataPointsParser {
       String v = value.getAsString();
 
       if (!v.contains(".")) {
-        return "long";
+        return DataType.LONG;
       } else {
-        return "double";
+        return DataType.DOUBLE;
       }
     } else {
-      return "string";
+      return DataType.STRING;
     }
+  }
+
+  public enum DataType {
+    LONG,
+    DOUBLE,
+    STRING,
   }
 
   private static class Context {
