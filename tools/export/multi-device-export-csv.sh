@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -z "${EXPORT_CSV_HOME}" ]; then
   export EXPORT_CSV_HOME="$(cd "`dirname "$0"`"; pwd)"
@@ -14,7 +14,7 @@ DEVICE_ID_LIST=(1701 1702 1703)
 
 for DEVICE in ${DEVICE_ID_LIST[@]}
 do
-  sed -i "" "s/^${CHANGE_PARAMETER}.*$/MACHINE_ID=${DEVICE}/g" $EXPORT_CSV_HOME/conf/config.properties
+  sed -i "s/^${CHANGE_PARAMETER}.*$/MACHINE_ID=${DEVICE}/g" $EXPORT_CSV_HOME/conf/config.properties
   grep $CHANGE_PARAMETER  $EXPORT_CSV_HOME/conf/config.properties
   cd $EXPORT_CSV_HOME/bin
   sh ./startup.sh -cf ../conf/config.properties
