@@ -39,12 +39,10 @@ public class DataPointsParser {
   private final Reader inputStream;
   private final Gson gson;
 
-  // <hash(timestamp-path), <metric, value>>
-  private Map<String, Map<String, String>> tableMap = new HashMap<>();
+  // <timestamp-path, <metric, value>>
+  private Map<TimestampDevicePair, Map<String, String>> tableMap = new HashMap<>();
   // <path, type>
-  private Map<String, String> seriesPaths = new HashMap<>();
-
-  private static final String TABLE_MAP_KEY_SPLIT = "%";
+  private Map<String, DataType> seriesPaths = new HashMap<>();
 
   // The constants of encoding methods
   private static final String TEXT_ENCODING = "PLAIN";
@@ -75,6 +73,7 @@ public class DataPointsParser {
           reader.beginArray();
 
           while (reader.hasNext()) {
+
             NewMetric metric = parseMetric(reader);
             validateAndAddDataPoints(metric, validationErrors, metricCount);
             metricCount++;
@@ -137,15 +136,15 @@ public class DataPointsParser {
     return validationErrors;
   }
 
-  private static String createTimeSeriesSql(String seriesPath, String type) {
+  private static String createTimeSeriesSql(String seriesPath, DataType type) {
     String datatype;
     String encoding;
     switch (type) {
-      case "long":
-        datatype = "INT64";
+      case LONG:
+        datatype = "INT32";
         encoding = INT64_ENCODING;
         break;
-      case "double":
+      case DOUBLE:
         datatype = "DOUBLE";
         encoding = DOUBLE_ENCODING;
         break;
@@ -158,27 +157,27 @@ public class DataPointsParser {
             datatype, encoding);
   }
 
-  public void createTimeSeries() throws SQLException {
+  private void createTimeSeries() throws SQLException {
     try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<String, String> entry : seriesPaths.entrySet()) {
+      for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
         statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
       }
       statement.executeBatch();
     }
   }
 
-  public void sendMetricsData() throws SQLException {
+  private void sendMetricsData() throws SQLException {
     long start = 0;
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
     try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<String, Map<String, String>> entry : tableMap.entrySet()) {
+      for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
         StringBuilder sqlBuilder = new StringBuilder();
         StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
         StringBuilder valuePartBuilder = new StringBuilder(" values(");
-        String timestamp = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[0];
-        String path = entry.getKey().split(TABLE_MAP_KEY_SPLIT)[1];
+        long timestamp = entry.getKey().getTimestamp();
+        String path = entry.getKey().getDevice();
         String sqlPrefix = String
             .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
         valuePartBuilder.append(timestamp);
@@ -222,7 +221,7 @@ public class DataPointsParser {
    * ValidationErrors
    */
   public ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
-      String type, Long timestamp, String value) throws SQLException {
+      DataType type, Long timestamp, String value) throws SQLException {
     ValidationErrors validationErrors = new ValidationErrors();
     if (null == tags) {
       LOGGER.error("metric {} have no tag", name);
@@ -232,7 +231,7 @@ public class DataPointsParser {
 
     HashMap<Integer, String> orderTagKeyMap = MetricsManager.getMapping(name, tags);
 
-    if (type.equals("string")) {
+    if (type.equals(DataType.STRING)) {
       value = String.format("\"%s\"", value);
     }
 
@@ -242,8 +241,7 @@ public class DataPointsParser {
     seriesPaths
         .put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name),
             type);
-
-    String tableMapKey = timestamp + TABLE_MAP_KEY_SPLIT + path;
+    TimestampDevicePair tableMapKey = new TimestampDevicePair(timestamp, path);
     if (tableMap.containsKey(tableMapKey)) {
       tableMap.get(tableMapKey).put(name, value);
     } else {
@@ -300,7 +298,7 @@ public class DataPointsParser {
       ImmutableSortedMap<String, String> tags = ImmutableSortedMap.copyOf(metric.getTags());
 
       if (metric.getTimestamp() != null && metric.getValue() != null) {
-        String type = null;
+        DataType type = null;
         try {
           type = findType(metric.getValue());
         } catch (ValidationException e) {
@@ -344,9 +342,9 @@ public class DataPointsParser {
               continue;
             }
 
-            String type = null;
+            DataType type = null;
             if (dataPoint.length > 2) {
-              type = dataPoint[2].getAsString();
+              type = toEnumType(dataPoint[2].getAsString());
             }
 
             if (!Validator
@@ -385,7 +383,20 @@ public class DataPointsParser {
     return !validationErrors.hasErrors();
   }
 
-  private String findType(JsonElement value) throws ValidationException {
+  private DataType toEnumType(String s) {
+    switch (s) {
+      case "string":
+        return DataType.STRING;
+      case "double":
+        return DataType.DOUBLE;
+      case "long":
+        return DataType.LONG;
+      default:
+        return null;
+    }
+  }
+
+  private DataType findType(JsonElement value) throws ValidationException {
     if (!value.isJsonPrimitive()) {
       throw new ValidationException("value is an invalid type");
     }
@@ -396,13 +407,19 @@ public class DataPointsParser {
       String v = value.getAsString();
 
       if (!v.contains(".")) {
-        return "long";
+        return DataType.LONG;
       } else {
-        return "double";
+        return DataType.DOUBLE;
       }
     } else {
-      return "string";
+      return DataType.STRING;
     }
+  }
+
+  public enum DataType {
+    LONG,
+    DOUBLE,
+    STRING,
   }
 
   private static class Context {
