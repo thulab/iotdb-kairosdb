@@ -28,7 +28,7 @@ public class TransToTsfile {
           String header = csvReader.readLine();
           String[] sensorFull = Arrays.copyOfRange(header.split(","), 1, header.split(",").length);
           ArrayList<String> sensorList = new ArrayList<>(Arrays.asList(sensorFull));
-          String device = sensorList.get(1).substring(0, sensorList.get(1).lastIndexOf('.'));
+          String device = sensorList.get(0).substring(0, sensorList.get(0).lastIndexOf('.'));
           for (int i = 0; i < sensorList.size(); i++) {
             sensorList.set(i, sensorList.get(i).replace(device, "").substring(1));
           }
