@@ -57,9 +57,9 @@ public class TransToTsfile {
                 }
               } else if (points[i].matches(floatRegex)) {
                 if (tsDataTypes.get(i) == null) {
-                  tsDataTypes.set(i, TSDataType.DOUBLE);
+                  tsDataTypes.set(i, TSDataType.FLOAT);
                   tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                      TSDataType.DOUBLE, TSEncoding.GORILLA));
+                      TSDataType.FLOAT, TSEncoding.GORILLA));
                   DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
                       Float.parseFloat(points[i]));
                   tsRecord.addTuple(floatPoint);
