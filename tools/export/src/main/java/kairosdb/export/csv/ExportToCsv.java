@@ -1,10 +1,16 @@
 package kairosdb.export.csv;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -46,6 +52,8 @@ public class ExportToCsv {
   //private static final Logger LOGGER = LoggerFactory.getLogger(ExportToCsv.class);
   private static HttpClient client;
   private static final String STORAGE_GROUP_PREFIX = "group_";
+  private static final String DIR_NAME = "%s_%s_%s_";
+  private static final String CSV_FILE_SUFFIX = ".csv";
   private static final String CSV_FILE_NAME = "%s_%s_%s_%d.csv";
   private static final String TSFILE_FILE_NAME = "%s_%s_%s_%d.tsfile";
   private static int storageGroupSize;
@@ -57,6 +65,9 @@ public class ExportToCsv {
   private static long endTime;
   private static String csvPath;
   private static String tsFilePath;
+  private static int column;
+  private static String[] header;
+  private static String dirAbsolutePath;
 
 
   public static void main(String[] args) {
@@ -68,7 +79,15 @@ public class ExportToCsv {
     config = ConfigDescriptor.getInstance().getConfig();
     storageGroupSize = config.STORAGE_GROUP_SIZE;
     trainNumber = config.MACHINE_ID;
-    metrics = config.METRIC_LIST.split(",");
+    column = config.COLUMN;
+    header = config.METRIC_LIST.split(",");
+    int column_loop = (int) Math.ceil((float) config.METRIC_LIST.split(",").length / column);
+    String dirPath = String
+        .format(DIR_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME);
+    dirAbsolutePath = config.EXPORT_FILE_DIR + File.separator + dirPath;
+    if (!new File(dirAbsolutePath).exists()) {
+      new File(dirAbsolutePath).mkdir();
+    }
 
     boolean writeTest = false;
     boolean show = false;
@@ -102,24 +121,44 @@ public class ExportToCsv {
       //LOGGER.info("开始查询KairosDB的数据...");
       System.out.println("开始查询KairosDB的数据...");
       long start = System.currentTimeMillis();
-      loadAllMetricsOfOneTrain();
-      long loadElapse = System.currentTimeMillis() - start;
-      start = System.currentTimeMillis();
-      exportDataTable();
-      long exportCsvElapse = System.currentTimeMillis() - start;
+      long loadElapse = 0;
+      long exportCsvElapse = 0;
+      for (int i = 0; i < column_loop; i++) {
+        if ((i + 1) * column > header.length) {
+          metrics = Arrays.copyOfRange(header, i * column, header.length);
+        } else {
+          metrics = Arrays.copyOfRange(header, i * column, (i + 1) * column);
+        }
+        start = System.currentTimeMillis();
+        loadAllMetricsOfOneTrain();
+        loadElapse += System.currentTimeMillis() - start;
+
+        start = System.currentTimeMillis();
+        exportDataTable(i);
+        exportCsvElapse += System.currentTimeMillis() - start;
+      }
+      System.out.println("开始合并中间结果CSV");
+      String csvFileName = concatFiles(dirAbsolutePath);
       System.out.println("开始转换CSV文件为TsFile文件...");
       start = System.currentTimeMillis();
-      TransToTsfile.transToTsfile(csvPath, tsFilePath);
+      tsFilePath = config.EXPORT_FILE_DIR + File.separator + String
+          .format(TSFILE_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
+              metrics.length);
+      TransToTsfile.transToTsfile(csvFileName, tsFilePath);
       long exportTsFileElapse = System.currentTimeMillis() - start;
       System.out.println(
           "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms, "
               + "CSV转换为TsFile耗时 " + exportTsFileElapse + " ms");
+      for (File file : new File(dirAbsolutePath).listFiles()) {
+        file.delete();
+      }
+      new File(dirAbsolutePath).delete();
     } else {
       System.out.println("必须指定导出数据的起止时间！");
       //LOGGER.error("必须指定导出数据的起止时间！");
     }
 
-    if(show) {
+    if (show) {
       try {
         readTsfile();
       } catch (IOException e) {
@@ -211,7 +250,6 @@ public class ExportToCsv {
   }
 
 
-
   private static void loadAllMetricsOfOneTrain() {
     QueryBuilder builder = QueryBuilder.getInstance();
     builder.setStart(new Date(startTime))
@@ -267,21 +305,16 @@ public class ExportToCsv {
     return String.format(PATH_TEMPLATE, group, devicePath, sensor);
   }
 
-  private static void exportDataTable() {
+  private static void exportDataTable(int i) {
 
-    String csvFileName = String
-        .format(CSV_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
-            metrics.length);
-    String path = config.EXPORT_FILE_DIR + File.separator + csvFileName;
-    csvPath = path;
-    tsFilePath = config.EXPORT_FILE_DIR + File.separator + String
-        .format(TSFILE_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
-            metrics.length);
-    File file = new File(path);
+    String csvFileName = dirAbsolutePath + File.separator + i + CSV_FILE_SUFFIX;
+
+    File file = new File(csvFileName);
 
     //LOGGER.info("正在导出{}列, {}行数据到 {} ...", metrics.length, dataTable.size(), path);
     System.out
-        .println(String.format("正在导出%d列, %d行数据到 %s ...", metrics.length, dataTable.size(), path));
+        .println(
+            String.format("正在导出%d列, %d行数据到 %s ...", metrics.length, dataTable.size(), csvFileName));
     int count = 0;
     int stage = dataTable.size() / 20;
     try {
@@ -323,6 +356,7 @@ public class ExportToCsv {
           }
         }
       }
+      dataTable = new LinkedHashMap<>();
     } catch (IOException e) {
 //      LOGGER.error("KairosDB数据导出为CSV文件失败", e);
       System.out.println("KairosDB数据导出为CSV文件失败");
@@ -346,6 +380,38 @@ public class ExportToCsv {
       System.out.println("关闭KairosDB客户端失败");
       e.printStackTrace();
     }
+  }
+
+  public static String concatFiles(String dirPath) {
+    File[] csvFiles = new File(dirPath).listFiles();
+    String csvFileName = String
+        .format(CSV_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
+            header.length);
+    csvFileName = config.EXPORT_FILE_DIR + File.separator + csvFileName;
+    ArrayList<BufferedReader> fileReaders = new ArrayList<>();
+    for (File csvFile : csvFiles) {
+      try {
+        fileReaders.add(new BufferedReader(new FileReader(csvFile)));
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+      }
+    }
+    String line = null;
+    try (BufferedWriter finalCsv = new BufferedWriter(new FileWriter(new File(csvFileName)))) {
+      while ((line = fileReaders.get(0).readLine()) != null) {
+        finalCsv.write(line);
+        if (fileReaders.size() > 1) {
+          for (int i = 1; i < fileReaders.size(); i++) {
+            finalCsv.write(",");
+            finalCsv.write(fileReaders.get(i).readLine().substring(line.indexOf(",") + 1));
+          }
+        }
+        finalCsv.write("\n");
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return csvFileName;
   }
 
 }

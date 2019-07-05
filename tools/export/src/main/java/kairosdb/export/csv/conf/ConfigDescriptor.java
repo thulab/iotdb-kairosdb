@@ -41,13 +41,16 @@ public class ConfigDescriptor {
       Properties properties = new Properties();
       try {
         properties.load(inputStream);
-        config.KAIROSDB_BASE_URL = properties.getProperty("KAIROSDB_BASE_URL", config.KAIROSDB_BASE_URL);
+        config.KAIROSDB_BASE_URL = properties
+            .getProperty("KAIROSDB_BASE_URL", config.KAIROSDB_BASE_URL);
         config.MACHINE_ID = properties.getProperty("MACHINE_ID", config.MACHINE_ID);
         config.METRIC_LIST = properties.getProperty("METRIC_LIST", config.METRIC_LIST);
         config.START_TIME = properties.getProperty("START_TIME", config.START_TIME);
         config.ENDED_TIME = properties.getProperty("ENDED_TIME", config.ENDED_TIME);
         config.EXPORT_FILE_DIR = properties.getProperty("EXPORT_FILE_DIR", config.EXPORT_FILE_DIR);
-        config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "10"));
+        config.COLUMN = Integer.parseInt(properties.getProperty("COLUMN", "100"));
+        config.STORAGE_GROUP_SIZE = Integer
+            .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "10"));
       } catch (IOException e) {
         //LOGGER.error("load properties error: ", e);
       }
@@ -62,6 +65,7 @@ public class ConfigDescriptor {
   }
 
   private static class ConfigDescriptorHolder {
+
     private static final ConfigDescriptor INSTANCE = new ConfigDescriptor();
   }
 }
