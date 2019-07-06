@@ -19,73 +19,77 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TransToTsfile {
 
-  public static void transToTsfile(String csvPath, String tsPath) {
+  public static void transToTsfile(String dirPath, String tsPath) {
     try {
       File f = new File(tsPath);
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-        try (BufferedReader csvReader = new BufferedReader(new FileReader(csvPath))) {
-          String header = csvReader.readLine();
-          String[] sensorFull = Arrays.copyOfRange(header.split(","), 1, header.split(",").length);
-          ArrayList<String> sensorList = new ArrayList<>(Arrays.asList(sensorFull));
-          String device = sensorList.get(0).substring(0, sensorList.get(0).lastIndexOf('.'));
-          for (int i = 0; i < sensorList.size(); i++) {
-            sensorList.set(i, sensorList.get(i).replace(device, "").substring(1));
-          }
-          List<TSDataType> tsDataTypes = Arrays.asList(new TSDataType[sensorList.size()]);
-          String intRegex = "[0-9]+";
-          String floatRegex = "[0-9]+.[0-9]+";
-          String line;
-          while ((line = csvReader.readLine()) != null) {
-            // construct TSRecord
-            long time = Long.parseLong(line.split(",")[0]);
-            TSRecord tsRecord = new TSRecord(time, device);
-            String[] points = Arrays.copyOfRange(line.split(","), 1, line.split(",").length);
-            for (int i = 0; i < points.length; i++) {
-              if (points[i].matches(intRegex)) {
-                if (tsDataTypes.get(i) == null) {
-                  tsDataTypes.set(i, TSDataType.INT32);
-                  tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                      TSDataType.INT32, TSEncoding.TS_2DIFF));
-                  DataPoint intPoint = new IntDataPoint(sensorList.get(i),
-                      Integer.parseInt(points[i]));
-                  tsRecord.addTuple(intPoint);
-                } else {
-                  DataPoint intPoint = new IntDataPoint(sensorList.get(i),
-                      Integer.parseInt(points[i]));
-                  tsRecord.addTuple(intPoint);
-                }
-              } else if (points[i].matches(floatRegex)) {
-                if (tsDataTypes.get(i) == null) {
-                  tsDataTypes.set(i, TSDataType.FLOAT);
-                  tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                      TSDataType.FLOAT, TSEncoding.GORILLA));
-                  DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
-                      Float.parseFloat(points[i]));
-                  tsRecord.addTuple(floatPoint);
-                } else {
-                  DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
-                      Float.parseFloat(points[i]));
-                  tsRecord.addTuple(floatPoint);
-                }
-              } else {
-                if (!points[i].equals("")) {
+        File[] csvFiles = new File(dirPath).listFiles();
+        for (File csvFile : csvFiles) {
+          try (BufferedReader csvReader = new BufferedReader(new FileReader(csvFile))) {
+            String header = csvReader.readLine();
+            String[] sensorFull = Arrays
+                .copyOfRange(header.split(","), 1, header.split(",").length);
+            ArrayList<String> sensorList = new ArrayList<>(Arrays.asList(sensorFull));
+            String device = sensorList.get(0).substring(0, sensorList.get(0).lastIndexOf('.'));
+            for (int i = 0; i < sensorList.size(); i++) {
+              sensorList.set(i, sensorList.get(i).replace(device, "").substring(1));
+            }
+            List<TSDataType> tsDataTypes = Arrays.asList(new TSDataType[sensorList.size()]);
+            String intRegex = "[0-9]+";
+            String floatRegex = "[0-9]+.[0-9]+";
+            String line;
+            while ((line = csvReader.readLine()) != null) {
+              // construct TSRecord
+              long time = Long.parseLong(line.split(",")[0]);
+              TSRecord tsRecord = new TSRecord(time, device);
+              String[] points = Arrays.copyOfRange(line.split(","), 1, line.split(",").length);
+              for (int i = 0; i < points.length; i++) {
+                if (points[i].matches(intRegex)) {
                   if (tsDataTypes.get(i) == null) {
-                    tsDataTypes.set(i, TSDataType.TEXT);
+                    tsDataTypes.set(i, TSDataType.INT32);
                     tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                        TSDataType.TEXT, TSEncoding.PLAIN));
-                    DataPoint textPoint = new StringDataPoint(sensorList.get(i),
-                        Binary.valueOf(points[i]));
-                    tsRecord.addTuple(textPoint);
+                        TSDataType.INT32, TSEncoding.TS_2DIFF));
+                    DataPoint intPoint = new IntDataPoint(sensorList.get(i),
+                        Integer.parseInt(points[i]));
+                    tsRecord.addTuple(intPoint);
                   } else {
-                    DataPoint textPoint = new StringDataPoint(sensorList.get(i),
-                        Binary.valueOf(points[i]));
-                    tsRecord.addTuple(textPoint);
+                    DataPoint intPoint = new IntDataPoint(sensorList.get(i),
+                        Integer.parseInt(points[i]));
+                    tsRecord.addTuple(intPoint);
+                  }
+                } else if (points[i].matches(floatRegex)) {
+                  if (tsDataTypes.get(i) == null) {
+                    tsDataTypes.set(i, TSDataType.FLOAT);
+                    tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+                        TSDataType.FLOAT, TSEncoding.GORILLA));
+                    DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
+                        Float.parseFloat(points[i]));
+                    tsRecord.addTuple(floatPoint);
+                  } else {
+                    DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
+                        Float.parseFloat(points[i]));
+                    tsRecord.addTuple(floatPoint);
+                  }
+                } else {
+                  if (!points[i].equals("")) {
+                    if (tsDataTypes.get(i) == null) {
+                      tsDataTypes.set(i, TSDataType.TEXT);
+                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+                          TSDataType.TEXT, TSEncoding.PLAIN));
+                      DataPoint textPoint = new StringDataPoint(sensorList.get(i),
+                          Binary.valueOf(points[i]));
+                      tsRecord.addTuple(textPoint);
+                    } else {
+                      DataPoint textPoint = new StringDataPoint(sensorList.get(i),
+                          Binary.valueOf(points[i]));
+                      tsRecord.addTuple(textPoint);
+                    }
                   }
                 }
               }
+              tsFileWriter.write(tsRecord);
             }
-            tsFileWriter.write(tsRecord);
           }
         }
       }

@@ -63,7 +63,6 @@ public class ExportToCsv {
   private static String trainNumber;
   private static long startTime;
   private static long endTime;
-  private static String csvPath;
   private static String tsFilePath;
   private static int column;
   private static String[] header;
@@ -137,14 +136,12 @@ public class ExportToCsv {
         exportDataTable(i);
         exportCsvElapse += System.currentTimeMillis() - start;
       }
-      System.out.println("开始合并中间结果CSV");
-      String csvFileName = concatFiles(dirAbsolutePath);
       System.out.println("开始转换CSV文件为TsFile文件...");
       start = System.currentTimeMillis();
       tsFilePath = config.EXPORT_FILE_DIR + File.separator + String
           .format(TSFILE_FILE_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME,
-              metrics.length);
-      TransToTsfile.transToTsfile(csvFileName, tsFilePath);
+              header.length);
+      TransToTsfile.transToTsfile(dirAbsolutePath, tsFilePath);
       long exportTsFileElapse = System.currentTimeMillis() - start;
       System.out.println(
           "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms, "
