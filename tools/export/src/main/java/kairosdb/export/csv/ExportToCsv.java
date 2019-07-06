@@ -146,10 +146,10 @@ public class ExportToCsv {
       System.out.println(
           "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms, "
               + "CSV转换为TsFile耗时 " + exportTsFileElapse + " ms");
-      for (File file : new File(dirAbsolutePath).listFiles()) {
-        file.delete();
-      }
-      new File(dirAbsolutePath).delete();
+//      for (File file : new File(dirAbsolutePath).listFiles()) {
+//        file.delete();
+//      }
+//      new File(dirAbsolutePath).delete();
     } else {
       System.out.println("必须指定导出数据的起止时间！");
       //LOGGER.error("必须指定导出数据的起止时间！");
