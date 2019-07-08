@@ -73,6 +73,10 @@ $ mvn clean install -Dmaven.test.skip=true
 ```
 $ nohup ./iotdb/iotdb/bin/start-server.sh &
 ```
+4. 关闭 IoTDB[仅用于当需要操作关闭IoTDB时]
+```
+$ ./iotdb/iotdb/bin/stop-server.sh
+```
 
 ### 1.3 IKR 部署
 
@@ -102,7 +106,10 @@ $ vim conf/config.properties
 ```
 $ nohup ./start-rest-service.sh &
 ```
-
+5. 关闭 IKR[仅用于当需要操作关闭IKR时]
+```
+$ ./stop-rest-service-daemon.sh
+```
 
 ## 2 测试用例
 
@@ -3262,7 +3269,7 @@ $ curl http://[host]:[port]/api/v1/rollups/[id]
 }
 ```
 
-####  2.5.4 删除Roll-up任务
+####  2.5.4 更新Roll-up任务
 ```
 http://[host]:[port]/api/v1/rollups/{id}
 ```
@@ -3326,7 +3333,7 @@ $ curl -XPUT -H'Content-Type: application/json' -d @update_rollup.json http://[h
 ```
 输出间隔变为3秒，name变为MyRollup1Update，与更新的JSON中指定的一致，说明更新成功。
 
-####  2.5.5 更新Roll-up任务
+####  2.5.5 删除Roll-up任务
 ```
 $ curl -XDELETE http://[host]:[port]/api/v1/rollups/[id]
 ```
