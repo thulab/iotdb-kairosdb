@@ -1151,7 +1151,7 @@ $ vim min_query.json
       "name": "test_query",
       "aggregators": [
         {
-          "name": "max",
+          "name": "min",
           "sampling": {
             "value": 2,
             "unit": "seconds"
@@ -3264,14 +3264,6 @@ $ curl http://[host]:[port]/api/v1/rollups/[id]
 
 ####  2.5.4 删除Roll-up任务
 ```
-$ curl -XDELETE http://[host]:[port]/api/v1/rollups/[id]
-```
-执行如上命令即可删除对应id的rollup任务
-观察IKR日志发现对应rollup任务的定时日志已经停止输出，说明rollup任务已经成功删除
-
-####  2.5.5 更新Roll-up任务
-更新和创建方法类似，区别是更新的URL中包含了更新的rollup任务对应的id，以及使用的请求方法是PUT
-```
 http://[host]:[port]/api/v1/rollups/{id}
 ```
 
@@ -3334,6 +3326,14 @@ $ curl -XPUT -H'Content-Type: application/json' -d @update_rollup.json http://[h
 ```
 输出间隔变为3秒，name变为MyRollup1Update，与更新的JSON中指定的一致，说明更新成功。
 
+####  2.5.5 更新Roll-up任务
+```
+$ curl -XDELETE http://[host]:[port]/api/v1/rollups/[id]
+```
+执行如上命令即可删除对应id的rollup任务
+观察IKR日志发现对应rollup任务的定时日志已经停止输出，说明rollup任务已经成功删除
+更新和创建方法类似，区别是更新的URL中包含了更新的rollup任务对应的id，以及使用的请求方法是PUT
+
 ###  2.6 健康检查功能测试用例
 1. 向 IKR 服务发送status健康检查请求
 ```
@@ -3366,10 +3366,16 @@ $ curl http://[host]:[port]/api/v1/metricnames
 
 2. 向 IKR 服务发送查询以指定字符串开头的metric name的请求
 ```
+# Mac
 $ curl http://[host]:[port]/api/v1/metricnames\?prefix=[prefix]
+# Ubuntu
+$ curl http://[host]:[port]/api/v1/metricnames/?prefix=[prefix]
 ```
 将[prefix]替换为ar，表示查询以ar开头的metric
 ```
+# Mac
+$ curl http://[host]:[port]/api/v1/metricnames\?prefix=ar
+# Ubuntu
 $ curl http://[host]:[port]/api/v1/metricnames\?prefix=ar
 ```
 返回类似以下结果：
