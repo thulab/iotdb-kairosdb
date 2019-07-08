@@ -46,8 +46,8 @@ run  ```> ./start-rest-service.sh```
     - [2.5.1 准备数据](#251-准备数据)            
     - [2.5.2 创建Roll-up任务](#252-创建roll-up任务)            
     - [2.5.3 查询Roll-up任务](#253-查询roll-up任务)            
-    - [2.5.4 删除Roll-up任务](#254-删除roll-up任务)            
-    - [2.5.5 更新Roll-up任务](#255-更新roll-up任务)        
+    - [2.5.4 更新Roll-up任务](#254-更新Roll-up任务)            
+    - [2.5.5 删除Roll-up任务](#255-删除Roll-up任务)        
   - [2.6 健康检查功能测试用例](#26-健康检查功能测试用例)        
   - [2.7 查询指标名称功能测试用例](#27-查询指标名称功能测试用例) 
 
@@ -72,6 +72,10 @@ $ mvn clean install -Dmaven.test.skip=true
 3. 后台启动 IoTDB
 ```
 $ nohup ./iotdb/iotdb/bin/start-server.sh &
+```
+4. 关闭 IoTDB[仅用于当需要操作关闭IoTDB时]
+```
+$ ./iotdb/iotdb/bin/stop-server.sh
 ```
 
 ### 1.3 IKR 部署
@@ -102,7 +106,10 @@ $ vim conf/config.properties
 ```
 $ nohup ./start-rest-service.sh &
 ```
-
+5. 关闭 IKR[仅用于当需要操作关闭IKR时]
+```
+$ ./stop-rest-service-daemon.sh
+```
 
 ## 2 测试用例
 
@@ -1151,7 +1158,7 @@ $ vim min_query.json
       "name": "test_query",
       "aggregators": [
         {
-          "name": "max",
+          "name": "min",
           "sampling": {
             "value": 2,
             "unit": "seconds"
@@ -3262,15 +3269,7 @@ $ curl http://[host]:[port]/api/v1/rollups/[id]
 }
 ```
 
-####  2.5.4 删除Roll-up任务
-```
-$ curl -XDELETE http://[host]:[port]/api/v1/rollups/[id]
-```
-执行如上命令即可删除对应id的rollup任务
-观察IKR日志发现对应rollup任务的定时日志已经停止输出，说明rollup任务已经成功删除
-
-####  2.5.5 更新Roll-up任务
-更新和创建方法类似，区别是更新的URL中包含了更新的rollup任务对应的id，以及使用的请求方法是PUT
+####  2.5.4 更新Roll-up任务
 ```
 http://[host]:[port]/api/v1/rollups/{id}
 ```
@@ -3334,6 +3333,14 @@ $ curl -XPUT -H'Content-Type: application/json' -d @update_rollup.json http://[h
 ```
 输出间隔变为3秒，name变为MyRollup1Update，与更新的JSON中指定的一致，说明更新成功。
 
+####  2.5.5 删除Roll-up任务
+```
+$ curl -XDELETE http://[host]:[port]/api/v1/rollups/[id]
+```
+执行如上命令即可删除对应id的rollup任务
+观察IKR日志发现对应rollup任务的定时日志已经停止输出，说明rollup任务已经成功删除
+更新和创建方法类似，区别是更新的URL中包含了更新的rollup任务对应的id，以及使用的请求方法是PUT
+
 ###  2.6 健康检查功能测试用例
 1. 向 IKR 服务发送status健康检查请求
 ```
@@ -3366,10 +3373,16 @@ $ curl http://[host]:[port]/api/v1/metricnames
 
 2. 向 IKR 服务发送查询以指定字符串开头的metric name的请求
 ```
+# Mac
 $ curl http://[host]:[port]/api/v1/metricnames\?prefix=[prefix]
+# Ubuntu
+$ curl http://[host]:[port]/api/v1/metricnames/?prefix=[prefix]
 ```
 将[prefix]替换为ar，表示查询以ar开头的metric
 ```
+# Mac
+$ curl http://[host]:[port]/api/v1/metricnames\?prefix=ar
+# Ubuntu
 $ curl http://[host]:[port]/api/v1/metricnames\?prefix=ar
 ```
 返回类似以下结果：
