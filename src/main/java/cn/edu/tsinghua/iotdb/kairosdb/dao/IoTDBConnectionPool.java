@@ -21,12 +21,12 @@ public class IoTDBConnectionPool {
   private List<Connection> connections = new ArrayList<>();
 
   private IoTDBConnectionPool() {
+    try {
+      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    } catch (ClassNotFoundException e) {
+      LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
+    }
     for (int i = 0; i < config.CONNECTION_NUM; i++) {
-      try {
-        Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      } catch (ClassNotFoundException e) {
-        LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
-      }
       try {
         Connection con = DriverManager
             .getConnection(String.format(URL, config.HOST, config.PORT), "root", "root");

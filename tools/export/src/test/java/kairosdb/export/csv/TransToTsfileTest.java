@@ -30,8 +30,8 @@ public class TransToTsfileTest {
         "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.tsfile");
   }
   @Test
-  public void readTsfile(String file) throws IOException {
-    String filePath = "/Users/liurui/Desktop/temp/t1701_2019-6-21T00:00:00+08:00_2019-6-22T00:00:00+08:00_3.tsfile";
+  public void readTsfile() throws IOException {
+    String filePath = "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/SETest_ZC02_2019-1-1T00:00:00+08:00_2019-1-2T00:00:00+08:00_4.tsfile";
     TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
     System.out.println("file length: " + new File(filePath).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
@@ -54,7 +54,7 @@ public class TransToTsfileTest {
           ChunkHeader header = reader.readChunkHeader();
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder),
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeEncoder),
               TSDataType.INT64);
           Decoder valueDecoder = Decoder
               .getDecoderByType(header.getEncodingType(), header.getDataType());
