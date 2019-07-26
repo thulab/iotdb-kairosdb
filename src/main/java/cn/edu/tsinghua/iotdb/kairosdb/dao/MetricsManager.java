@@ -84,7 +84,7 @@ public class MetricsManager {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
           Integer pos = rs.getInt(4);
-          if(tagOrder.containsKey(name)){
+          if (tagOrder.containsKey(name)) {
             tagOrder.get(name).put(tagName, pos);
           } else {
             Map<String, Integer> map = new HashMap<>();
@@ -103,7 +103,8 @@ public class MetricsManager {
           storageGroupSize = rs.getInt(2);
         } else {
           LOGGER.error("Database metadata has broken, please reload a new database.");
-          System.exit(1);
+//          System.exit(1);
+          storageGroupSize = 30;
         }
 
         // Read the rollup tasks
@@ -152,7 +153,8 @@ public class MetricsManager {
     } finally {
       close(statement);
     }
-    LOGGER.info("Finish loading system data.");
+//    LOGGER.info("Finish loading system data.");
+
   }
 
   /**
