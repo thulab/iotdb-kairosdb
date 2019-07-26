@@ -367,7 +367,7 @@ public class MetricsManager {
           "MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
     }
-    int hashCode = path.hashCode();
+    int hashCode = path.split("\\.")[1].hashCode();
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 
