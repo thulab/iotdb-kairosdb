@@ -179,6 +179,7 @@ public class QueryExecutor {
 
     Connection connection = IoTDBUtil.getConnection();
     try (Statement statement = connection.createStatement()) {
+      LOGGER.info("Send query SQL: {}", sql);
       statement.execute(sql);
       ResultSet rs = statement.getResultSet();
       ResultSetMetaData metaData = rs.getMetaData();
