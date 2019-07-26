@@ -346,6 +346,7 @@ public class MetricsManager {
       pathBuilder.append(".");
       if (null == path) {
         pathBuilder.append("d");
+        counter++;
       } else {
         pathBuilder.append(path);
         counter++;
