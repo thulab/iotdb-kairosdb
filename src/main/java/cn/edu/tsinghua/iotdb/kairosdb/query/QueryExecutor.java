@@ -17,6 +17,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -86,24 +87,33 @@ public class QueryExecutor {
 
       if (getMetricMapping(metric)) {
         String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-
-        try (Connection conn = IoTDBUtil.getNewConnection()) {
-          Statement statement = conn.createStatement();
-          statement.execute(querySql);
-
-          ResultSet rs = statement.getResultSet();
-
-          List<String> sqlList = buildDeleteSql(rs);
-          statement = conn.createStatement();
-          for (String sql : sqlList) {
-            statement.addBatch(sql);
-          }
-          statement.executeBatch();
-
-        } catch (SQLException | ClassNotFoundException e) {
-          LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
+        List<Connection> connections = null;
+        try {
+          connections = IoTDBUtil.getNewConnection();
+        } catch (SQLException e) {
+          e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
         }
+        for (Connection conn : connections) {
+          try {
+            Statement statement = conn.createStatement();
+            statement.execute(querySql);
 
+            ResultSet rs = statement.getResultSet();
+
+            List<String> sqlList = buildDeleteSql(rs);
+            statement = conn.createStatement();
+            for (String sql : sqlList) {
+              statement.addBatch(sql);
+            }
+            statement.executeBatch();
+
+          } catch (SQLException e) {
+            LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
+          }
+
+        }
       }
 
     }
@@ -177,7 +187,14 @@ public class QueryExecutor {
       return sampleSize;
     }
 
-    Connection connection = IoTDBUtil.getConnection();
+    Connection connection = null;
+    try {
+      connection = IoTDBUtil.getConnection().get(0);
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
     try (Statement statement = connection.createStatement()) {
       LOGGER.info("Send query SQL: {}", sql);
       statement.execute(sql);
@@ -189,7 +206,8 @@ public class QueryExecutor {
         long timestamp = rs.getLong(1);
         for (int i = 2; i <= columnCount; i++) {
           String value = rs.getString(i);
-          if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value.equals("2.147483646E9")) {
+          if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
+              .equals("2.147483646E9")) {
             continue;
           }
           sampleSize++;
@@ -224,7 +242,8 @@ public class QueryExecutor {
     return sampleSize;
   }
 
-  private void getTagValueFromPaths(ResultSetMetaData metaData, boolean[] hasPaths) throws SQLException {
+  private void getTagValueFromPaths(ResultSetMetaData metaData, boolean[] hasPaths)
+      throws SQLException {
     tmpTags = new HashMap<>();
     int columnCount = metaData.getColumnCount();
     for (int i = 2; i <= columnCount; i++) {
@@ -252,8 +271,8 @@ public class QueryExecutor {
         pos2tag.put(entry.getValue(), entry.getKey());
       }
 
-      for (Map.Entry<Integer, List<String>> entry :tmpTags.entrySet()) {
-        metricValueResult.setTag(pos2tag.get(entry.getKey()-2), entry.getValue());
+      for (Map.Entry<Integer, List<String>> entry : tmpTags.entrySet()) {
+        metricValueResult.setTag(pos2tag.get(entry.getKey() - 2), entry.getValue());
       }
     }
   }

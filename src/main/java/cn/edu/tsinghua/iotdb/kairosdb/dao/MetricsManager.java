@@ -64,18 +64,18 @@ public class MetricsManager {
    * load out the content. If the storage groups of metadata don't exist, create all of the
    * TIMESERIES for persistent.
    */
-  public static void loadMetadata() {
+  public static void loadMetadata(Connection connection) {
     LOGGER.info("Start loading system data.");
     Statement statement = null;
     try {
       // Judge whether the TIMESERIES(root.SYSTEM.TAG_NAME_INFO) has been created
-      statement = IoTDBUtil.getConnection().createStatement();
+      statement = connection.createStatement();
       statement.execute(String.format("SHOW TIMESERIES root.%s", "SYSTEM"));
       ResultSet rs = statement.getResultSet();
       if (rs.next()) {
         /* Since the TIMESERIES are created
          * Recover the tag_key-potion mapping */
-        statement = IoTDBUtil.getConnection().createStatement();
+        statement = connection.createStatement();
         statement.execute(String
             .format("SELECT metric_name,tag_name,tag_order FROM %s", "root.SYSTEM.TAG_NAME_INFO"));
         rs = statement.getResultSet();
@@ -182,10 +182,17 @@ public class MetricsManager {
         datatype = "TEXT";
         encoding = TEXT_ENCODING;
     }
-    try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
-      statement.execute(String
-          .format("CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-              getStorageGroupName(path), path, metricName, datatype, encoding));
+    try {
+      for (Connection conn : IoTDBUtil.getConnection()) {
+        try (Statement statement = conn.createStatement()) {
+          statement.execute(String
+              .format(
+                  "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
+                  getStorageGroupName(path), path, metricName, datatype, encoding));
+        }
+      }
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
     }
   }
 
@@ -198,49 +205,52 @@ public class MetricsManager {
   }
 
   public static void addDataPoints(MetricResult metric, String metricName) {
-    try (Connection conn = IoTDBUtil.getNewConnection()) {
+    try {
+      List<Connection> connections = IoTDBUtil.getNewConnection();
+      for (Connection conn : connections) {
+        for (MetricValueResult valueResult : metric.getResults()) {
+          if ((valueResult.isTextType() && metric.getResults().size() > 1)
+              || valueResult.getDatapoints() == null
+              || valueResult.getDatapoints().get(0) == null) {
+            continue;
+          }
+          Map<String, String> tag = new HashMap<>();
+          tag.put("saved_from", valueResult.getName());
 
-      for (MetricValueResult valueResult : metric.getResults()) {
-        if ((valueResult.isTextType() && metric.getResults().size() > 1)
-            || valueResult.getDatapoints() == null || valueResult.getDatapoints().get(0) == null) {
-          continue;
+          HashMap<Integer, String> orderTagKeyMap = getMapping(metricName, tag);
+
+          String path = generatePath(tag, orderTagKeyMap);
+
+          Statement statement = conn.createStatement();
+
+          for (QueryDataPoint point : valueResult.getDatapoints()) {
+            String insertingSql = String
+                .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
+                    getStorageGroupName(path),
+                    path, metricName, point.getTimestamp(), point.getAsString());
+            statement.addBatch(insertingSql);
+          }
+
+          String type;
+          switch (valueResult.getDatapoints().get(0).getType()) {
+            case Types.INTEGER:
+              type = "long";
+              break;
+            case Types.DOUBLE:
+              type = "double";
+              break;
+            default:
+              type = "text";
+              break;
+          }
+
+          createNewMetricAndIgnoreErrors(metricName, path, type);
+
+          statement.executeBatch();
+
+          statement.close();
+
         }
-        Map<String, String> tag = new HashMap<>();
-        tag.put("saved_from", valueResult.getName());
-
-        HashMap<Integer, String> orderTagKeyMap = getMapping(metricName, tag);
-
-        String path = generatePath(tag, orderTagKeyMap);
-
-        Statement statement = conn.createStatement();
-
-        for (QueryDataPoint point : valueResult.getDatapoints()) {
-          String insertingSql = String
-              .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
-                  getStorageGroupName(path),
-                  path, metricName, point.getTimestamp(), point.getAsString());
-          statement.addBatch(insertingSql);
-        }
-
-        String type;
-        switch (valueResult.getDatapoints().get(0).getType()) {
-          case Types.INTEGER:
-            type = "long";
-            break;
-          case Types.DOUBLE:
-            type = "double";
-            break;
-          default:
-            type = "text";
-            break;
-        }
-
-        createNewMetricAndIgnoreErrors(metricName, path, type);
-
-        statement.executeBatch();
-
-        statement.close();
-
       }
 
     } catch (SQLException | ClassNotFoundException e) {
@@ -249,30 +259,31 @@ public class MetricsManager {
   }
 
   public static void deleteMetric(String metricName) {
-    try (Connection conn = IoTDBUtil.getNewConnection()) {
+    try {
+      List<Connection> connections = IoTDBUtil.getNewConnection();
+      for (Connection conn : connections) {
+        Statement statement = conn.createStatement();
 
-      Statement statement = conn.createStatement();
+        Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
 
-      Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
-
-      if (mapping == null) {
-        return;
-      }
-
-      int size = mapping.size();
-
-      for (int i = 0; i <= size; i++) {
-        StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.*");
-        builder.append(".");
-        for (int j = 0; j < i; j++) {
-          builder.append("*.");
+        if (mapping == null) {
+          return;
         }
-        builder.append(metricName);
-        executeAndIgnoreException(statement, builder.toString());
+
+        int size = mapping.size();
+
+        for (int i = 0; i <= size; i++) {
+          StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.*");
+          builder.append(".");
+          for (int j = 0; j < i; j++) {
+            builder.append("*.");
+          }
+          builder.append(metricName);
+          executeAndIgnoreException(statement, builder.toString());
+        }
+
+        tagOrder.remove(metricName);
       }
-
-      tagOrder.remove(metricName);
-
     } catch (SQLException | ClassNotFoundException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
@@ -328,10 +339,21 @@ public class MetricsManager {
       String sql = String.format(
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
           index.getAndIncrement(), metricName, entry.getKey(), entry.getValue());
-      try (Statement statement = IoTDBUtil.getConnection().createStatement()) {
-        statement.execute(sql);
+      List<Connection> connections = null;
+      try {
+        connections = IoTDBUtil.getConnection();
       } catch (SQLException e) {
-        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        e.printStackTrace();
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+      }
+      for (Connection conn : connections) {
+        try (Statement statement = conn.createStatement()) {
+          statement.execute(sql);
+        } catch (SQLException e) {
+          LOGGER
+              .error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        }
       }
     }
   }
