@@ -141,7 +141,7 @@ public class DataPointsParser {
     String encoding;
     switch (type) {
       case LONG:
-        datatype = "INT32";
+        datatype = "INT64";
         encoding = INT64_ENCODING;
         break;
       case DOUBLE:

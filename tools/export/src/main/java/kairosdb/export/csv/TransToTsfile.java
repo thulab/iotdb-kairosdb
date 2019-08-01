@@ -47,9 +47,9 @@ public class TransToTsfile {
               for (int i = 0; i < points.length; i++) {
                 if (points[i].matches(intRegex)) {
                   if (tsDataTypes.get(i) == null) {
-                    tsDataTypes.set(i, TSDataType.INT32);
+                    tsDataTypes.set(i, TSDataType.INT64);
                     tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                        TSDataType.INT32, TSEncoding.TS_2DIFF));
+                        TSDataType.INT64, TSEncoding.TS_2DIFF));
                     DataPoint intPoint = new IntDataPoint(sensorList.get(i),
                         Integer.parseInt(points[i]));
                     tsRecord.addTuple(intPoint);
