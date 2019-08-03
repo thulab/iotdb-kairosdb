@@ -210,7 +210,6 @@ public class QueryExecutor {
               LOGGER.error("QueryExecutor.execute: invalid type");
           }
           metricValueResult.addDataPoint(dataPoint);
-          metaData.getColumnType(i);
         }
       }
 
@@ -259,8 +258,8 @@ public class QueryExecutor {
 
   private void addBasicGroupByToResult(
       ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
-    String type = metaData.getColumnTypeName(1);
-    if (type.equals("TEXT")) {
+    int type = metaData.getColumnType(2);
+    if (type == Types.VARCHAR) {
       metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
     } else {
       metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
