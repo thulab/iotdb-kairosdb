@@ -283,12 +283,12 @@ public class QueryExecutor {
 
   private int findType(String string) {
     if (isNumeric(string)) {
-      return Types.VARCHAR;
+      return Types.INTEGER;
     } else {
       if (string.contains(".")) {
         return Types.DOUBLE;
       } else {
-        return Types.INTEGER;
+        return Types.VARCHAR;
       }
     }
   }
