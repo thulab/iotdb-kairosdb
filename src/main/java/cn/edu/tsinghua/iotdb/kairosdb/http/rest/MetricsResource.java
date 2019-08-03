@@ -133,6 +133,8 @@ public class MetricsResource {
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", NO_CACHE)
           .header("Cache-Control", NO_CACHE)
+          .header("Vary","Accept-Encoding, User-Agent")
+          .header("Transfer-Encoding","chunked")
           .header("Expires", 0)
           .entity(entity)
           .build();
