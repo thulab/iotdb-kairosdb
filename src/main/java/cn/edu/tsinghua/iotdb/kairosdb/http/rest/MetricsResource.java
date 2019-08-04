@@ -134,9 +134,9 @@ public class MetricsResource {
           .header("Pragma", NO_CACHE)
           .header("Cache-Control", NO_CACHE)
           .header("Expires", 0)
-          .header("Vary","Accept-Encoding, User-Agent")
-          .header("Transfer-Encoding","chunked")
-          .header("Server","Jetty(8.1.16.v20140903)")
+//          .header("Vary","Accept-Encoding, User-Agent")
+//          .header("Transfer-Encoding","chunked")
+//          .header("Server","Jetty(8.1.16.v20140903)")
           .entity(entity)
           .build();
 

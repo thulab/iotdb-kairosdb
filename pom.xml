@@ -111,6 +111,12 @@
       <artifactId>bval-jsr303</artifactId>
       <version>0.5</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.kairosdb/client -->
+    <!--<dependency>-->
+      <!--<groupId>org.kairosdb</groupId>-->
+      <!--<artifactId>client</artifactId>-->
+      <!--<version>2.3.0</version>-->
+    <!--</dependency>-->
   </dependencies>
 
   <build>
