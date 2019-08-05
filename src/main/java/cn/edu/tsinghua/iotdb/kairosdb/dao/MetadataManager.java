@@ -18,7 +18,7 @@ public class MetadataManager {
 
   private static MetadataManager manager;
 
-  private Connection conn;
+  private List<Connection> connections;
 
   private static final String NULL_STRING = "NULL";
 
@@ -31,7 +31,7 @@ public class MetadataManager {
 
   private MetadataManager() {
     try {
-      conn = IoTDBUtil.getNewConnection();
+      connections = IoTDBUtil.getNewConnection();
     } catch (SQLException | ClassNotFoundException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
@@ -40,23 +40,26 @@ public class MetadataManager {
   public synchronized void addOrUpdateValue(
       String service, String serviceKey, String key, String value)
       throws MetadataException {
-    try (Statement statement = conn.createStatement()) {
-      statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
-      ResultSet rs = statement.getResultSet();
-      if (rs.next()) {
-        statement.execute(new MetadataSqlGenerator().getUpdateSql(rs.getLong(1),
-            service, serviceKey, key, value));
-      } else {
-        statement.execute(new MetadataSqlGenerator().getInsertSql(service, serviceKey, key, value));
+    for (Connection conn : connections) {
+      try (Statement statement = conn.createStatement()) {
+        statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
+        ResultSet rs = statement.getResultSet();
+        if (rs.next()) {
+          statement.execute(new MetadataSqlGenerator().getUpdateSql(rs.getLong(1),
+              service, serviceKey, key, value));
+        } else {
+          statement
+              .execute(new MetadataSqlGenerator().getInsertSql(service, serviceKey, key, value));
+        }
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        throw new MetadataException("Failed to add value");
       }
-    } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-      throw new MetadataException("Failed to add value");
     }
   }
 
   public String getValue(String service, String serviceKey, String key) {
-    try (Statement statement = conn.createStatement()) {
+    try (Statement statement = connections.get(0).createStatement()) {
       statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
       ResultSet rs = statement.getResultSet();
       if (rs.next()) {
@@ -74,7 +77,7 @@ public class MetadataManager {
 
   public List<String> getServiceKeyList(String service) {
     List<String> list = new LinkedList<>();
-    try (Statement statement = conn.createStatement()) {
+    try (Statement statement = connections.get(0).createStatement()) {
       statement.execute(new MetadataSqlGenerator().getQuerySql(service));
       ResultSet rs = statement.getResultSet();
       while (rs.next()) {
@@ -92,7 +95,7 @@ public class MetadataManager {
 
   public List<String> getKeyList(String service, String serviceKey) {
     List<String> list = new LinkedList<>();
-    try (Statement statement = conn.createStatement()) {
+    try (Statement statement = connections.get(0).createStatement()) {
       statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey));
       ResultSet rs = statement.getResultSet();
       while (rs.next()) {
@@ -110,20 +113,23 @@ public class MetadataManager {
 
   public synchronized void deleteValue(String service, String serviceKey, String key)
       throws MetadataException {
-    try (Statement statement = conn.createStatement()) {
-      statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
-      ResultSet rs = statement.getResultSet();
-      if (rs.next()) {
-        statement.execute(new MetadataSqlGenerator().getUpdateSql(rs.getLong(1),
-            NULL_STRING, NULL_STRING, NULL_STRING, NULL_STRING));
+    for (Connection conn : connections) {
+      try (Statement statement = conn.createStatement()) {
+        statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
+        ResultSet rs = statement.getResultSet();
+        if (rs.next()) {
+          statement.execute(new MetadataSqlGenerator().getUpdateSql(rs.getLong(1),
+              NULL_STRING, NULL_STRING, NULL_STRING, NULL_STRING));
+        }
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        throw new MetadataException("Failed to delete value");
       }
-    } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-      throw new MetadataException("Failed to delete value");
     }
   }
 
   private class MetadataSqlGenerator {
+
     MetadataSqlGenerator() {
     }
 
@@ -131,10 +137,11 @@ public class MetadataManager {
       return getUpdateSql(getCurrentTimeStamp(), service, serviceKey, key, value);
     }
 
-    String getUpdateSql(long timestamp, String service, String serviceKey, String key, String value) {
+    String getUpdateSql(long timestamp, String service, String serviceKey, String key,
+        String value) {
       return String.format("insert into root.SYSTEM.METADATA_SERVICE"
-          + "(timestamp, service, service_key, key, key_value) "
-          + "values(%s, \"%s\", \"%s\", \"%s\", \"%s\");",
+              + "(timestamp, service, service_key, key, key_value) "
+              + "values(%s, \"%s\", \"%s\", \"%s\", \"%s\");",
           timestamp, service, serviceKey, key, value);
     }
 

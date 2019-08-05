@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +42,10 @@ public class ConfigDescriptor {
       Properties properties = new Properties();
       try {
         properties.load(inputStream);
-        config.HOST = properties.getProperty("HOST", "127.0.0.1");
-        config.PORT = properties.getProperty("PORT", "6667");
+//        config.HOST = properties.getProperty("HOST", "127.0.0.1");
+//        config.PORT = properties.getProperty("PORT", "6667");
+        String urlList=properties.getProperty("IoTDB_LIST","127.0.0.1:6667");
+        Collections.addAll(config.URL_LIST, urlList.split(","));
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
