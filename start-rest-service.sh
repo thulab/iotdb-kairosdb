@@ -5,7 +5,7 @@ if [ -z "${REST_HOME}" ]; then
 fi
 
 #git pull
-rm -rf lib
-mvn clean package -Dmaven.test.skip=true
+#rm -rf lib
+#mvn clean package -Dmaven.test.skip=true
 cd $REST_HOME/bin
 sh ./startup.sh -cf ../conf/config.properties
