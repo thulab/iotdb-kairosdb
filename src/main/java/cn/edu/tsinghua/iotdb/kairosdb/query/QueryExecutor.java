@@ -179,10 +179,10 @@ public class QueryExecutor {
     StringBuilder sqlBuilder = new StringBuilder("SELECT ");
 
     for (int i =0; i < subffixPaths.size() - 1; i ++ ) {
-      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(i))).append(subffixPaths.get(i)).append(",");
+      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(i))).append(subffixPaths.get(i)).append(".").append(metric.getName()).append(",");
     }
     if (subffixPaths.size() > 0) {
-      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(subffixPaths.size() - 1))).append(subffixPaths.get(subffixPaths.size() - 1 ));
+      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(subffixPaths.size() - 1))).append(subffixPaths.get(subffixPaths.size() - 1 )).append(".").append(metric.getName());
     }
 
     sqlBuilder.append(String.format(" FROM ROOT where time>=%s and time<=%s", startTime, endTime));
@@ -282,8 +282,8 @@ public class QueryExecutor {
           addBasicGroupByToResult(type, metricValueResult);
         }
         return sampleSize;
-      } catch (SQLException e) {
-        LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
+      } catch (Exception e) {
+        LOGGER.error(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()), e);
       } finally {
         iterator.putBack(connection);
         if (config.DEBUG == 5) {
