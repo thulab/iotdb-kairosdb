@@ -13,7 +13,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -62,68 +61,49 @@ public class QueryExecutor {
       start = System.currentTimeMillis();
     }
 
-    Map<String, List<String>> deviceMetrics = new HashMap<>();
+    List<QueryMetric> emptyMetrics = new ArrayList<>();
+    for (QueryMetric metric : query.getQueryMetrics()) {
+      if (!MetricsManager.checkAllTagExisted(metric.getName(), metric.getTags().keySet())) {
+        queryResult.addVoidMetricResult(metric.getName());
+        emptyMetrics.add(metric);
+      }
+    }
+    query.getQueryMetrics().removeAll(emptyMetrics);
 
-    String prefix = "root.*";
-
-
-
+    Map<String, QueryMetric> querMetricMap = new HashMap<>();
 
     for (QueryMetric metric : query.getQueryMetrics()) {
-      long start1 = System.currentTimeMillis();
-      if (MetricsManager.checkAllTagExisted(metric.getName(), metric.getTags().keySet())) {
-        //如果metric和tag都存在
-        long start2 = System.currentTimeMillis();
-        MetricResult metricResult = new MetricResult();
+      querMetricMap.put(metric.getName(), metric);
+    }
 
-        String sql = buildSqlStatement(metric, startTime, endTime);
-        LOGGER.info("Execute SQL: {}." , sql);
-        MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-        if(config.DEBUG == 4) {
-          long elapse = System.currentTimeMillis() - start2;
-          LOGGER.info("2.2.1.1 [build SQL statement and new Result class] of metric={} cost {} ms", metric.getName(), elapse);
-          start2 = System.currentTimeMillis();
-        }
-        metricResult.setSampleSize(getValueResult(sql, metricValueResult));
-        if(config.DEBUG == 4) {
-          long elapse = System.currentTimeMillis() - start2;
-          LOGGER.info("2.2.1.2 [metricResult.setSampleSize(getValueResult(sql, metricValueResult))] of metric={} cost {} ms", metric.getName(), elapse);
-          start2 = System.currentTimeMillis();
-        }
-        setTags(metric.getName(), metricValueResult);
-        if(config.DEBUG == 4) {
-          long elapse = System.currentTimeMillis() - start2;
-          LOGGER.info("2.2.1.3 [setTags(metricValueResult)] of metric={} cost {} ms", metric.getName(), elapse);
-          start2 = System.currentTimeMillis();
-        }
-        if (metricResult.getSampleSize() == 0) {
-          queryResult.addVoidMetricResult(metric.getName());
-        } else {
-          metricResult.addResult(metricValueResult);
+    String sql = buildSqlStatement(query.getQueryMetrics(), startTime, endTime);
 
-          metricResult = doAggregations(metric, metricResult);
+    LOGGER.info("Execute SQL: {}." , sql);
 
-          queryResult.addMetricResult(metricResult);
-          if(config.DEBUG == 4) {
-            long elapse = System.currentTimeMillis() - start2;
-            LOGGER.info("2.2.1.4 [doAggregations] of metric={} cost {} ms", metric.getName(), elapse);
-          }
-        }
+    MetricValueResult[] results = getValueResults(sql, query.getQueryMetrics());
 
+
+    long totalSize = 0;
+    for (MetricValueResult metricValueResult : results) {
+      MetricResult metricResult = new MetricResult();
+      totalSize +=metricValueResult.getDatapoints().size();
+      setTags(metricValueResult.getName(), metricValueResult);
+
+      if (metricValueResult.getDatapoints().size() == 0) {
+        queryResult.addVoidMetricResult(metricValueResult.getName());
       } else {
-        queryResult.addVoidMetricResult(metric.getName());
-      }
-      if(config.DEBUG == 3) {
-        long elapse = System.currentTimeMillis() - start1;
-        LOGGER.info("2.2.1 [for (QueryMetric metric : query.getQueryMetrics())] of metric={} cost {} ms", metric.getName(), elapse);
+        metricResult.addResult(metricValueResult);
+        metricResult = doAggregations(querMetricMap.get(metricValueResult.getName()), metricResult);
+        queryResult.addMetricResult(metricResult);
       }
     }
-    if(config.DEBUG == 2) {
-      long elapse = System.currentTimeMillis() - start;
-      LOGGER.info("2.2 [for (QueryMetric metric : query.getQueryMetrics())] loop cost {} ms", elapse);
-    }
+
 
     return queryResult;
+  }
+
+  private MetricValueResult[] getValueResults(String sql, List<QueryMetric> queryMetrics) {
+    return null;
   }
 
   public void delete() {
@@ -131,7 +111,7 @@ public class QueryExecutor {
 
       if (MetricsManager.checkAllTagExisted(metric.getName(), metric.getTags().keySet())) {
 
-        String querySql = buildSqlStatement(metric, startTime, endTime);
+        String querySql = buildSqlStatement(Collections.singletonList(metric), startTime, endTime);
 
         ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
         while(iterator.hasNext()) {
@@ -161,33 +141,32 @@ public class QueryExecutor {
     }
   }
 
-  private String buildSqlStatement(QueryMetric metric,
-      long startTime, long endTime) {
-
-    String[] tagKeys = MetricsManager.getPosTagList(metric.getName());
-
-    List<String>[] tagValues = new List[tagKeys.length];
-    for (int i =0 ; i < tagKeys.length; i++) {
-      if (metric.getTags().containsKey(tagKeys[i])) {
-        tagValues[i] = metric.getTags().get(tagKeys[i]);
-      } else {
-        tagValues[i] = Collections.singletonList("*");
-      }
-    }
-    List<String> subffixPaths = MetricsManager.productPatch(tagValues);
-
+  private String buildSqlStatement(List<QueryMetric> metrics, long startTime, long endTime) {
     StringBuilder sqlBuilder = new StringBuilder("SELECT ");
+    for (QueryMetric metric : metrics) {
+      String[] tagKeys = MetricsManager.getPosTagList(metric.getName());
 
-    for (int i =0; i < subffixPaths.size() - 1; i ++ ) {
-      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(i))).append(subffixPaths.get(i)).append(".").append(metric.getName()).append(",");
-    }
-    if (subffixPaths.size() > 0) {
-      sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(subffixPaths.size() - 1))).append(subffixPaths.get(subffixPaths.size() - 1 )).append(".").append(metric.getName());
+      List<String>[] tagValues = new List[tagKeys.length];
+      for (int i =0 ; i < tagKeys.length; i++) {
+        if (metric.getTags().containsKey(tagKeys[i])) {
+          tagValues[i] = metric.getTags().get(tagKeys[i]);
+        } else {
+          tagValues[i] = Collections.singletonList("*");
+        }
+      }
+      List<String> subffixPaths = MetricsManager.productPatch(tagValues);
+      for (int i =0; i < subffixPaths.size() - 1; i ++ ) {
+        sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(i))).append(subffixPaths.get(i)).append(".").append(metric.getName()).append(",");
+      }
+      if (subffixPaths.size() > 0) {
+        sqlBuilder.append(MetricsManager.getStorageGroupName(subffixPaths.get(subffixPaths.size() - 1))).append(subffixPaths.get(subffixPaths.size() - 1 )).append(".").append(metric.getName());
+      }
     }
 
     sqlBuilder.append(String.format(" FROM ROOT where time>=%s and time<=%s", startTime, endTime));
     return sqlBuilder.toString();
   }
+
 
   private List<String> buildDeleteSql(ResultSet rs) throws SQLException {
     ResultSetMetaData metaData = rs.getMetaData();
