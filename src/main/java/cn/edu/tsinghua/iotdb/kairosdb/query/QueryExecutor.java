@@ -87,7 +87,6 @@ public class QueryExecutor {
     for (MetricValueResult metricValueResult : results) {
       MetricResult metricResult = new MetricResult();
       totalSize +=metricValueResult.getDatapoints().size();
-      setTags(metricValueResult.getName(), metricValueResult);
 
       if (metricValueResult.getDatapoints().size() == 0) {
         queryResult.addVoidMetricResult(metricValueResult.getName());
@@ -103,7 +102,115 @@ public class QueryExecutor {
   }
 
   private MetricValueResult[] getValueResults(String sql, List<QueryMetric> queryMetrics) {
-    return null;
+
+    MetricValueResult[] results = new MetricValueResult[queryMetrics.size()];
+
+    String[] metricPos = null;
+    Map<String, MetricValueResult> metricValueResultMap = new HashMap<>();
+    for(QueryMetric queryMetric: queryMetrics){
+      MetricValueResult m = new MetricValueResult(queryMetric.getName());
+      metricValueResultMap.put(queryMetric.getName(), m);
+    }
+    boolean hasMetricPos = false;
+
+    long start = System.currentTimeMillis();
+
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        LOGGER.info("Send query SQL: {}", sql);
+        statement.execute(sql);
+        try (ResultSet rs = statement.getResultSet()) {
+          ResultSetMetaData metaData = rs.getMetaData();
+          int columnCount = metaData.getColumnCount();
+
+          boolean[] paths = new boolean[columnCount - 1];
+
+          long start1 = System.currentTimeMillis();
+          long nextStart = start1;
+          long total = 0;
+          while (rs.next()) {
+            total += System.currentTimeMillis() - nextStart;
+            long timestamp = rs.getLong(1);
+            if(!hasMetricPos) {
+              metricPos = new String[columnCount - 1];
+              for (int i = 2; i <= columnCount; i++) {
+                int type = metaData.getColumnType(i);
+                String[] split = metaData.getColumnName(i).split("\\.");
+                String metric = split[split.length - 1];
+                metricPos[i] = metric;
+                addQueryDataPoint(metricPos, metricValueResultMap, rs, metaData, paths, timestamp, i, type);
+              }
+
+              hasMetricPos = true;
+            } else {
+              for (int i = 2; i <= columnCount; i++) {
+                int type = metaData.getColumnType(i);
+                addQueryDataPoint(metricPos, metricValueResultMap, rs, metaData, paths, timestamp, i, type);
+              }
+            }
+            nextStart = System.currentTimeMillis();
+          }
+
+          if (config.DEBUG == 5) {
+            long elapse = System.currentTimeMillis() - start1;
+            LOGGER.info("2.2.1.2.1 while (rs.next()) loop cost {} ms, rs.next() cost {} ms", elapse,
+                total);
+          }
+        }
+
+      } catch (Exception e) {
+        LOGGER.error(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()), e);
+      } finally {
+        iterator.putBack(connection);
+        if (config.DEBUG == 5) {
+          long elapse = System.currentTimeMillis() - start;
+          LOGGER.info("2.2.1.2 [getValueResult()] cost {} ms", elapse);
+        }
+      }
+    }
+    int i = 0;
+    for(MetricValueResult m: metricValueResultMap.values()){
+      results[i] = m;
+      i++;
+    }
+    return results;
+  }
+
+  private void addQueryDataPoint(String[] metricPos, Map<String, MetricValueResult> metricValueResultMap,
+      ResultSet rs, ResultSetMetaData metaData, boolean[] paths, long timestamp, int i,
+      int type) throws SQLException {
+    String value = rs.getString(i);
+
+    if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
+        .equals("2.147483646E9")) {
+      return ;
+    }
+
+    paths[i - 2] = true;
+    QueryDataPoint dataPoint = null;
+    switch (type) {
+      case Types.BIGINT:
+      case Types.INTEGER:
+        int intValue = rs.getInt(i);
+        dataPoint = new QueryDataPoint(timestamp, intValue);
+        break;
+      case Types.DOUBLE:
+        double doubleValue = rs.getDouble(i);
+        dataPoint = new QueryDataPoint(timestamp, doubleValue);
+        break;
+      case Types.VARCHAR:
+        dataPoint = new QueryDataPoint(timestamp, value);
+        break;
+      default:
+        LOGGER.error("QueryExecutor.execute: invalid type");
+    }
+    getTagValueFromPaths(metaData, paths);
+    MetricValueResult currentMetricValueResult =  metricValueResultMap.get(metricPos[i]);
+    setTags(currentMetricValueResult.getName(), currentMetricValueResult);
+    currentMetricValueResult.addDataPoint(dataPoint);
+    addBasicGroupByToResult(type, currentMetricValueResult);
   }
 
   public void delete() {
