@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
@@ -17,7 +19,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
 
   private Query query;
 
@@ -46,23 +48,39 @@ public class QueryExecutor {
   }
 
   public QueryResult execute() throws QueryException {
-
+    long start = System.currentTimeMillis();
     QueryResult queryResult = new QueryResult();
-
+    if(config.DEBUG == 2) {
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("2.1 [parse query] cost {} ms", elapse);
+      start = System.currentTimeMillis();
+    }
     for (QueryMetric metric : query.getQueryMetrics()) {
-
+      long start1 = System.currentTimeMillis();
       if (getMetricMapping(metric)) {
-
+        long start2 = System.currentTimeMillis();
         MetricResult metricResult = new MetricResult();
 
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
 
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-
+        if(config.DEBUG == 4) {
+          long elapse = System.currentTimeMillis() - start2;
+          LOGGER.info("2.2.1.1 [build SQL statement and new Result class] of metric={} cost {} ms", metric.getName(), elapse);
+          start2 = System.currentTimeMillis();
+        }
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
-
+        if(config.DEBUG == 4) {
+          long elapse = System.currentTimeMillis() - start2;
+          LOGGER.info("2.2.1.2 [metricResult.setSampleSize(getValueResult(sql, metricValueResult))] of metric={} cost {} ms", metric.getName(), elapse);
+          start2 = System.currentTimeMillis();
+        }
         setTags(metricValueResult);
-
+        if(config.DEBUG == 4) {
+          long elapse = System.currentTimeMillis() - start2;
+          LOGGER.info("2.2.1.3 [setTags(metricValueResult)] of metric={} cost {} ms", metric.getName(), elapse);
+          start2 = System.currentTimeMillis();
+        }
         if (metricResult.getSampleSize() == 0) {
           queryResult.addVoidMetricResult(metric.getName());
         } else {
@@ -71,12 +89,23 @@ public class QueryExecutor {
           metricResult = doAggregations(metric, metricResult);
 
           queryResult.addMetricResult(metricResult);
+          if(config.DEBUG == 4) {
+            long elapse = System.currentTimeMillis() - start2;
+            LOGGER.info("2.2.1.4 [doAggregations] of metric={} cost {} ms", metric.getName(), elapse);
+          }
         }
 
       } else {
         queryResult.addVoidMetricResult(metric.getName());
       }
-
+      if(config.DEBUG == 3) {
+        long elapse = System.currentTimeMillis() - start1;
+        LOGGER.info("2.2.1 [for (QueryMetric metric : query.getQueryMetrics())] of metric={} cost {} ms", metric.getName(), elapse);
+      }
+    }
+    if(config.DEBUG == 2) {
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("2.2 [for (QueryMetric metric : query.getQueryMetrics())] loop cost {} ms", elapse);
     }
 
     return queryResult;
@@ -182,11 +211,12 @@ public class QueryExecutor {
   }
 
   private long getValueResult(String sql, MetricValueResult metricValueResult) {
+    long start = System.currentTimeMillis();
     long sampleSize = 0L;
     if (sql == null || metricValueResult == null) {
       return sampleSize;
     }
-
+    LOGGER.info("start to execute query: {}", sql);
     Connection connection = null;
     try {
       connection = IoTDBUtil.getConnection().get(0);
@@ -198,45 +228,64 @@ public class QueryExecutor {
     try (Statement statement = connection.createStatement()) {
       LOGGER.info("Send query SQL: {}", sql);
       statement.execute(sql);
-      ResultSet rs = statement.getResultSet();
-      ResultSetMetaData metaData = rs.getMetaData();
-      int columnCount = metaData.getColumnCount();
-      boolean[] paths = new boolean[columnCount - 1];
-      while (rs.next()) {
-        long timestamp = rs.getLong(1);
-        for (int i = 2; i <= columnCount; i++) {
-          String value = rs.getString(i);
-          if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
-              .equals("2.147483646E9")) {
-            continue;
+      try(ResultSet rs = statement.getResultSet()) {
+        ResultSetMetaData metaData = rs.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        int type = metaData.getColumnType(2);
+        boolean[] paths = new boolean[columnCount - 1];
+
+        long start1 = System.currentTimeMillis();
+        long nextStart = start1;
+        long total = 0;
+        while (rs.next()) {
+          total += System.currentTimeMillis() - nextStart;
+          long timestamp = rs.getLong(1);
+          for (int i = 2; i <= columnCount; i++) {
+            String value = rs.getString(i);
+            //????
+            if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
+                .equals("2.147483646E9")) {
+              continue;
+            }
+            sampleSize++;
+            paths[i - 2] = true;
+            QueryDataPoint dataPoint = null;
+            switch (type) {
+              case Types.BIGINT:
+              case Types.INTEGER:
+                int intValue = rs.getInt(i);
+                dataPoint = new QueryDataPoint(timestamp, intValue);
+                break;
+              case Types.DOUBLE:
+                double doubleValue = rs.getDouble(i);
+                dataPoint = new QueryDataPoint(timestamp, doubleValue);
+                break;
+              case Types.VARCHAR:
+                dataPoint = new QueryDataPoint(timestamp, value);
+                break;
+              default:
+                LOGGER.error("QueryExecutor.execute: invalid type");
+            }
+            metricValueResult.addDataPoint(dataPoint);
           }
-          sampleSize++;
-          paths[i - 2] = true;
-          QueryDataPoint dataPoint = null;
-          switch (findType(value)) {
-            case Types.INTEGER:
-              int intValue = rs.getInt(i);
-              dataPoint = new QueryDataPoint(timestamp, intValue);
-              break;
-            case Types.DOUBLE:
-              double doubleValue = rs.getDouble(i);
-              dataPoint = new QueryDataPoint(timestamp, doubleValue);
-              break;
-            case Types.VARCHAR:
-              dataPoint = new QueryDataPoint(timestamp, value);
-              break;
-            default:
-              LOGGER.error("QueryExecutor.execute: invalid type");
-          }
-          metricValueResult.addDataPoint(dataPoint);
+          nextStart = System.currentTimeMillis();
         }
+
+        if (config.DEBUG == 5) {
+          long elapse = System.currentTimeMillis() - start1;
+          LOGGER.info("2.2.1.2.1 while (rs.next()) loop cost {} ms, rs.next() cost {} ms", elapse, total);
+        }
+
+        getTagValueFromPaths(metaData, paths);
+
+        addBasicGroupByToResult(type, metricValueResult);
       }
-
-      getTagValueFromPaths(metaData, paths);
-
-      addBasicGroupByToResult(metaData, metricValueResult);
     } catch (SQLException e) {
       LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
+    }
+    if (config.DEBUG == 5) {
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("2.2.1.2 [getValueResult()] cost {} ms", elapse);
     }
     return sampleSize;
   }
@@ -277,8 +326,7 @@ public class QueryExecutor {
   }
 
   private void addBasicGroupByToResult(
-      ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
-    int type = metaData.getColumnType(2);
+      int type, MetricValueResult metricValueResult) throws SQLException {
     if (type == Types.VARCHAR) {
       metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
     } else {
