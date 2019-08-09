@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
@@ -19,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
@@ -33,7 +35,12 @@ public class MetricsManager {
   private static final String ERROR_OUTPUT_FORMATTER = "%s: %s";
 
   // The metadata maintained in the memory
-  private static final Map<String, Map<String, Integer>> tagOrder = new ConcurrentHashMap<>();
+  // metric - < tag, position>
+  private static final Map<String, Map<String, Integer>> metric_tag_position = new ConcurrentHashMap<>();
+  // metric - < tag, position>
+  //private static final Map<String, Map<Integer, String>> metric_position_tag = new ConcurrentHashMap<>();
+  private static final Map<String, List<String>> metric_tagNameOrder = new ConcurrentHashMap<>();
+
 
   // The SQL will be used to create metadata
   private static final String SYSTEM_CREATE_SQL = "CREATE TIMESERIES root.SYSTEM.TAG_NAME_INFO.%s WITH DATATYPE=%s, ENCODING=%s";
@@ -67,6 +74,7 @@ public class MetricsManager {
   public static void loadMetadata(Connection connection) {
     LOGGER.info("Start loading system data.");
     Statement statement = null;
+    Map<String, Map<Integer, String>> metric_position_tag = new ConcurrentHashMap<>();
     try {
       // Judge whether the TIMESERIES(root.SYSTEM.TAG_NAME_INFO) has been created
       statement = connection.createStatement();
@@ -84,12 +92,17 @@ public class MetricsManager {
           String name = rs.getString(2);
           String tagName = rs.getString(3);
           Integer pos = rs.getInt(4);
-          if (tagOrder.containsKey(name)) {
-            tagOrder.get(name).put(tagName, pos);
+          if (metric_tag_position.containsKey(name)) {
+            metric_tag_position.get(name).put(tagName, pos);
+            metric_position_tag.get(name).put(pos, tagName);
           } else {
             Map<String, Integer> map = new HashMap<>();
             map.put(tagName, pos);
-            tagOrder.put(name, map);
+            metric_tag_position.put(name, map);
+            Map<Integer, String> map2 = new HashMap<>();
+            map2.put(pos, tagName);
+            metric_position_tag.put(name, map2);
+
           }
           maxIndex = rs.getLong(1);
         }
@@ -149,10 +162,18 @@ public class MetricsManager {
       }
 
     } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()), e);
     } finally {
       close(statement);
     }
+    for (Map.Entry<String, Map<Integer, String>> entry : metric_position_tag.entrySet() ) {
+      List<String> keyOrder = new ArrayList<>(entry.getValue().size());
+      for (int i = 0 ; i < entry.getValue().size(); i++) {
+        keyOrder.add(entry.getValue().get(i));
+      }
+      metric_tagNameOrder.put(entry.getKey(), keyOrder);
+    }
+
     LOGGER.info("Finish loading system data.");
 
   }
@@ -182,17 +203,17 @@ public class MetricsManager {
         datatype = "TEXT";
         encoding = TEXT_ENCODING;
     }
-    try {
-      for (Connection conn : IoTDBUtil.getConnection()) {
-        try (Statement statement = conn.createStatement()) {
-          statement.execute(String
-              .format(
-                  "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-                  getStorageGroupName(path), path, metricName, datatype, encoding));
-        }
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        statement.execute(String
+            .format(
+                "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
+                getStorageGroupName(path), path, metricName, datatype, encoding));
+      } finally {
+        iterator.putBack(connection);
       }
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
     }
   }
 
@@ -205,23 +226,24 @@ public class MetricsManager {
   }
 
   public static void addDataPoints(MetricResult metric, String metricName) {
-    try {
-      List<Connection> connections = IoTDBUtil.getNewConnection();
-      for (Connection conn : connections) {
-        for (MetricValueResult valueResult : metric.getResults()) {
-          if ((valueResult.isTextType() && metric.getResults().size() > 1)
-              || valueResult.getDatapoints() == null
-              || valueResult.getDatapoints().get(0) == null) {
-            continue;
-          }
-          Map<String, String> tag = new HashMap<>();
-          tag.put("saved_from", valueResult.getName());
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
 
-          HashMap<Integer, String> orderTagKeyMap = getMapping(metricName, tag);
+      for (MetricValueResult valueResult : metric.getResults()) {
+        if ((valueResult.isTextType() && metric.getResults().size() > 1)
+            || valueResult.getDatapoints() == null
+            || valueResult.getDatapoints().get(0) == null) {
+          continue;
+        }
+        Map<String, String> tag = new HashMap<>();
+        tag.put("saved_from", valueResult.getName());
 
-          String path = generatePath(tag, orderTagKeyMap);
+        //HashMap<Integer, String> orderTagKeyMap = getNeededPosTagMap(metricName, tag);
 
-          Statement statement = conn.createStatement();
+        String path = getPath(metricName, tag);
+
+        try (Statement statement = connection.createStatement()) {
 
           for (QueryDataPoint point : valueResult.getDatapoints()) {
             String insertingSql = String
@@ -247,29 +269,30 @@ public class MetricsManager {
           createNewMetricAndIgnoreErrors(metricName, path, type);
 
           statement.executeBatch();
-
-          statement.close();
-
+        } catch (SQLException e) {
+          LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        } finally {
+          iterator.putBack(connection);
         }
       }
-
-    } catch (SQLException | ClassNotFoundException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
+
+
   }
 
   public static void deleteMetric(String metricName) {
-    try {
-      List<Connection> connections = IoTDBUtil.getNewConnection();
-      for (Connection conn : connections) {
-        Statement statement = conn.createStatement();
 
-        Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+
+      try (Statement statement = connection.createStatement()) {
+
+        Map<String, Integer> mapping = metric_tag_position.getOrDefault(metricName, null);
 
         if (mapping == null) {
           return;
         }
-
         int size = mapping.size();
 
         for (int i = 0; i <= size; i++) {
@@ -279,46 +302,56 @@ public class MetricsManager {
             builder.append("*.");
           }
           builder.append(metricName);
-          executeAndIgnoreException(statement, builder.toString());
+          try {
+            statement.execute(builder.toString());
+          } catch (SQLException ignore) {
+            // Ignore
+          }
         }
-
-        tagOrder.remove(metricName);
+        metric_tag_position.remove(metricName);
+        metric_tagNameOrder.remove(metricName);
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+      } finally {
+        iterator.putBack(connection);
       }
-    } catch (SQLException | ClassNotFoundException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
   }
 
-  /**
+
+/*  *//**
    * Get or generate the mapping rule from position to tag_key of the given metric name and tags.
    *
    * @param name The metric name will be mapping
-   * @param tags The tags will be computed
+   * @param tagKeyValue The tags will be computed
    * @return The mapping rule from position to tag_key
-   */
-  public static HashMap<Integer, String> getMapping(String name, Map<String, String> tags) {
-    Map<String, Integer> tagKeyOrderMap = tagOrder.get(name);
+   *//*
+  public static HashMap<Integer, String> getNeededPosTagMap(String name, Map<String, String> tagKeyValue) {
+    Map<String, Integer> tagKeyOrderMap = metric_tag_position.get(name);
     HashMap<Integer, String> mapping = new HashMap<>();
     HashMap<String, Integer> cache = new HashMap<>();
     if (null == tagKeyOrderMap) {
       // The metric name appears for the first time
       tagKeyOrderMap = new HashMap<>();
       Integer order = 0;
-      for (String tagKey : tags.keySet()) {
+      for (String tagKey : tagKeyValue.keySet()) {
         tagKeyOrderMap.put(tagKey, order);
         mapping.put(order, tagKey);
         cache.put(tagKey, order);
         order++;
       }
-      tagOrder.put(name, tagKeyOrderMap);
+      metric_tag_position.put(name, tagKeyOrderMap);
+      metric_position_tag.put(name, mapping);
       persistMappingCache(name, cache);
     } else {
       // The metric name exists
-      for (Map.Entry<String, String> tag : tags.entrySet()) {
+      Map<Integer, String> posTagMap = metric_position_tag.get(name);
+      for (Map.Entry<String, String> tag : tagKeyValue.entrySet()) {
         Integer pos = tagKeyOrderMap.get(tag.getKey());
         if (null == pos) {
           pos = tagKeyOrderMap.size();
           tagKeyOrderMap.put(tag.getKey(), pos);
+          posTagMap.put(pos, tag.getKey());
           cache.put(tag.getKey(), pos);
           persistMappingCache(name, cache);
         }
@@ -326,7 +359,56 @@ public class MetricsManager {
       }
     }
     return mapping;
+  }*/
+
+
+  /**
+   * for write.
+   * @param name
+   * @param tagKeyValues
+   * @return 返回以 .开头的后缀串
+   */
+  public static String getPath(String name, Map<String, String> tagKeyValues) {
+    StringBuilder stringBuilder = new StringBuilder();
+    Map<String, String> copyTagKVs = new HashMap<>(tagKeyValues);
+
+    List<String> keys = metric_tagNameOrder.get(name);
+
+    if (keys != null) {
+      for (String key : metric_tagNameOrder.get(name)) {
+        if (copyTagKVs.containsKey(key)) {
+          stringBuilder.append("." + copyTagKVs.remove(key));
+        } else {
+          stringBuilder.append(".d");
+        }
+      }
+    }
+    Map<String, Integer> tagPos;
+    List<String> tagNameOrder;
+    if (keys == null) {
+      tagPos = new HashMap<>();
+      tagNameOrder = new ArrayList<>();
+      metric_tag_position.put(name,tagPos);
+      metric_tagNameOrder.put(name, tagNameOrder);
+    } else {
+      tagPos = metric_tag_position.get(name);
+      tagNameOrder = metric_tagNameOrder.get(name);
+    }
+
+    if (copyTagKVs.size() > 0) {
+      int pos = tagNameOrder.size();
+      Map<String, Integer> cache = new HashMap<>(copyTagKVs.size());
+      for (String key : copyTagKVs.keySet()) {
+        cache.put(key, pos);
+        tagNameOrder.add(key);
+        stringBuilder.append("." + copyTagKVs.get(key));
+        pos ++;
+      }
+      persistMappingCache(name, cache);
+    }
+    return stringBuilder.toString();
   }
+
 
   /**
    * Persist the new mapping rule into database.
@@ -340,19 +422,18 @@ public class MetricsManager {
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
           index.getAndIncrement(), metricName, entry.getKey(), entry.getValue());
       List<Connection> connections = null;
-      try {
-        connections = IoTDBUtil.getConnection();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-      }
-      for (Connection conn : connections) {
-        try (Statement statement = conn.createStatement()) {
+
+
+      ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+      while(iterator.hasNext()) {
+        Connection connection = iterator.next();
+        try (Statement statement = connection.createStatement()) {
           statement.execute(sql);
         } catch (SQLException e) {
           LOGGER
               .error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+        } finally {
+          iterator.putBack(connection);
         }
       }
     }
@@ -390,15 +471,12 @@ public class MetricsManager {
           "MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
     }
-    int hashCode = path.split("\\.")[1].hashCode();
-    return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
-  }
-
-  private static void executeAndIgnoreException(Statement statement, String sql) {
-    try {
-      statement.execute(sql);
-    } catch (SQLException ignore) {
-      // Ignore
+    String third = path.split("\\.")[1];
+    if (third.equals("*")) {
+      return "*";
+    } else {
+      int hashCode = third.hashCode();
+      return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
     }
   }
 
@@ -417,16 +495,77 @@ public class MetricsManager {
     }
   }
 
-  public static Map<String, Integer> getTagOrder(String metricName) {
-    return tagOrder.getOrDefault(metricName, null);
+  public static Map<String, Integer> getTagPosMap(String metricName) {
+    return metric_tag_position.getOrDefault(metricName, null);
   }
+
+  public static boolean checkAllTagExisted(String metric, Set<String> keys) {
+    Map<String, Integer> tags = metric_tag_position.get(metric);
+    if (tags == null) return false;
+    for (String key : keys) {
+      if (!tags.containsKey(key)){
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   *
+   * @param name
+   * @return null 如果有tag不存在的话，或者metric不存在. 否则对tagKeys排序返回
+   */
+  public static String[] getPosTagList (String name) {
+    /*Map<String, Integer> tagPosMap = metric_tag_position.get(name);
+    if (tagPosMap == null || tagKeys.retainAll(tagPosMap.keySet())) {
+      return null;
+    }
+
+    String[] result = new String[metric_position_tag.size()];
+
+    Map<Integer, String> posTagMap = metric_position_tag.get(name);
+    for (int i = 0; i < metric_position_tag.size(); i ++) {
+      String tag = posTagMap.get(i);
+      if (!tagKeys.contains(tag)) {
+        result[i] = "*";
+      } else {
+        result[i] = tag;
+      }
+    }
+
+    return result;*/
+    return metric_tagNameOrder.get(name).toArray(new String[]{});
+  }
+
+  public static List<String> productPatch(List<String>[] tagValues) {
+    return productPath(0, tagValues);
+  }
+  private static List<String> productPath(int currentLevel, List<String>[] tagValuesInEachLevel) {
+    if (currentLevel == tagValuesInEachLevel.length -1 ) {
+      List<String> result = new ArrayList<>();
+      for (String tagValue : tagValuesInEachLevel[tagValuesInEachLevel.length -1]) {
+        result.add("." + tagValue);
+      }
+      return result ;
+    } else {
+      List<String> result = new ArrayList<>();
+      List<String> subPaths = productPath(currentLevel + 1, tagValuesInEachLevel);
+      for (String tagValue : tagValuesInEachLevel[currentLevel]) {
+        for (String subPath : subPaths) {
+          result.add("." + tagValue +  subPath);
+        }
+      }
+      return result;
+    }
+  }
+
 
   public static List<String> getMetricNamesList(String prefix) {
     if (prefix == null) {
-      return new ArrayList<>(tagOrder.keySet());
+      return new ArrayList<>(metric_tag_position.keySet());
     } else {
       List<String> list = new ArrayList<>();
-      for (String name : tagOrder.keySet()) {
+      for (String name : metric_tag_position.keySet()) {
         if (name.startsWith(prefix)) {
           list.add(name);
         }
@@ -434,4 +573,5 @@ public class MetricsManager {
       return list;
     }
   }
+
 }

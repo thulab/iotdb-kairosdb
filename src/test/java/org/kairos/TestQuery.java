@@ -1,3 +1,4 @@
+/*
 package org.kairos;
 
 import java.io.IOException;
@@ -28,3 +29,4 @@ public class TestQuery {
   }
 }
 
+*/

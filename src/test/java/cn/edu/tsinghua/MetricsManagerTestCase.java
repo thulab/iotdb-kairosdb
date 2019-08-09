@@ -1,6 +1,6 @@
 package cn.edu.tsinghua;
 
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser.DataType;
@@ -17,7 +17,7 @@ public class MetricsManagerTestCase {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManagerTestCase.class);
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    Connection connection = IoTDBUtil.getConnection("127.0.0.1:6667", "root", "root");
+    Connection connection = IoTDBConnectionPool.getConnection("127.0.0.1:6667", "root", "root");
     MetricsManager.loadMetadata(connection);
   }
 

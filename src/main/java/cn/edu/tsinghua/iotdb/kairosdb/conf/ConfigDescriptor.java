@@ -46,6 +46,7 @@ public class ConfigDescriptor {
 //        config.PORT = properties.getProperty("PORT", "6667");
         String urlList=properties.getProperty("IoTDB_LIST","127.0.0.1:6667");
         Collections.addAll(config.URL_LIST, urlList.split(","));
+        config.REST_IP = properties.getProperty("REST_IP", "127.0.0.1");
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));

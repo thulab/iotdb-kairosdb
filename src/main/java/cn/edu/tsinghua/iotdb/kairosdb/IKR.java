@@ -2,12 +2,13 @@ package cn.edu.tsinghua.iotdb.kairosdb;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
-import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -24,8 +25,7 @@ public class IKR {
   private static URI baseURI;
 
   private static URI getBaseURI() {
-    String restIp = AddressUtil.getLocalIpAddress();
-    return UriBuilder.fromUri("http://" + restIp + "/").port(Integer.parseInt(config.REST_PORT))
+    return UriBuilder.fromUri("http://" + config.REST_IP + "/").port(Integer.parseInt(config.REST_PORT))
         .build();
   }
 
@@ -38,10 +38,11 @@ public class IKR {
 
   private static void initDB() throws SQLException, ClassNotFoundException {
     LOGGER.info("Ready to connect to IoTDB.");
-    for (String url : config.URL_LIST) {
-      Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
-      LOGGER.info("Connected successfully.");
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
       MetricsManager.loadMetadata(connection);
+      iterator.putBack(connection);
     }
   }
 
@@ -75,7 +76,7 @@ public class IKR {
       Thread.currentThread().interrupt();
     }
     server.shutdown();
-    IoTDBUtil.closeConnection();
+    IoTDBConnectionPool.getInstance().closeAllConnections();
   }
 
 }
