@@ -48,6 +48,7 @@ public class ConfigDescriptor {
 //        config.PORT = properties.getProperty("PORT", "6667");
         String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
         Collections.addAll(config.URL_LIST, urlList.split(","));
+        config.REST_IP = properties.getProperty("REST_IP", "127.0.0.1");
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {

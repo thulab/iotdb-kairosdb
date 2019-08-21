@@ -2,7 +2,10 @@ package cn.edu.tsinghua.iotdb.kairosdb.query.result;
 
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlign;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import com.google.gson.annotations.SerializedName;
+
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,6 +25,7 @@ public class MetricValueResult {
 
   @SerializedName("values")
   private List<QueryDataPoint> values;
+
 
   public MetricValueResult(String name) {
     this.name = name;
@@ -135,4 +139,12 @@ public class MetricValueResult {
     return getDatapoints().get(0).getType() == Types.VARCHAR;
   }
 
+
+  public void addBasicGroupByToResult(int type) {
+    if (type == Types.VARCHAR) {
+      addGroupBy(GroupByType.getTextTypeInstance());
+    } else {
+      addGroupBy(GroupByType.getNumberTypeInstance());
+    }
+  }
 }

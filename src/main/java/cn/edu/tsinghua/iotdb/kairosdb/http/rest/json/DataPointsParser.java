@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
@@ -20,9 +21,7 @@ import java.io.Reader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
@@ -50,10 +49,8 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
-  private List<Connection> connections = new ArrayList<>();
 
   public DataPointsParser(Reader stream, Gson gson) {
-    connections = IoTDBConnectionPool.getInstance().getConnections();
     this.inputStream = stream;
     this.gson = gson;
   }
@@ -161,8 +158,10 @@ public class DataPointsParser {
 
   private void createTimeSeries() throws SQLException {
     int count = 0;
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
         for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
           try {
             statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
@@ -173,6 +172,8 @@ public class DataPointsParser {
           }
         }
 //        statement.executeBatch();
+      } finally {
+        iterator.putBack(connection);
       }
 //      LOGGER.info("创建时间序列的连接序号为:{}", count);
       count++;
@@ -185,8 +186,10 @@ public class DataPointsParser {
       start = System.currentTimeMillis();
     }
     int count = 0;
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
         for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
           StringBuilder sqlBuilder = new StringBuilder();
           StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
@@ -206,6 +209,8 @@ public class DataPointsParser {
 //          LOGGER.info("插入数据的连接序号为:{},执行插入的SQL语句：{}，", count, sqlBuilder.toString());
           statement.execute(sqlBuilder.toString());
         }
+      } finally {
+        iterator.putBack(connection);
       }
 //      LOGGER.info("插入数据的连接序号为:{}", count);
       count++;
@@ -248,14 +253,12 @@ public class DataPointsParser {
       return validationErrors;
     }
 
-    HashMap<Integer, String> orderTagKeyMap = MetricsManager.getMapping(name, tags);
-
     if (type.equals(DataType.STRING)) {
       value = String.format("\"%s\"", value);
     }
 
     // Generate the path
-    String path = MetricsManager.generatePath(tags, orderTagKeyMap);
+    String path = MetricsManager.getPath(name, tags);
 
     seriesPaths
         .put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name),

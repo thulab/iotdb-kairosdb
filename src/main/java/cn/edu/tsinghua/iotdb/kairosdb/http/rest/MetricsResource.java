@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IngestionWorker;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
@@ -35,6 +37,8 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/api/v1")
 public class MetricsResource {
@@ -42,6 +46,8 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
   private static final String NO_CACHE = "no-cache";
   private static final ExecutorService threadPool = Executors.newCachedThreadPool();
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -123,12 +129,26 @@ public class MetricsResource {
             new QueryParser.SimpleConstraintViolation("query json", "must not be null or empty"),
             "");
       }
-
+      long start = System.currentTimeMillis();
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
+      if(config.DEBUG == 1) {
+        long elapse = System.currentTimeMillis() - start;
+        LOGGER.info("1 [parse query] cost {} ms", elapse);
+        start = System.currentTimeMillis();
+      }
       QueryResult result = executor.execute();
+      if(config.DEBUG == 1) {
+        long elapse = System.currentTimeMillis() - start;
+        LOGGER.info("2 [QueryResult result = executor.execute()] cost {} ms", elapse);
+        start = System.currentTimeMillis();
+      }
       String entity = parser.parseResultToJson(result);
+      if(config.DEBUG == 1) {
+        long elapse = System.currentTimeMillis() - start;
+        LOGGER.info("3 [String entity = parser.parseResultToJson(result)] cost {} ms", elapse);
+      }
       return Response.status(Status.OK)
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", NO_CACHE)

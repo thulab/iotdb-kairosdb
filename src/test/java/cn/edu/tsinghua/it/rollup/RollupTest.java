@@ -2,7 +2,8 @@ package cn.edu.tsinghua.it.rollup;
 
 import static org.junit.Assert.assertEquals;
 
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
@@ -12,7 +13,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import okhttp3.Response;
@@ -63,13 +63,19 @@ public class RollupTest {
   @After
   public void after() throws SQLException, ClassNotFoundException {
     // clean up test data in root.SYSTEM.ROLLUP.json
-    List<Connection> connections=IoTDBUtil.getConnection();
-    try (Statement statement = IoTDBUtil.getConnection().get(0).createStatement()) {
-      statement.execute("DELETE TIMESERIES root.SYSTEM.ROLLUP.json");
-      statement
-          .execute("CREATE TIMESERIES root.SYSTEM.ROLLUP.json WITH DATATYPE=TEXT, ENCODING=PLAIN");
-    } catch (Exception e) {
-      e.printStackTrace();
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    if (iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("DELETE TIMESERIES root.SYSTEM.ROLLUP.json");
+        statement
+            .execute(
+                "CREATE TIMESERIES root.SYSTEM.ROLLUP.json WITH DATATYPE=TEXT, ENCODING=PLAIN");
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+        iterator.putBack(connection);
+      }
     }
   }
 
@@ -89,19 +95,25 @@ public class RollupTest {
       RollUpStoreImpl rollUpStore = new RollUpStoreImpl();
       rollUpStore.remove(id);
 
-      try (Statement statement = IoTDBUtil.getConnection().get(0).createStatement()) {
-        String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
-        ResultSet rs = statement.executeQuery(sql);
-        String json = null;
-        while (rs.next()) {
-          json = rs.getString(2);
+      ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+      if (iterator.hasNext()) {
+        Connection connection = iterator.next();
+        try (Statement statement = connection.createStatement()) {
+          String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
+          ResultSet rs = statement.executeQuery(sql);
+          String json = null;
+          while (rs.next()) {
+            json = rs.getString(2);
+          }
+          assertEquals("NULL", json);
+        } catch (Exception e) {
+          e.printStackTrace();
+        } finally {
+          iterator.putBack(connection);
         }
-        assertEquals("NULL", json);
-      } catch (Exception e) {
-        e.printStackTrace();
+        int statusCode = response.code();
+        assertEquals(200, statusCode);
       }
-      int statusCode = response.code();
-      assertEquals(200, statusCode);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -124,16 +136,22 @@ public class RollupTest {
       httpUtil = new HttpUtil(url);
       response = httpUtil.delete();
 
-      try (Statement statement = IoTDBUtil.getConnection().get(0).createStatement()) {
-        String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
-        ResultSet rs = statement.executeQuery(sql);
-        String json = null;
-        while (rs.next()) {
-          json = rs.getString(2);
+      ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+      if (iterator.hasNext()) {
+        Connection connection = iterator.next();
+        try (Statement statement = connection.createStatement()) {
+          String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
+          ResultSet rs = statement.executeQuery(sql);
+          String json = null;
+          while (rs.next()) {
+            json = rs.getString(2);
+          }
+          assertEquals("NULL", json);
+        } catch (Exception e) {
+          e.printStackTrace();
+        } finally {
+          iterator.putBack(connection);
         }
-        assertEquals("NULL", json);
-      } catch (Exception e) {
-        e.printStackTrace();
       }
       int statusCode = response.code();
       assertEquals(204, statusCode);
@@ -222,16 +240,23 @@ public class RollupTest {
           id, id);
       assertEquals(expected, res);
 
-      try (Statement statement = IoTDBUtil.getConnection().get(0).createStatement()) {
-        String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
-        ResultSet rs = statement.executeQuery(sql);
-        String json = null;
-        while (rs.next()) {
-          json = rs.getString(2);
+
+      ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+      if (iterator.hasNext()) {
+        Connection connection = iterator.next();
+        try (Statement statement = connection.createStatement()) {
+          String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
+          ResultSet rs = statement.executeQuery(sql);
+          String json = null;
+          while (rs.next()) {
+            json = rs.getString(2);
+          }
+          assertEquals(updatedRollupJson, json);
+        } catch (Exception e) {
+          e.printStackTrace();
+        } finally {
+          iterator.putBack(connection);
         }
-        assertEquals(updatedRollupJson, json);
-      } catch (Exception e) {
-        e.printStackTrace();
       }
       int statusCode = response.code();
       assertEquals(200, statusCode);
@@ -257,16 +282,23 @@ public class RollupTest {
           id, id);
       assertEquals(expected, res);
 
-      try (Statement statement = IoTDBUtil.getConnection().get(0).createStatement()) {
-        String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
-        ResultSet rs = statement.executeQuery(sql);
-        String json = null;
-        while (rs.next()) {
-          json = rs.getString(2);
+
+      ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+      if (iterator.hasNext()) {
+        Connection connection = iterator.next();
+        try (Statement statement = connection.createStatement()) {
+          String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
+          ResultSet rs = statement.executeQuery(sql);
+          String json = null;
+          while (rs.next()) {
+            json = rs.getString(2);
+          }
+          assertEquals(rollupJson, json);
+        } catch (Exception e) {
+          e.printStackTrace();
+        } finally {
+          iterator.putBack(connection);
         }
-        assertEquals(rollupJson, json);
-      } catch (Exception e) {
-        e.printStackTrace();
       }
       int statusCode = response.code();
       assertEquals(200, statusCode);

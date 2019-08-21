@@ -1,6 +1,9 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
@@ -10,7 +13,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
-import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -18,6 +20,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,6 +31,7 @@ import org.slf4j.LoggerFactory;
 public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
 
   private Query query;
 
@@ -35,7 +39,9 @@ public class QueryExecutor {
   private Long endTime;
 
   private Map<String, Integer> tag2pos;
-  private Map<Integer, String> pos2tag;
+//  private Map<Integer, String> pos2tag;
+
+  private String[] sortedTagKeys; //将指定的key和未指定的key（用*代替）按位置排序
 
   private Map<Integer, List<String>> tmpTags;
 
@@ -47,63 +53,189 @@ public class QueryExecutor {
 
   public QueryResult execute() throws QueryException {
 
+    long start = System.currentTimeMillis();
     QueryResult queryResult = new QueryResult();
-
-    for (QueryMetric metric : query.getQueryMetrics()) {
-
-      if (getMetricMapping(metric)) {
-
-        MetricResult metricResult = new MetricResult();
-
-        String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-
-        MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-
-        metricResult.setSampleSize(getValueResult(sql, metricValueResult));
-
-        setTags(metricValueResult);
-
-        if (metricResult.getSampleSize() == 0) {
-          queryResult.addVoidMetricResult(metric.getName());
-        } else {
-          metricResult.addResult(metricValueResult);
-
-          metricResult = doAggregations(metric, metricResult);
-
-          queryResult.addMetricResult(metricResult);
-        }
-
-      } else {
-        queryResult.addVoidMetricResult(metric.getName());
-      }
-
+    if(config.DEBUG == 2) {
+      long elapse = System.currentTimeMillis() - start;
+      LOGGER.info("2.1 [parse query] cost {} ms", elapse);
+      start = System.currentTimeMillis();
     }
 
+    List<QueryMetric> emptyMetrics = new ArrayList<>();
+    for (QueryMetric metric : query.getQueryMetrics()) {
+      if (!MetricsManager.checkAllTagExisted(metric.getName(), metric.getTags().keySet())) {
+        queryResult.addVoidMetricResult(metric.getName());
+        emptyMetrics.add(metric);
+      }
+    }
+    query.getQueryMetrics().removeAll(emptyMetrics);
+
+    if (query.getQueryMetrics().isEmpty()) {
+      return queryResult;
+    }
+
+    Map<String, QueryMetric> querMetricMap = new HashMap<>();
+
+    for (QueryMetric metric : query.getQueryMetrics()) {
+      querMetricMap.put(metric.getName(), metric);
+    }
+
+    String sql = buildSqlStatement(query.getQueryMetrics(), startTime, endTime);
+
+    LOGGER.info("Execute SQL: {}." , sql);
+
+    MetricValueResult[] results = getValueResults(sql, query.getQueryMetrics());
+
+
+    for (MetricValueResult metricValueResult : results) {
+      MetricResult metricResult = new MetricResult();
+
+      metricValueResult.setTags(querMetricMap.get(metricValueResult.getName()).getTags());
+
+
+      if (metricValueResult.getDatapoints().size() == 0) {
+        queryResult.addVoidMetricResult(metricValueResult.getName());
+      } else {
+        metricResult.addResult(metricValueResult);
+        metricResult.setSampleSize(Long.valueOf(metricValueResult.getDatapoints().size()));
+        metricResult = doAggregations(querMetricMap.get(metricValueResult.getName()), metricResult);
+        queryResult.addMetricResult(metricResult);
+      }
+    }
+
+
     return queryResult;
+  }
+
+  private MetricValueResult[] getValueResults(String sql, List<QueryMetric> queryMetrics) {
+
+    MetricValueResult[] results = new MetricValueResult[queryMetrics.size()];
+
+    String[] metricPos = null;
+    Map<String, MetricValueResult> metricValueResultMap = new HashMap<>();
+    for(QueryMetric queryMetric: queryMetrics){
+      MetricValueResult m = new MetricValueResult(queryMetric.getName());
+      metricValueResultMap.put(queryMetric.getName(), m);
+    }
+    boolean hasMetricPos = false;
+
+    long start = System.currentTimeMillis();
+
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        LOGGER.info("Send query SQL: {}", sql);
+        statement.execute(sql);
+        try (ResultSet rs = statement.getResultSet()) {
+          ResultSetMetaData metaData = rs.getMetaData();
+          int columnCount = metaData.getColumnCount();
+
+          boolean[] paths = new boolean[columnCount - 1];
+
+          long start1 = System.currentTimeMillis();
+          long nextStart = start1;
+          long total = 0;
+          while (rs.next()) {
+            total += System.currentTimeMillis() - nextStart;
+            long timestamp = rs.getLong(1);
+            if(!hasMetricPos) {
+              metricPos = new String[columnCount - 1];
+              for (int columnIndex = 2; columnIndex <= columnCount; columnIndex++) {// start with 1, and the first (i.e., 1) is the timestamp
+                int type = metaData.getColumnType(columnIndex);
+                String[] split = metaData.getColumnName(columnIndex).split("\\.");
+                String metric = split[split.length - 1];
+                metricPos[columnIndex - 2] = metric;
+                addQueryDataPoint(metricPos, metricValueResultMap.get(metricPos[columnIndex - 2]), rs, metaData, paths, timestamp, columnIndex, type);
+                metricValueResultMap.get(metricPos[columnIndex - 2]).addBasicGroupByToResult(type);
+              }
+
+              hasMetricPos = true;
+            } else {
+              for (int i = 2; i <= columnCount; i++) {
+                int type = metaData.getColumnType(i);
+                addQueryDataPoint(metricPos, metricValueResultMap.get(metricPos[i - 2]), rs, metaData, paths, timestamp, i, type);
+              }
+            }
+            nextStart = System.currentTimeMillis();
+          }
+
+          if (config.DEBUG == 5) {
+            long elapse = System.currentTimeMillis() - start1;
+            LOGGER.info("2.2.1.2.1 while (rs.next()) loop cost {} ms, rs.next() cost {} ms", elapse,
+                total);
+          }
+        }
+
+      } catch (Exception e) {
+        LOGGER.error(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()), e);
+      } finally {
+        iterator.putBack(connection);
+        if (config.DEBUG == 5) {
+          long elapse = System.currentTimeMillis() - start;
+          LOGGER.info("2.2.1.2 [getValueResult()] cost {} ms", elapse);
+        }
+      }
+    }
+    int i = 0;
+
+    for(MetricValueResult m: metricValueResultMap.values()){
+      results[i] = m;
+      i++;
+    }
+    return results;
+  }
+
+  private void addQueryDataPoint(String[] metricPos, MetricValueResult metricValueResult,
+      ResultSet rs, ResultSetMetaData metaData, boolean[] paths, long timestamp, int columnIndex,
+      int type) throws SQLException {
+    String value = rs.getString(columnIndex);
+
+    if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
+        .equals("2.147483646E9")) {
+      return ;
+    }
+
+    paths[columnIndex - 2] = true;
+    QueryDataPoint dataPoint = null;
+    switch (type) {
+      case Types.BIGINT:
+      case Types.INTEGER:
+        int intValue = rs.getInt(columnIndex);
+        dataPoint = new QueryDataPoint(timestamp, intValue);
+        break;
+      case Types.DOUBLE:
+        double doubleValue = rs.getDouble(columnIndex);
+        dataPoint = new QueryDataPoint(timestamp, doubleValue);
+        break;
+      case Types.VARCHAR:
+        dataPoint = new QueryDataPoint(timestamp, value);
+        break;
+      default:
+        LOGGER.error("QueryExecutor.execute: invalid type");
+    }
+
+    metricValueResult.addDataPoint(dataPoint);
   }
 
   public void delete() {
     for (QueryMetric metric : query.getQueryMetrics()) {
 
-      if (getMetricMapping(metric)) {
-        String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        List<Connection> connections = null;
-        try {
-          connections = IoTDBUtil.getNewConnection();
-        } catch (SQLException e) {
-          e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-          e.printStackTrace();
-        }
-        for (Connection conn : connections) {
+      if (MetricsManager.checkAllTagExisted(metric.getName(), metric.getTags().keySet())) {
+
+        String querySql = buildSqlStatement(Collections.singletonList(metric), startTime, endTime);
+
+        ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+        while(iterator.hasNext()) {
+          Connection connection = iterator.next();
           try {
-            Statement statement = conn.createStatement();
+            Statement statement = connection.createStatement();
             statement.execute(querySql);
 
             ResultSet rs = statement.getResultSet();
 
             List<String> sqlList = buildDeleteSql(rs);
-            statement = conn.createStatement();
+            statement = connection.createStatement();
             for (String sql : sqlList) {
               statement.addBatch(sql);
             }
@@ -111,6 +243,8 @@ public class QueryExecutor {
 
           } catch (SQLException e) {
             LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
+          } finally {
+            iterator.putBack(connection);
           }
 
         }
@@ -119,41 +253,29 @@ public class QueryExecutor {
     }
   }
 
-  private boolean getMetricMapping(QueryMetric metric) {
-    tag2pos = MetricsManager.getTagOrder(metric.getName());
-    pos2tag = new HashMap<>();
+  private String buildSqlStatement(List<QueryMetric> metrics, long startTime, long endTime) {
+    StringBuilder sqlBuilder = new StringBuilder("SELECT ");
+    for (QueryMetric metric : metrics) {
+      String[] tagKeys = MetricsManager.getPosTagList(metric.getName());
 
-    if (tag2pos == null) {
-      return false;
-    } else {
-      for (Map.Entry<String, List<String>> tag : metric.getTags().entrySet()) {
-        String tmpKey = tag.getKey();
-        Integer tempPosition = tag2pos.getOrDefault(tmpKey, null);
-        if (tempPosition == null) {
-          return false;
+      List<String>[] tagValues = new List[tagKeys.length];
+      for (int i =0 ; i < tagKeys.length; i++) {
+        if (metric.getTags().containsKey(tagKeys[i])) {
+          tagValues[i] = metric.getTags().get(tagKeys[i]);
+        } else {
+          tagValues[i] = Collections.singletonList("*");
         }
-        pos2tag.put(tempPosition, tmpKey);
+      }
+      List<String> subffixPaths = MetricsManager.productPatch(tagValues);
+      for (String subfixPath :  subffixPaths) {
+        sqlBuilder.append(MetricsManager.getStorageGroupName(subfixPath)).append(subfixPath).append(".").append(metric.getName()).append(",");
       }
     }
-
-    return true;
+    sqlBuilder.deleteCharAt(sqlBuilder.length() - 1);
+    sqlBuilder.append(String.format(" FROM ROOT where time>=%s and time<=%s", startTime, endTime));
+    return sqlBuilder.toString();
   }
 
-  private String buildSqlStatement(QueryMetric metric, Map<Integer, String> pos2tag, int maxPath,
-      long startTime, long endTime) {
-    QuerySqlBuilder sqlBuilder = new QuerySqlBuilder(metric.getName());
-
-    for (int i = 0; i < maxPath; i++) {
-      String tmpKey = pos2tag.getOrDefault(i, null);
-      if (tmpKey == null) {
-        sqlBuilder.append("*");
-      } else {
-        sqlBuilder.append(metric.getTags().get(tmpKey));
-      }
-    }
-
-    return sqlBuilder.generateSql(startTime, endTime);
-  }
 
   private List<String> buildDeleteSql(ResultSet rs) throws SQLException {
     ResultSetMetaData metaData = rs.getMetaData();
@@ -181,110 +303,41 @@ public class QueryExecutor {
     return builder.build(paths, types);
   }
 
-  private long getValueResult(String sql, MetricValueResult metricValueResult) {
-    long sampleSize = 0L;
-    if (sql == null || metricValueResult == null) {
-      return sampleSize;
-    }
 
-    Connection connection = null;
-    try {
-      connection = IoTDBUtil.getConnection().get(0);
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-    }
-    try (Statement statement = connection.createStatement()) {
-      LOGGER.info("Send query SQL: {}", sql);
-      statement.execute(sql);
-      ResultSet rs = statement.getResultSet();
-      ResultSetMetaData metaData = rs.getMetaData();
-      int columnCount = metaData.getColumnCount();
-      boolean[] paths = new boolean[columnCount - 1];
-      while (rs.next()) {
-        long timestamp = rs.getLong(1);
-        for (int i = 2; i <= columnCount; i++) {
-          String value = rs.getString(i);
-          if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
-              .equals("2.147483646E9")) {
-            continue;
-          }
-          sampleSize++;
-          paths[i - 2] = true;
-          QueryDataPoint dataPoint = null;
-          switch (findType(value)) {
-            case Types.INTEGER:
-              int intValue = rs.getInt(i);
-              dataPoint = new QueryDataPoint(timestamp, intValue);
-              break;
-            case Types.DOUBLE:
-              double doubleValue = rs.getDouble(i);
-              dataPoint = new QueryDataPoint(timestamp, doubleValue);
-              break;
-            case Types.VARCHAR:
-              dataPoint = new QueryDataPoint(timestamp, value);
-              break;
-            default:
-              LOGGER.error("QueryExecutor.execute: invalid type");
-          }
-          metricValueResult.addDataPoint(dataPoint);
-        }
-      }
+//  private void getTagValueFromPaths(ResultSetMetaData metaData, boolean[] hasPaths)
+//      throws SQLException {
+//    tmpTags = new HashMap<>();
+//    int columnCount = metaData.getColumnCount();
+//    for (int i = 2; i <= columnCount; i++) {
+//      if (!hasPaths[i - 2]) {
+//        continue;
+//      }
+//      String[] paths = metaData.getColumnName(i).split("\\.");
+//      int pathsLen = paths.length;
+//      //第一个是root，第二个是sg，最后一个是metric name 全都舍弃
+//      for (int j = 2; j < pathsLen - 1; j++) {
+//        List<String> list = tmpTags.getOrDefault(j, null);
+//        if (list == null) {
+//          list = new LinkedList<>();
+//          tmpTags.put(j, list);
+//        }
+//        if (!list.contains(paths[j])) {
+//          list.add(paths[j]);
+//        }
+//      }
+//    }
+//  }
+//
+//  private void setTags(String metricName, MetricValueResult metricValueResult) {
+//    if (tmpTags != null) {
+//      String[] tagNames = MetricsManager.getPosTagList(metricName);
+//      for (Map.Entry<Integer, List<String>> entry : tmpTags.entrySet()) {
+//        metricValueResult.setTag(tagNames[entry.getKey() - 2], entry.getValue());
+//      }
+//    }
+//  }
 
-      getTagValueFromPaths(metaData, paths);
 
-      addBasicGroupByToResult(metaData, metricValueResult);
-    } catch (SQLException e) {
-      LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
-    }
-    return sampleSize;
-  }
-
-  private void getTagValueFromPaths(ResultSetMetaData metaData, boolean[] hasPaths)
-      throws SQLException {
-    tmpTags = new HashMap<>();
-    int columnCount = metaData.getColumnCount();
-    for (int i = 2; i <= columnCount; i++) {
-      if (!hasPaths[i - 2]) {
-        continue;
-      }
-      String[] paths = metaData.getColumnName(i).split("\\.");
-      int pathsLen = paths.length;
-      for (int j = 2; j < pathsLen - 1; j++) {
-        List<String> list = tmpTags.getOrDefault(j, null);
-        if (list == null) {
-          list = new LinkedList<>();
-          tmpTags.put(j, list);
-        }
-        if (!list.contains(paths[j])) {
-          list.add(paths[j]);
-        }
-      }
-    }
-  }
-
-  private void setTags(MetricValueResult metricValueResult) {
-    if (tmpTags != null) {
-      for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
-        pos2tag.put(entry.getValue(), entry.getKey());
-      }
-
-      for (Map.Entry<Integer, List<String>> entry : tmpTags.entrySet()) {
-        metricValueResult.setTag(pos2tag.get(entry.getKey() - 2), entry.getValue());
-      }
-    }
-  }
-
-  private void addBasicGroupByToResult(
-      ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
-    int type = metaData.getColumnType(2);
-    if (type == Types.VARCHAR) {
-      metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
-    } else {
-      metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
-    }
-  }
 
   private MetricResult doAggregations(QueryMetric metric, MetricResult result)
       throws QueryException {

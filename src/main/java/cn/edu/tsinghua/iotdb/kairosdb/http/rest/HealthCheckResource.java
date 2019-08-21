@@ -2,7 +2,8 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
 import static cn.edu.tsinghua.iotdb.kairosdb.http.rest.MetricsResource.setHeaders;
 
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import java.sql.Connection;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -20,7 +21,8 @@ public class HealthCheckResource {
   public Response check() {
     boolean health = true;
     try {
-      for (Connection conn : IoTDBUtil.getNewConnection()) {
+      for (String url : ConfigDescriptor.getInstance().getConfig().URL_LIST) {
+        Connection conn = IoTDBConnectionPool.getConnection(url) ;
         conn.close();
       }
     } catch (Exception e) {
@@ -39,7 +41,8 @@ public class HealthCheckResource {
   public Response status() {
     String status = "OK";
     try {
-      for (Connection conn : IoTDBUtil.getNewConnection()) {
+      for (String url : ConfigDescriptor.getInstance().getConfig().URL_LIST) {
+        Connection conn = IoTDBConnectionPool.getConnection(url) ;
         conn.close();
       }
     } catch (Exception e) {

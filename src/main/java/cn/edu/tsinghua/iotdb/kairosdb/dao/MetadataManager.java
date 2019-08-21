@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.dao;
 
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool.ConnectionIterator;
 import cn.edu.tsinghua.iotdb.kairosdb.metadata.MetadataException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -18,8 +19,6 @@ public class MetadataManager {
 
   private static MetadataManager manager;
 
-  private List<Connection> connections;
-
   private static final String NULL_STRING = "NULL";
 
   public static synchronized MetadataManager getInstance() {
@@ -30,18 +29,15 @@ public class MetadataManager {
   }
 
   private MetadataManager() {
-    try {
-      connections = IoTDBUtil.getNewConnection();
-    } catch (SQLException | ClassNotFoundException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
-    }
   }
 
   public synchronized void addOrUpdateValue(
       String service, String serviceKey, String key, String value)
       throws MetadataException {
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
         statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
         ResultSet rs = statement.getResultSet();
         if (rs.next()) {
@@ -54,67 +50,93 @@ public class MetadataManager {
       } catch (SQLException e) {
         LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
         throw new MetadataException("Failed to add value");
+      } finally {
+        iterator.putBack(connection);
       }
     }
   }
 
   public String getValue(String service, String serviceKey, String key) {
-    try (Statement statement = connections.get(0).createStatement()) {
-      statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
-      ResultSet rs = statement.getResultSet();
-      if (rs.next()) {
-        String value = rs.getString(2);
-        if (value.equals(NULL_STRING)) {
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
+        ResultSet rs = statement.getResultSet();
+        if (rs.next()) {
+          String value = rs.getString(2);
+          if (value.equals(NULL_STRING)) {
+            return null;
+          }
+          return value;
+        } else {
           return null;
         }
-        return value;
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+      } finally {
+        iterator.putBack(connection);
       }
-    } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
     return null;
   }
 
   public List<String> getServiceKeyList(String service) {
     List<String> list = new LinkedList<>();
-    try (Statement statement = connections.get(0).createStatement()) {
-      statement.execute(new MetadataSqlGenerator().getQuerySql(service));
-      ResultSet rs = statement.getResultSet();
-      while (rs.next()) {
-        String serviceKey = rs.getString(2);
-        if (list.contains(serviceKey)) {
-          continue;
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        statement.execute(new MetadataSqlGenerator().getQuerySql(service));
+        ResultSet rs = statement.getResultSet();
+        while (rs.next()) {
+          String serviceKey = rs.getString(2);
+          if (list.contains(serviceKey)) {
+            continue;
+          }
+          list.add(serviceKey);
         }
-        list.add(serviceKey);
+        return list;
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+      } finally {
+        iterator.putBack(connection);
       }
-    } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
     return list;
   }
 
   public List<String> getKeyList(String service, String serviceKey) {
     List<String> list = new LinkedList<>();
-    try (Statement statement = connections.get(0).createStatement()) {
-      statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey));
-      ResultSet rs = statement.getResultSet();
-      while (rs.next()) {
-        String key = rs.getString(2);
-        if (list.contains(key)) {
-          continue;
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
+        statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey));
+        ResultSet rs = statement.getResultSet();
+        while (rs.next()) {
+          String key = rs.getString(2);
+          if (list.contains(key)) {
+            continue;
+          }
+          list.add(key);
         }
-        list.add(key);
+        return list;
+      } catch (SQLException e) {
+        LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+      } finally {
+        iterator.putBack(connection);
       }
-    } catch (SQLException e) {
-      LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
     return list;
   }
 
   public synchronized void deleteValue(String service, String serviceKey, String key)
       throws MetadataException {
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
+    ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
+    while(iterator.hasNext()) {
+      Connection connection = iterator.next();
+      try (Statement statement = connection.createStatement()) {
         statement.execute(new MetadataSqlGenerator().getQuerySql(service, serviceKey, key));
         ResultSet rs = statement.getResultSet();
         if (rs.next()) {
@@ -124,6 +146,8 @@ public class MetadataManager {
       } catch (SQLException e) {
         LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
         throw new MetadataException("Failed to delete value");
+      } finally {
+        iterator.putBack(connection);
       }
     }
   }
