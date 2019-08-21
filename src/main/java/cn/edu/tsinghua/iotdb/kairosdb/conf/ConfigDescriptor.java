@@ -5,7 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,13 +46,23 @@ public class ConfigDescriptor {
         properties.load(inputStream);
 //        config.HOST = properties.getProperty("HOST", "127.0.0.1");
 //        config.PORT = properties.getProperty("PORT", "6667");
-        String urlList=properties.getProperty("IoTDB_LIST","127.0.0.1:6667");
+        String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
         Collections.addAll(config.URL_LIST, urlList.split(","));
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
-        config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
-        config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
+        config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
+        for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
+          List<String> machines = new ArrayList<>();
+          String machine_list = properties.getProperty("PROTOCAL_" + i);
+          Collections.addAll(machines, machine_list.split(","));
+          config.PROTOCAL_MACHINE.add(machines);
+        }
+        config.STORAGE_GROUP_SIZE = Integer
+            .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
+        config.MAX_ROLLUP = Integer
+            .parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
-        config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
+        config.CONNECTION_NUM = Integer
+            .parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }
@@ -65,6 +77,7 @@ public class ConfigDescriptor {
   }
 
   private static class ConfigDescriptorHolder {
+
     private static final ConfigDescriptor INSTANCE = new ConfigDescriptor();
   }
 }

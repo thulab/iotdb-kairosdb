@@ -37,10 +37,10 @@ public class IKR {
   }
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    LOGGER.info("Ready to connect to IoTDB.");
     for (String url : config.URL_LIST) {
+      LOGGER.info("Ready to connect to IoTDB. {}", url);
       Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
-      LOGGER.info("Connected successfully.");
+      LOGGER.info("Connected {} successfully.", url);
       MetricsManager.loadMetadata(connection);
     }
   }
