@@ -37,7 +37,7 @@ public class IoTDBUtil {
 //    IoTDBUtil.user = user;
 //    IoTDBUtil.password = password;
 //    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-//    connection = DriverManagererManager.getConnection(String.format(CONNECT_String, URL), user, password);
+//    connection = DriverManagerer.getConnection(String.format(CONNECT_String, URL), user, password);
 //  }
 
   public static List<Connection> getNewConnection() throws SQLException, ClassNotFoundException {

@@ -122,7 +122,7 @@ public class QueryExecutor {
     long start = System.currentTimeMillis();
 
     ConnectionIterator iterator = IoTDBConnectionPool.getInstance().getConnectionIterator();
-    while(iterator.hasNext()) {
+    if(iterator.hasNext()) {
       Connection connection = iterator.next();
       try (Statement statement = connection.createStatement()) {
         LOGGER.info("Send query SQL: {}", sql);

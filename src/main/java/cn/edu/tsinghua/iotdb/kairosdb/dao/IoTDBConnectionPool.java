@@ -18,8 +18,6 @@ public class IoTDBConnectionPool {
   private static final String CONNECT_STRING = "jdbc:iotdb://%s/";
   private AtomicInteger loop = new AtomicInteger(0);
 
-  static final Logger logger = LoggerFactory.getLogger(IoTDBConnectionPool.class);
-
   private LinkedList<Connection>[] connections_list;
 
   private IoTDBConnectionPool() {
@@ -81,7 +79,7 @@ public class IoTDBConnectionPool {
         try {
           connection.close();
         } catch (SQLException e) {
-          logger.error(e.getMessage());
+          LOGGER.error(e.getMessage());
         }
       }
     }
@@ -131,9 +129,9 @@ public class IoTDBConnectionPool {
       synchronized (connections_list[loc]) {
         if (connections_list[loc].size() == 0) {
           try {
-            logger.info("no available connection in {}, waiting...", config.URL_LIST.get(loc));
+            LOGGER.info("no available connection in {}, waiting...", config.URL_LIST.get(loc));
             connections_list[loc].wait();
-            logger.info("get one connection in {}, end waiting", config.URL_LIST.get(loc));
+            LOGGER.info("get one connection in {}, end waiting", config.URL_LIST.get(loc));
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
