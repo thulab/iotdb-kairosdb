@@ -21,6 +21,7 @@ public class ConfigDescriptor {
   private ConfigDescriptor() {
     config = new Config();
     loadProps();
+    new updateConfigThread().start();
   }
 
   public static ConfigDescriptor getInstance() {
@@ -44,18 +45,20 @@ public class ConfigDescriptor {
       Properties properties = new Properties();
       try {
         properties.load(inputStream);
-//        config.HOST = properties.getProperty("HOST", "127.0.0.1");
-//        config.PORT = properties.getProperty("PORT", "6667");
         String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
-        Collections.addAll(config.URL_LIST, urlList.split(","));
+        List<String> urls = new ArrayList<>();
+        Collections.addAll(urls, urlList.split(","));
+        config.URL_LIST = urls;
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
+        List<List<String>> protocal_machine = new ArrayList<>();
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
           List<String> machines = new ArrayList<>();
           String machine_list = properties.getProperty("PROTOCAL_" + i);
           Collections.addAll(machines, machine_list.split(","));
-          config.PROTOCAL_MACHINE.add(machines);
+          protocal_machine.add(machines);
         }
+        config.PROTOCAL_MACHINE = protocal_machine;
         config.STORAGE_GROUP_SIZE = Integer
             .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer
@@ -80,4 +83,23 @@ public class ConfigDescriptor {
 
     private static final ConfigDescriptor INSTANCE = new ConfigDescriptor();
   }
+
+  /**
+   * 定时更新属性的线程
+   */
+  private class updateConfigThread extends Thread {
+
+    //每2分钟更新一次config文件
+    public void run() {
+      while (true){
+        loadProps();
+        try {
+          Thread.sleep(120000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+
 }
