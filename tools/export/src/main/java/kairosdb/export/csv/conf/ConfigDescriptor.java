@@ -10,7 +10,7 @@ import java.util.Properties;
 
 public class ConfigDescriptor {
 
-  //private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDescriptor.class);
+//  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDescriptor.class);
 
 
   private Config config;
