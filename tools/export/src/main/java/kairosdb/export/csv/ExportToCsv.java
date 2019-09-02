@@ -365,7 +365,14 @@ public class ExportToCsv {
     if (path == null) {
       return "null";
     }
-    int hashCode = path.hashCode();
+    String device = path.split("\\.")[1];
+    for (int i = 0; i < config.PROTOCAL_NUM; i++) {
+      if (config.PROTOCAL_MACHINE.get(i).contains(device)) {
+        return String.format("%s%s", STORAGE_GROUP_PREFIX, i);
+      }
+    }
+    int hashCode = device.hashCode();
+//    LOGGER.error("协议中不存在车辆{}", device);
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 

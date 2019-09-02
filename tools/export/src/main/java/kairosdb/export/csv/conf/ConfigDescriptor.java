@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 
@@ -51,6 +54,15 @@ public class ConfigDescriptor {
         config.COLUMN = Integer.parseInt(properties.getProperty("COLUMN", "100"));
         config.STORAGE_GROUP_SIZE = Integer
             .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "10"));
+        config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
+        List<List<String>> protocal_machine = new ArrayList<>();
+        for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
+          List<String> machines = new ArrayList<>();
+          String machine_list = properties.getProperty("PROTOCAL_" + i);
+          Collections.addAll(machines, machine_list.split(","));
+          protocal_machine.add(machines);
+        }
+        config.PROTOCAL_MACHINE = protocal_machine;
       } catch (IOException e) {
         //LOGGER.error("load properties error: ", e);
       }
