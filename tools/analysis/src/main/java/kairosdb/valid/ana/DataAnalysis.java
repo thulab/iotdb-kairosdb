@@ -39,11 +39,11 @@ public class DataAnalysis {
       long start;
       long end;
       if (i == intervalNum - 1) {
-        start = startTime;
+        start = startTime + i * Constants.TIME_INTERVAL;
         end = endTime;
       } else {
-        start = startTime;
-        end = startTime + Constants.TIME_INTERVAL;
+        start = startTime + i * Constants.TIME_INTERVAL;
+        end = start + Constants.TIME_INTERVAL;
       }
       Date startDate = stampToDate(start);
       Date endDate = stampToDate(end);
@@ -99,7 +99,10 @@ public class DataAnalysis {
     builder.setStart(start).setEnd(end).addMetric(metric).addTag("machine_id", config.TAG);
     QueryResponse kairosResponse = kairosCli.query(builder);
     QueryResponse ikrResponse = ikrCli.query(builder);
-    if (!kairosResponse.getBody().toString().equals(ikrResponse.getBody().toString())) {
+//    if (!kairosResponse.getBody().toString().equals(ikrResponse.getBody().toString())) {
+//      LOGGER.error("metric {} 在时间 {} 至 {} 内数据不一致", metric, start, end);
+//    }
+    if (kairosResponse.getQueries().get(0).getSampleSize() != ikrResponse.getQueries().get(0).getSampleSize()){
       LOGGER.error("metric {} 在时间 {} 至 {} 内数据不一致", metric, start, end);
     }
   }
