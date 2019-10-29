@@ -54,7 +54,7 @@ public class ConfigDescriptor {
         List<List<String>> protocal_machine = new ArrayList<>();
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
           List<String> machines = new ArrayList<>();
-          String machine_list = properties.getProperty("PROTOCAL_" + i);
+          String machine_list = properties.getProperty("PROTOCAL_" + i, "");
           Collections.addAll(machines, machine_list.split(","));
           protocal_machine.add(machines);
         }
@@ -84,17 +84,54 @@ public class ConfigDescriptor {
     private static final ConfigDescriptor INSTANCE = new ConfigDescriptor();
   }
 
+
+  private void updateProps() {
+    String url = System.getProperty(Constants.REST_CONF, null);
+    if (url != null) {
+      InputStream inputStream;
+      try {
+        inputStream = new FileInputStream(new File(url));
+      } catch (FileNotFoundException e) {
+        LOGGER.warn("Fail to find config file {}", url);
+        return;
+      }
+      Properties properties = new Properties();
+      try {
+        properties.load(inputStream);
+        config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
+        List<List<String>> protocal_machine = new ArrayList<>();
+        for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
+          List<String> machines = new ArrayList<>();
+          String machine_list = properties.getProperty("PROTOCAL_" + i, "");
+          Collections.addAll(machines, machine_list.split(","));
+          protocal_machine.add(machines);
+        }
+        config.PROTOCAL_MACHINE = protocal_machine;
+      } catch (IOException e) {
+        LOGGER.error("load properties error: ", e);
+      }
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Fail to close config file input stream", e);
+      }
+    } else {
+      LOGGER.warn("{} No config file path, use default config", Constants.CONSOLE_PREFIX);
+    }
+  }
+
   /**
    * 定时更新属性的线程
    */
   private class updateConfigThread extends Thread {
 
-    //每2分钟更新一次config文件
+    //每30分钟更新一次config文件
     public void run() {
-      while (true){
-        loadProps();
+      while (true) {
+        updateProps();
         try {
-          Thread.sleep(120000);
+          LOGGER.info("定时更新了配置");
+          Thread.sleep(1800000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

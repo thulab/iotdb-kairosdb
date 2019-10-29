@@ -166,15 +166,12 @@ public class DataPointsParser {
         for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
           try {
             statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
-//            LOGGER.info("创建了时间序列:{},创建时间序列的连接序号为:{}", entry.getKey(), count);
           } catch (Exception e) {
             LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{},报错信息为{}", entry.getKey().toString(), count,
                 e.getMessage());
           }
         }
-//        statement.executeBatch();
       }
-//      LOGGER.info("创建时间序列的连接序号为:{}", count);
       count++;
     }
   }
