@@ -37,7 +37,7 @@ public class QueryAggregatorPercentile extends QueryAggregator implements QueryA
       throw new QueryException("Among percentile aggregator, percentile must be in (0,1].");
     }
 
-    long step = getSampling().toTimestamp();
+    long step = getSampling().toMillisecond();
 
     List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
 

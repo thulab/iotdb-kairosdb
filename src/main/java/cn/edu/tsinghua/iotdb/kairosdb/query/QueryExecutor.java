@@ -4,6 +4,8 @@ import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAvg;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -45,39 +47,51 @@ public class QueryExecutor {
   }
 
   public QueryResult execute() throws QueryException {
-
     QueryResult queryResult = new QueryResult();
-
     for (QueryMetric metric : query.getQueryMetrics()) {
-
       if (getMetricMapping(metric)) {
-
         MetricResult metricResult = new MetricResult();
-
-        String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-
-        metricResult.setSampleSize(getValueResult(sql, metricValueResult));
-
-        setTags(metricValueResult);
-
-        if (metricResult.getSampleSize() == 0) {
-          queryResult.addVoidMetricResult(metric.getName());
+        if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG)) {
+          StringBuilder pathBuilder = new StringBuilder("root.*");
+          StringBuilder sqlBuilder = new StringBuilder("select avg(");
+          for (int i = 0; i < tag2pos.size(); i++) {
+            String tmpKey = pos2tag.getOrDefault(i, null);
+            if (tmpKey == null) {
+              pathBuilder.append(".").append("*");
+            } else {
+              pathBuilder.append(".").append(metric.getTags().get(tmpKey));
+            }
+          }
+          sqlBuilder.append(metric.getName()).append(") from ").append(pathBuilder);
+          QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators().get(0);
+          long value = queryAggregatorAvg.getSampling().toMillisecond();
+          sqlBuilder.append(" group by (").append(value).append("ms, [")
+              .append(startTime).append(", ").append(endTime).append("])");
+          metricResult.setSampleSize(getValueResult(sqlBuilder.toString(), metricValueResult));
+          setTags(metricValueResult);
+          if (metricResult.getSampleSize() == 0) {
+            queryResult.addVoidMetricResult(metric.getName());
+          } else {
+            metricResult.addResult(metricValueResult);
+            queryResult.addMetricResult(metricResult);
+          }
         } else {
-          metricResult.addResult(metricValueResult);
-
-          metricResult = doAggregations(metric, metricResult);
-
-          queryResult.addMetricResult(metricResult);
+          String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
+          metricResult.setSampleSize(getValueResult(sql, metricValueResult));
+          setTags(metricValueResult);
+          if (metricResult.getSampleSize() == 0) {
+            queryResult.addVoidMetricResult(metric.getName());
+          } else {
+            metricResult.addResult(metricValueResult);
+            metricResult = doAggregations(metric, metricResult);
+            queryResult.addMetricResult(metricResult);
+          }
         }
-
       } else {
         queryResult.addVoidMetricResult(metric.getName());
       }
-
     }
-
     return queryResult;
   }
 

@@ -30,7 +30,7 @@ public class QueryAggregatorLast extends QueryAggregator
   public MetricValueResult aggregate(MetricValueResult valueResult) {
     MetricValueResult newValueResult = new MetricValueResult(valueResult.getName());
 
-    long step = getSampling().toTimestamp();
+    long step = getSampling().toMillisecond();
 
     List<List<QueryDataPoint>> splitPoints = valueResult.splitDataPoint(getStartTimestamp(), step);
 
