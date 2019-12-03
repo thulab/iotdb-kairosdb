@@ -5,6 +5,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser.DataType;
 import com.google.common.collect.ImmutableSortedMap;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,8 +17,8 @@ public class MetricsManagerTestCase {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsManagerTestCase.class);
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    IoTDBUtil.initConnection("127.0.0.1", "6667", "root", "root");
-    MetricsManager.loadMetadata();
+    Connection connection = IoTDBUtil.getConnection("127.0.0.1:6667", "root", "root");
+    MetricsManager.loadMetadata(connection);
   }
 
   public static void main(String[] argv) {
