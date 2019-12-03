@@ -52,6 +52,7 @@ public class ConfigDescriptor {
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
         config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
         config.GROUP_BY_UNIT = Integer.parseInt(properties.getProperty("GROUP_BY_UNIT", config.GROUP_BY_UNIT + ""));
+        config.MAX_RANGE = Integer.parseInt(properties.getProperty("MAX_RANGE", config.MAX_RANGE + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }

@@ -14,6 +14,7 @@ public class Config {
   public int DEBUG = 0;
   public int CONNECTION_NUM = 20;
   public int GROUP_BY_UNIT = 20;
+  public int MAX_RANGE = 20;
 
   Config() {
 

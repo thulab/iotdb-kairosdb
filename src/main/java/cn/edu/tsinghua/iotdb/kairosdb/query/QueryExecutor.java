@@ -56,7 +56,8 @@ public class QueryExecutor {
       if (getMetricMapping(metric)) {
         MetricResult metricResult = new MetricResult();
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-        if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG)) {
+        long interval = endTime - startTime;
+        if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
           StringBuilder pathBuilder = new StringBuilder("root.*");
           StringBuilder sqlBuilder = new StringBuilder("select avg(");
           for (int i = 0; i < tag2pos.size(); i++) {
