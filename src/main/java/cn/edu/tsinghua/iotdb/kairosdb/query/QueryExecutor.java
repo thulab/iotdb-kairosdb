@@ -65,7 +65,7 @@ public class QueryExecutor {
             if (tmpKey == null) {
               pathBuilder.append(".").append("*");
             } else {
-              pathBuilder.append(".").append(metric.getTags().get(tmpKey));
+              pathBuilder.append(".").append(metric.getTags().get(tmpKey).get(0));
             }
           }
           sqlBuilder.append(metric.getName()).append(") from ").append(pathBuilder);
