@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
 
   private Query query;
 
@@ -65,9 +68,10 @@ public class QueryExecutor {
             }
           }
           sqlBuilder.append(metric.getName()).append(") from ").append(pathBuilder);
-          QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators().get(0);
-          long value = queryAggregatorAvg.getSampling().toMillisecond();
-          sqlBuilder.append(" group by (").append(value).append("ms, [")
+          // QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators()
+          // .get(0);
+          // long value = queryAggregatorAvg.getSampling().toMillisecond();
+          sqlBuilder.append(" group by (").append(config.GROUP_BY_UNIT).append("ms, [")
               .append(startTime).append(", ").append(endTime).append("])");
           metricResult.setSampleSize(getValueResult(sqlBuilder.toString(), metricValueResult));
           setTags(metricValueResult);

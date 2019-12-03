@@ -51,6 +51,7 @@ public class ConfigDescriptor {
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
         config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
+        config.GROUP_BY_UNIT = Integer.parseInt(properties.getProperty("GROUP_BY_UNIT", config.GROUP_BY_UNIT + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }

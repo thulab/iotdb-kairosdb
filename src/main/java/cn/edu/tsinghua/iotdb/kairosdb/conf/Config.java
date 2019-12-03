@@ -13,6 +13,7 @@ public class Config {
   public int MAX_ROLLUP = 100;
   public int DEBUG = 0;
   public int CONNECTION_NUM = 20;
+  public int GROUP_BY_UNIT = 20;
 
   Config() {
 
