@@ -60,7 +60,7 @@ public class MetricsResource {
     gson = builder.disableHtmlEscaping().create();
     if (config.ENABLE_PROFILER) {
       profilerPool.scheduleAtFixedRate(() -> Measurement.getInstance().show(),
-          10, 10, TimeUnit.SECONDS);
+          config.PROFILE_INTERVAL, config.PROFILE_INTERVAL, TimeUnit.SECONDS);
     }
   }
 

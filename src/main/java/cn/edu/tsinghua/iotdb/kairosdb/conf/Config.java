@@ -15,6 +15,7 @@ public class Config {
   public int CONNECTION_NUM = 20;
   public int GROUP_BY_UNIT = 20;
   public int MAX_RANGE = 20;
+  public int PROFILE_INTERVAL = 10;
   public boolean ENABLE_PROFILER = false;
 
   Config() {
