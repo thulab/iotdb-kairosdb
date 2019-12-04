@@ -4,9 +4,10 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
+import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
-import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAvg;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
@@ -21,7 +22,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -127,11 +127,9 @@ public class QueryExecutor {
               statement.addBatch(sql);
             }
             statement.executeBatch();
-
           } catch (SQLException e) {
             LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
           }
-
         }
       }
 
@@ -206,6 +204,11 @@ public class QueryExecutor {
       return sampleSize;
     }
 
+    long start = 0;
+    if (config.ENABLE_PROFILER) {
+      start = System.nanoTime();
+    }
+
     Connection connection = null;
     try {
       connection = IoTDBUtil.getConnection().get(0);
@@ -214,14 +217,20 @@ public class QueryExecutor {
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
     }
+
     try (Statement statement = connection.createStatement()) {
       LOGGER.info("Send query SQL: {}", sql);
+      boolean isFirstNext = true;
       statement.execute(sql);
       ResultSet rs = statement.getResultSet();
       ResultSetMetaData metaData = rs.getMetaData();
       int columnCount = metaData.getColumnCount();
       boolean[] paths = new boolean[columnCount - 1];
       while (rs.next()) {
+        if (config.ENABLE_PROFILER && isFirstNext) {
+          Measurement.getInstance().add(Profile.FIRST_NEXT, System.nanoTime() - start);
+          isFirstNext = false;
+        }
         long timestamp = rs.getLong(1);
         for (int i = 2; i <= columnCount; i++) {
           String value = rs.getString(i);
@@ -250,7 +259,9 @@ public class QueryExecutor {
           metricValueResult.addDataPoint(dataPoint);
         }
       }
-
+      if (config.ENABLE_PROFILER) {
+        Measurement.getInstance().add(Profile.IOTDB_QUERY, System.nanoTime() - start);
+      }
       getTagValueFromPaths(metaData, paths);
 
       addBasicGroupByToResult(metaData, metricValueResult);
