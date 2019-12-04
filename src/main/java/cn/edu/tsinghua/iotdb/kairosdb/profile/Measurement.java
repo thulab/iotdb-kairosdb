@@ -24,14 +24,22 @@ public class Measurement {
   }
 
   public void show() {
-    for(Profile profile: Profile.values()) {
-      long sum = profilerSum.get(profile).get();
-      double count = profilerCounter.get(profile).get();
-      double avgTime = 0;
-      if(count != 0) {
-        avgTime = sum / 1000000.0 / count ;
+    double ikrQuery;
+    double ikrCount = profilerCounter.get(Profile.IKR_QUERY).get();
+    if (ikrCount > 0) {
+      ikrQuery = profilerSum.get(Profile.IKR_QUERY).get() / 1000000.0 / ikrCount;
+      for (Profile profile : Profile.values()) {
+        long sum = profilerSum.get(profile).get();
+        double count = profilerCounter.get(profile).get();
+        double avgTime = 0;
+        if (count != 0) {
+          avgTime = sum / 1000000.0 / count;
+        }
+        String avg = String.format("%.2f", avgTime);
+        String percent = String.format("%.2f", avgTime / ikrQuery * 100);
+        LOGGER.info("[{}], average time cost: ,{}, ms; cost {}% IKR query time ", profile, avg
+            , percent);
       }
-      LOGGER.info("[{}], average time cost: ,{}, ms", profile, avgTime);
     }
   }
 
