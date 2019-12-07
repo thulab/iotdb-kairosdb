@@ -64,8 +64,9 @@ public class QueryExecutor {
           // QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators()
           // .get(0);
           // long value = queryAggregatorAvg.getSampling().toMillisecond();
-          sql += " group by ([" + startTime + ", " + endTime + "], " + config.GROUP_BY_UNIT +
-              "ms, " + config.GROUP_BY_UNIT + "ms)";
+          //sql += " group by ([" + startTime + ", " + endTime + "], " + config.GROUP_BY_UNIT +
+              //"ms, " + config.GROUP_BY_UNIT + "ms)";
+          sql += " group by (" + config.GROUP_BY_UNIT + "ms, [" + startTime + ", " + endTime + "])";
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
