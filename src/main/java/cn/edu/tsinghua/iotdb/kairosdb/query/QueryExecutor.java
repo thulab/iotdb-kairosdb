@@ -57,24 +57,16 @@ public class QueryExecutor {
         MetricResult metricResult = new MetricResult();
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
         long interval = endTime - startTime;
+        String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
         if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
-          StringBuilder pathBuilder = new StringBuilder("root.*");
-          StringBuilder sqlBuilder = new StringBuilder("select avg(");
-          for (int i = 0; i < tag2pos.size(); i++) {
-            String tmpKey = pos2tag.getOrDefault(i, null);
-            if (tmpKey == null) {
-              pathBuilder.append(".").append("*");
-            } else {
-              pathBuilder.append(".").append(metric.getTags().get(tmpKey).get(0));
-            }
-          }
-          sqlBuilder.append(metric.getName()).append(") from ").append(pathBuilder);
+          sql = sql.replace(metric.getName(), config.AGG_FUNCTION + "(" + metric.getName() + ")");
+          sql = sql.substring(0, sql.indexOf("where"));
           // QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators()
           // .get(0);
           // long value = queryAggregatorAvg.getSampling().toMillisecond();
-          sqlBuilder.append(" group by (").append(config.GROUP_BY_UNIT).append("ms, [")
-              .append(startTime).append(", ").append(endTime).append("])");
-          metricResult.setSampleSize(getValueResult(sqlBuilder.toString(), metricValueResult));
+          sql += " group by ([" + startTime + ", " + endTime + "], " + config.GROUP_BY_UNIT +
+              "ms, " + config.GROUP_BY_UNIT + "ms)";
+          metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
             queryResult.addVoidMetricResult(metric.getName());
@@ -83,7 +75,6 @@ public class QueryExecutor {
             queryResult.addMetricResult(metricResult);
           }
         } else {
-          String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
