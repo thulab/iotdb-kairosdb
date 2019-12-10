@@ -1,5 +1,8 @@
 package kairosdb.export.csv.conf;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Config {
 
   public String KAIROSDB_BASE_URL = "http://localhost:8080";
@@ -10,6 +13,8 @@ public class Config {
   public String START_TIME = "2018-8-30T00:00:00+08:00";
   public String ENDED_TIME = "2018-8-30T00:10:00+08:00";
   public String EXPORT_FILE_DIR = "/home/ubuntu";
+  public int PROTOCAL_NUM = 12;
+  public List<List<String>> PROTOCAL_MACHINE = new ArrayList<>();
 
   Config() {
   }

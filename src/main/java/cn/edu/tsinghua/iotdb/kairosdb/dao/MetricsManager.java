@@ -102,7 +102,7 @@ public class MetricsManager {
         if (rs.next()) {
           storageGroupSize = rs.getInt(2);
         } else {
-          LOGGER.error("Database metadata has broken, please reload a new database.");
+          LOGGER.error("Database metadata has broken, use 30 as storage group size.");
 //          System.exit(1);
           storageGroupSize = 30;
         }
@@ -153,7 +153,7 @@ public class MetricsManager {
     } finally {
       close(statement);
     }
-//    LOGGER.info("Finish loading system data.");
+    LOGGER.info("Finish loading system data.");
 
   }
 
@@ -390,7 +390,22 @@ public class MetricsManager {
           "MetricsManager.getStorageGroupName(String metricName): metricName could not be null.");
       return "null";
     }
-    int hashCode = path.split("\\.")[1].hashCode();
+    String device = path.split("\\.")[1];
+//    int hashCode = 0;
+//    if (device.length() == 4) {
+//      hashCode = device.substring(0, 2).hashCode();
+//    }else {
+//      hashCode = device.substring(0, 1).hashCode();
+//    }
+//    int hashCode = path.split("\\.")[1].hashCode();
+//    int protocal = 0;
+    for (int i = 0; i < config.PROTOCAL_NUM; i++) {
+      if (config.PROTOCAL_MACHINE.get(i).contains(device)) {
+        return String.format("%s%s", STORAGE_GROUP_PREFIX, i);
+      }
+    }
+    int hashCode = device.hashCode();
+//    LOGGER.error("协议中不存在车辆{}", device);
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 

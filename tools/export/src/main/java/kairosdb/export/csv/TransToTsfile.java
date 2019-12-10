@@ -14,6 +14,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -50,12 +51,12 @@ public class TransToTsfile {
                     tsDataTypes.set(i, TSDataType.INT64);
                     tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
                         TSDataType.INT64, TSEncoding.TS_2DIFF));
-                    DataPoint intPoint = new IntDataPoint(sensorList.get(i),
-                        Integer.parseInt(points[i]));
+                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
+                        Long.parseLong(points[i]));
                     tsRecord.addTuple(intPoint);
                   } else {
-                    DataPoint intPoint = new IntDataPoint(sensorList.get(i),
-                        Integer.parseInt(points[i]));
+                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
+                        Long.parseLong(points[i]));
                     tsRecord.addTuple(intPoint);
                   }
                 } else if (points[i].matches(floatRegex)) {

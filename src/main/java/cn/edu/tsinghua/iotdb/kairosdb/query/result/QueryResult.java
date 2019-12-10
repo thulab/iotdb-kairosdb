@@ -24,6 +24,7 @@ public class QueryResult {
   public void addVoidMetricResult(String metricName) {
     MetricResult metricResult = new MetricResult();
     metricResult.addResult(new MetricValueResult(metricName));
+    metricResult.getResults().get(0).setGroupBy(null);
     this.queries.add(metricResult);
   }
 

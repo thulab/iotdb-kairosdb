@@ -3,7 +3,6 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,12 +13,7 @@ public class IoTDBUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBUtil.class);
 
-  //  private static final String URL = "jdbc:iotdb://%s:%s/";
   private static final String CONNECT_String = "jdbc:iotdb://%s/";
-
-  //  private static String host;
-  //  private static String port;
-  //  private static String URL;
   private final static String user = "root";
   private final static String password = "root";
 
@@ -27,17 +21,6 @@ public class IoTDBUtil {
 
   private IoTDBUtil() {
   }
-
-//  public static void initConnection(String url, String user, String password)
-//      throws ClassNotFoundException, SQLException {
-//    IoTDBUtil.host = host;
-//    IoTDBUtil.port = port;
-//    IoTDBUtil.URL = url;
-//    IoTDBUtil.user = user;
-//    IoTDBUtil.password = password;
-//    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-//    connection = DriverManager.getConnection(String.format(CONNECT_String, URL), user, password);
-//  }
 
   public static List<Connection> getNewConnection() throws SQLException, ClassNotFoundException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
