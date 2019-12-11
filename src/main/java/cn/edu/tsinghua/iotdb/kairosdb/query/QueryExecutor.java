@@ -72,11 +72,11 @@ public class QueryExecutor {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
     }
-    for(int metricIndex = 1; metricIndex < queryMetricNum; metricIndex ++) {
+    for (int metricIndex = 1; metricIndex < queryMetricNum; metricIndex++) {
       queryMetricJsons[0].append(",").append(queryMetricJsons[metricIndex]);
     }
     queryResultStr.append("{\"queries\":[");
-    if(queryMetricNum > 0) {
+    if (queryMetricNum > 0) {
       queryResultStr.append(queryMetricJsons[0].toString());
     }
     queryResultStr.append("]}");
