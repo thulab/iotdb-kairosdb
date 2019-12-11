@@ -142,8 +142,7 @@ public class MetricsResource {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
-      QueryResult result = executor.execute();
-      String entity = parser.parseResultToJson(result);
+      String entity = executor.executeV2();
       if (config.ENABLE_PROFILER) {
         Measurement.getInstance().add(Profile.IKR_QUERY, System.nanoTime() - start);
       }
