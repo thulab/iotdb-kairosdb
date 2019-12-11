@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
@@ -106,14 +106,7 @@ public class QueryExecutor {
 
       if (getMetricMapping(metric)) {
         String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        List<Connection> connections = null;
-        try {
-          connections = IoTDBUtil.getNewConnection();
-        } catch (SQLException e) {
-          e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-          e.printStackTrace();
-        }
+        List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
         for (Connection conn : connections) {
           try {
             Statement statement = conn.createStatement();
@@ -209,14 +202,7 @@ public class QueryExecutor {
       start = System.nanoTime();
     }
 
-    Connection connection = null;
-    try {
-      connection = IoTDBUtil.getConnection().get(0);
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-    }
+    Connection connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
 
     try (Statement statement = connection.createStatement()) {
       LOGGER.info("Send query SQL: {}", sql);

@@ -182,17 +182,13 @@ public class MetricsManager {
         datatype = "TEXT";
         encoding = TEXT_ENCODING;
     }
-    try {
-      for (Connection conn : IoTDBUtil.getConnection()) {
-        try (Statement statement = conn.createStatement()) {
-          statement.execute(String
-              .format(
-                  "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-                  getStorageGroupName(path), path, metricName, datatype, encoding));
-        }
+    for (Connection conn : IoTDBConnectionPool.getInstance().getConnections()) {
+      try (Statement statement = conn.createStatement()) {
+        statement.execute(String
+            .format(
+                "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
+                getStorageGroupName(path), path, metricName, datatype, encoding));
       }
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
     }
   }
 
@@ -206,7 +202,7 @@ public class MetricsManager {
 
   public static void addDataPoints(MetricResult metric, String metricName) {
     try {
-      List<Connection> connections = IoTDBUtil.getNewConnection();
+      List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
       for (Connection conn : connections) {
         for (MetricValueResult valueResult : metric.getResults()) {
           if ((valueResult.isTextType() && metric.getResults().size() > 1)
@@ -253,14 +249,14 @@ public class MetricsManager {
         }
       }
 
-    } catch (SQLException | ClassNotFoundException e) {
+    } catch (SQLException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
   }
 
   public static void deleteMetric(String metricName) {
     try {
-      List<Connection> connections = IoTDBUtil.getNewConnection();
+      List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
       for (Connection conn : connections) {
         Statement statement = conn.createStatement();
 
@@ -284,7 +280,7 @@ public class MetricsManager {
 
         tagOrder.remove(metricName);
       }
-    } catch (SQLException | ClassNotFoundException e) {
+    } catch (SQLException e) {
       LOGGER.error(String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
     }
   }
@@ -339,14 +335,7 @@ public class MetricsManager {
       String sql = String.format(
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
           index.getAndIncrement(), metricName, entry.getKey(), entry.getValue());
-      List<Connection> connections = null;
-      try {
-        connections = IoTDBUtil.getConnection();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-      }
+      List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
       for (Connection conn : connections) {
         try (Statement statement = conn.createStatement()) {
           statement.execute(sql);
