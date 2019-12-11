@@ -38,10 +38,6 @@ public class IoTDBUtil {
     return DriverManager.getConnection(String.format(CONNECT_String, url), user, password);
   }
 
-  public static List<Connection> getConnection() throws SQLException, ClassNotFoundException {
-    return getNewConnection();
-  }
-
   public static void closeConnection() {
     try {
       for (Connection conn : connections) {
