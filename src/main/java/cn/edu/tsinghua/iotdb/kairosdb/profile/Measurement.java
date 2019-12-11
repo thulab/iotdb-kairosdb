@@ -37,7 +37,8 @@ public class Measurement {
         }
         String avg = String.format("%.2f", avgTime);
         String percent = String.format("%.2f", avgTime / ikrQuery * 100);
-        LOGGER.info("[{}], average time cost: ,{}, ms; cost {}% IKR query time ", profile, avg
+        LOGGER.info("Branch [parallel_metric_json], [{}], average time cost: ,{}, ms; cost {}% "
+                + "IKR query time ", profile, avg
             , percent);
       }
     }
