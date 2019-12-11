@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +35,7 @@ public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
+  private static final ExecutorService queryWorkerPool = Executors.newCachedThreadPool();
 
   private Query query;
 
@@ -59,15 +62,17 @@ public class QueryExecutor {
         long interval = endTime - startTime;
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
         if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
+
           sql = sql.replace(metric.getName(), config.AGG_FUNCTION + "(" + metric.getName() + ")");
           sql = sql.substring(0, sql.indexOf("where"));
-          // QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators()
-          // .get(0);
-          // long value = queryAggregatorAvg.getSampling().toMillisecond();
-          //sql += " group by ([" + startTime + ", " + endTime + "], " + config.GROUP_BY_UNIT +
-              //"ms, " + config.GROUP_BY_UNIT + "ms)";
-          sql += " group by (" + config.GROUP_BY_UNIT + "ms, [" + startTime + ", " + endTime + "])";
-          metricResult.setSampleSize(getValueResult(sql, metricValueResult));
+          String sqlBuilder = sql + " group by ("
+              + config.GROUP_BY_UNIT
+              + "ms, ["
+              + startTime
+              + ", "
+              + endTime
+              + "])";
+          metricResult.setSampleSize(getValueResult(sqlBuilder, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
             queryResult.addVoidMetricResult(metric.getName());
@@ -75,7 +80,9 @@ public class QueryExecutor {
             metricResult.addResult(metricValueResult);
             queryResult.addMetricResult(metricResult);
           }
+
         } else {
+
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
@@ -85,6 +92,7 @@ public class QueryExecutor {
             metricResult = doAggregations(metric, metricResult);
             queryResult.addMetricResult(metricResult);
           }
+
         }
       } else {
         queryResult.addVoidMetricResult(metric.getName());
