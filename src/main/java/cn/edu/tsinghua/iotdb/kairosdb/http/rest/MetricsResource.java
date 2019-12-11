@@ -11,7 +11,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
