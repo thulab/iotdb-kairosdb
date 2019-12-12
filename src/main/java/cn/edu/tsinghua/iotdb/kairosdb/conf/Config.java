@@ -6,9 +6,9 @@ import java.util.List;
 public class Config {
 
   public List<String> URL_LIST = new ArrayList<>();
-  public int STORAGE_GROUP_SIZE = 20;
+  public int STORAGE_GROUP_SIZE = 50;
   public String REST_PORT = "6666";
-  public String AGG_FUNCTION = "FIRST_VALUE";
+  public String AGG_FUNCTION = "AVG";
   public int MAX_ROLLUP = 100;
   public int DEBUG = 0;
   public int CONNECTION_NUM = 20;

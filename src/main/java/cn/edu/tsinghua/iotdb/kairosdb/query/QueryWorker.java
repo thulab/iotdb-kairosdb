@@ -37,7 +37,7 @@ public class QueryWorker extends Thread {
   private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private CountDownLatch queryLatch;
-  private StringBuilder queryMetricStr;
+  private Map<String, StringBuilder> queryMetricStr;
   private QueryMetric metric;
   private Map<String, Integer> tag2pos;
   private Map<Integer, String> pos2tag;
@@ -46,7 +46,8 @@ public class QueryWorker extends Thread {
   private Long endTime;
 
 
-  public QueryWorker(CountDownLatch queryLatch, StringBuilder queryMetricStr, QueryMetric metric,
+  public QueryWorker(CountDownLatch queryLatch, Map<String, StringBuilder> queryMetricStr,
+      QueryMetric metric,
       Long startTime, Long endTime) {
     this.queryLatch = queryLatch;
     this.queryMetricStr = queryMetricStr;
@@ -100,7 +101,7 @@ public class QueryWorker extends Thread {
         metricResult.addResult(new MetricValueResult(metric.getName()));
         metricResult.getResults().get(0).setGroupBy(null);
       }
-      queryMetricStr = new StringBuilder(gson.toJson(metricResult));
+      queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
     } catch (Exception e) {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
     } finally {

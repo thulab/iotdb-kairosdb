@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,12 +59,10 @@ public class QueryExecutor {
     StringBuilder queryResultStr = new StringBuilder();
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
-    StringBuilder[] queryMetricJsons = new StringBuilder[queryMetricNum];
-    int i = 0;
+    ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
     for (QueryMetric metric : query.getQueryMetrics()) {
-      queryWorkerPool.submit(new QueryWorker(queryLatch, queryMetricJsons[i], metric, startTime,
+      queryWorkerPool.submit(new QueryWorker(queryLatch, queryMetricJsons, metric, startTime,
           endTime));
-      i++;
     }
     try {
       // wait for all clients finish test
@@ -72,12 +71,15 @@ public class QueryExecutor {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
     }
-    for (int metricIndex = 1; metricIndex < queryMetricNum; metricIndex++) {
-      queryMetricJsons[0].append(",").append(queryMetricJsons[metricIndex]);
+    StringBuilder midMetricBuilder = new StringBuilder();
+
+    for (StringBuilder metricBuilder : queryMetricJsons.values()) {
+      midMetricBuilder.append(",").append(metricBuilder);
     }
+    midMetricBuilder.delete(0, 1);
     queryResultStr.append("{\"queries\":[");
     if (queryMetricNum > 0) {
-      queryResultStr.append(queryMetricJsons[0].toString());
+      queryResultStr.append(midMetricBuilder.toString());
     }
     queryResultStr.append("]}");
     return queryResultStr.toString();
