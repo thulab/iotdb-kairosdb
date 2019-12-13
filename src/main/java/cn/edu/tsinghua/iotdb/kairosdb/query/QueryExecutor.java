@@ -4,11 +4,16 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBySerializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -16,12 +21,15 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,7 +37,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -66,10 +73,47 @@ public class QueryExecutor {
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
-    for (QueryMetric metric : query.getQueryMetrics()) {
-      queryWorkerPool.submit(new QueryWorker(queryLatch, queryMetricJsons, metric, startTime,
-          endTime));
+    String specialTag = "device";
+    List<QueryMetric> newQueryMetricList = new ArrayList<>();
+    List<ConcurrentHashMap> qmjList = new ArrayList<>();
+    if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
+        specialTag).size() > 1) {
+      QueryMetric queryMetric = query.getQueryMetrics().get(0);
+      List<String> deviceList = queryMetric.getTags().get(specialTag);
+
+      for (String device : deviceList) {
+        ConcurrentHashMap<String, StringBuilder> queryMetricJson1 = new ConcurrentHashMap<>();
+
+        qmjList.add(queryMetricJson1);
+
+        QueryMetric queryMetric1 = new QueryMetric();
+        queryMetric1.setName(queryMetric.getName());
+        queryMetric1.setLimit(queryMetric.getLimit());
+        queryMetric1.setAggregators(queryMetric.getAggregators());
+        queryMetric1.setGroupBy(queryMetric.getGroupBy());
+        List<String> queryMetric1List = new ArrayList<>();
+        queryMetric1List.add(device);
+        HashMap<String, List<String>> map = new HashMap<>();
+        map.put(specialTag, queryMetric1List);
+        queryMetric1.setTags(map);
+        newQueryMetricList.add(queryMetric1);
+      }
+      int lsize = newQueryMetricList.size();
+      queryLatch = new CountDownLatch(lsize);
+      for (int i = 0; i < lsize; i++) {
+        queryWorkerPool.submit(new QueryWorker(queryLatch, qmjList.get(i),
+            newQueryMetricList.get(i),
+            startTime,
+            endTime));
+      }
+    } else {
+      newQueryMetricList = query.getQueryMetrics();
+      for (QueryMetric metric : newQueryMetricList) {
+        queryWorkerPool
+            .submit(new QueryWorker(queryLatch, queryMetricJsons, metric, startTime, endTime));
+      }
     }
+
     try {
       // wait for all clients finish test
       queryLatch.await();
@@ -77,17 +121,51 @@ public class QueryExecutor {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
     }
-    StringBuilder midMetricBuilder = new StringBuilder();
-
-    for (StringBuilder metricBuilder : queryMetricJsons.values()) {
-      midMetricBuilder.append(",").append(metricBuilder);
+    if (newQueryMetricList != query.getQueryMetrics()) {
+      Gson gson = new GsonBuilder()
+          .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+          .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+          .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+          .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+          .registerTypeAdapter(
+              cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+          .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+          .create();
+      MetricResult metricResult = null;
+      for (ConcurrentHashMap<String, StringBuilder> queryMetricJsonMap : qmjList) {
+        for (StringBuilder builder : queryMetricJsonMap.values()) {
+          if (metricResult == null) {
+            try {
+              metricResult = gson.fromJson(builder.toString(), MetricResult.class);
+            } catch (Exception e) {
+              LOGGER.error("fromJson error", e);
+            }
+          } else {
+            List<QueryDataPoint> list =
+                gson.fromJson(builder.toString(), MetricResult.class).getResults().get(0)
+                    .getDatapoints();
+            metricResult.getResults().get(0).getDatapoints().addAll(list);
+          }
+        }
+      }
+      long sampleSize = metricResult.getResults().get(0).getDatapoints().size();
+      metricResult.setSampleSize(sampleSize);
+      metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
+      queryResultStr.append("{\"queries\":[");
+      queryResultStr.append(gson.toJson(metricResult));
+      queryResultStr.append("]}");
+    } else {
+      StringBuilder midMetricBuilder = new StringBuilder();
+      for (StringBuilder metricBuilder : queryMetricJsons.values()) {
+        midMetricBuilder.append(",").append(metricBuilder);
+      }
+      midMetricBuilder.delete(0, 1);
+      queryResultStr.append("{\"queries\":[");
+      if (queryMetricNum > 0) {
+        queryResultStr.append(midMetricBuilder.toString());
+      }
+      queryResultStr.append("]}");
     }
-    midMetricBuilder.delete(0, 1);
-    queryResultStr.append("{\"queries\":[");
-    if (queryMetricNum > 0) {
-      queryResultStr.append(midMetricBuilder.toString());
-    }
-    queryResultStr.append("]}");
     return queryResultStr.toString();
   }
 
