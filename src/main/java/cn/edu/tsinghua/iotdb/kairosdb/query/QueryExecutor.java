@@ -30,6 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +40,10 @@ public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
-  private static final ExecutorService queryWorkerPool = Executors.newCachedThreadPool();
+  private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(config.CORE_POOL_SIZE,
+      Integer.MAX_VALUE,
+      60L, TimeUnit.SECONDS,
+      new SynchronousQueue<Runnable>());
 
   private Query query;
 
