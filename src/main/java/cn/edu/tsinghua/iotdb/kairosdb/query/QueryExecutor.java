@@ -30,11 +30,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -74,18 +76,15 @@ public class QueryExecutor {
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
     String specialTag = "device";
-    List<QueryMetric> newQueryMetricList = new ArrayList<>();
-    List<ConcurrentHashMap> qmjList = new ArrayList<>();
+    List<QueryMetric> newQueryMetricList = new CopyOnWriteArrayList<>();
+    List<ConcurrentHashMap> qmjList = new CopyOnWriteArrayList<>();
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         specialTag).size() > 1) {
       QueryMetric queryMetric = query.getQueryMetrics().get(0);
       List<String> deviceList = queryMetric.getTags().get(specialTag);
-
       for (String device : deviceList) {
         ConcurrentHashMap<String, StringBuilder> queryMetricJson1 = new ConcurrentHashMap<>();
-
         qmjList.add(queryMetricJson1);
-
         QueryMetric queryMetric1 = new QueryMetric();
         queryMetric1.setName(queryMetric.getName());
         queryMetric1.setLimit(queryMetric.getLimit());
