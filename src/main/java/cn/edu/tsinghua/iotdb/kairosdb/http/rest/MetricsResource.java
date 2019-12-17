@@ -40,6 +40,8 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/api/v1")
 public class MetricsResource {
@@ -49,6 +51,7 @@ public class MetricsResource {
   private static final ExecutorService threadPool = Executors.newCachedThreadPool();
   private static final ScheduledExecutorService profilerPool = Executors.newSingleThreadScheduledExecutor();
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
+  public static final Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -123,7 +126,13 @@ public class MetricsResource {
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path(QUERY_URL)
   public Response postQuery(String json) {
-    return runQuery(json);
+    Response response = null;
+    try {
+      response = runQuery(json);
+    } catch (Exception e) {
+      LOGGER.error("Query failed because: {}", e.getMessage(), e);
+    }
+    return response;
   }
 
   private Response runQuery(String jsonStr) {
