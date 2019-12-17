@@ -57,11 +57,13 @@ public class QueryWorker extends Thread {
   private Map<Integer, List<String>> tmpTags;
   private Long startTime;
   private Long endTime;
+  private MetricResult metricResult;
 
 
   public QueryWorker(CountDownLatch queryLatch, Map<String, StringBuilder> queryMetricStr,
-      QueryMetric metric,
+      QueryMetric metric, MetricResult metricResult,
       Long startTime, Long endTime) {
+    this.metricResult = metricResult;
     this.queryLatch = queryLatch;
     this.queryMetricStr = queryMetricStr;
     this.metric = metric;
@@ -72,7 +74,11 @@ public class QueryWorker extends Thread {
   @Override
   public void run() {
     try {
-      MetricResult metricResult = new MetricResult();
+      boolean useJson = false;
+      if(metricResult == null) {
+        useJson = true;
+        metricResult = new MetricResult();
+      }
       if (getMetricMapping(metric)) {
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
         long interval = endTime - startTime;
@@ -114,7 +120,9 @@ public class QueryWorker extends Thread {
         metricResult.addResult(new MetricValueResult(metric.getName()));
         metricResult.getResults().get(0).setGroupBy(null);
       }
-      queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
+      if(useJson) {
+        queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
+      }
     } catch (Exception e) {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
     } finally {

@@ -48,7 +48,8 @@ public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
-  private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(config.CORE_POOL_SIZE,
+  private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(
+      config.CORE_POOL_SIZE,
       Integer.MAX_VALUE,
       60L, TimeUnit.SECONDS,
       new SynchronousQueue<Runnable>());
@@ -83,14 +84,14 @@ public class QueryExecutor {
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
-    String specialTag = "device";
     List<QueryMetric> newQueryMetricList = new CopyOnWriteArrayList<>();
-    List<ConcurrentHashMap> qmjList = new CopyOnWriteArrayList<>();
+    List<ConcurrentHashMap<String, StringBuilder>> qmjList = new CopyOnWriteArrayList<>();
+    List<MetricResult> metricResultList = new CopyOnWriteArrayList<>();
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
-        specialTag) != null && query.getQueryMetrics().get(0).getTags().get(
-        specialTag).size() > 1) {
+        config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
+        config.SPECIAL_TAG).size() > 1) {
       QueryMetric queryMetric = query.getQueryMetrics().get(0);
-      List<String> deviceList = queryMetric.getTags().get(specialTag);
+      List<String> deviceList = queryMetric.getTags().get(config.SPECIAL_TAG);
       for (String device : deviceList) {
         ConcurrentHashMap<String, StringBuilder> queryMetricJson1 = new ConcurrentHashMap<>();
         qmjList.add(queryMetricJson1);
@@ -102,15 +103,17 @@ public class QueryExecutor {
         List<String> queryMetric1List = new ArrayList<>();
         queryMetric1List.add(device);
         HashMap<String, List<String>> map = new HashMap<>();
-        map.put(specialTag, queryMetric1List);
+        map.put(config.SPECIAL_TAG, queryMetric1List);
         queryMetric1.setTags(map);
         newQueryMetricList.add(queryMetric1);
       }
       int lsize = newQueryMetricList.size();
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
+        metricResultList.add(new MetricResult());
         queryWorkerPool.submit(new QueryWorker(queryLatch, qmjList.get(i),
             newQueryMetricList.get(i),
+            metricResultList.get(i),
             startTime,
             endTime));
       }
@@ -118,7 +121,8 @@ public class QueryExecutor {
       newQueryMetricList = query.getQueryMetrics();
       for (QueryMetric metric : newQueryMetricList) {
         queryWorkerPool
-            .submit(new QueryWorker(queryLatch, queryMetricJsons, metric, startTime, endTime));
+            .submit(new QueryWorker(queryLatch, queryMetricJsons, metric, null, startTime,
+                endTime));
       }
     }
 
@@ -131,23 +135,18 @@ public class QueryExecutor {
     }
     if (newQueryMetricList != query.getQueryMetrics()) {
       MetricResult metricResult = null;
-      for (ConcurrentHashMap<String, StringBuilder> queryMetricJsonMap : qmjList) {
-        for (StringBuilder builder : queryMetricJsonMap.values()) {
-          if (metricResult == null) {
-            try {
-              metricResult = gson.fromJson(builder.toString(), MetricResult.class);
-            } catch (Exception e) {
-              LOGGER.error("fromJson error", e);
-            }
-          } else {
-            List<QueryDataPoint> list =
-                gson.fromJson(builder.toString(), MetricResult.class).getResults().get(0)
-                    .getDatapoints();
-            metricResult.getResults().get(0).getDatapoints().addAll(list);
-          }
+      for (MetricResult m : metricResultList) {
+        if (metricResult == null) {
+          metricResult = m;
+        } else {
+          metricResult.getResults().get(0).getDatapoints()
+              .addAll(m.getResults().get(0).getDatapoints());
         }
       }
-      long sampleSize = metricResult.getResults().get(0).getDatapoints().size();
+      long sampleSize = 0;
+      if (metricResult.getResults() != null) {
+        sampleSize = metricResult.getResults().get(0).getDatapoints().size();
+      }
       metricResult.setSampleSize(sampleSize);
       metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
       queryResultStr.append("{\"queries\":[");
@@ -176,8 +175,8 @@ public class QueryExecutor {
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
         long interval = endTime - startTime;
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
-
+        if (metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType()
+            .equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
           sql = sql.replace(metric.getName(), config.AGG_FUNCTION + "(" + metric.getName() + ")");
           sql = sql.substring(0, sql.indexOf("where"));
           String sqlBuilder = sql + " group by ("
@@ -195,9 +194,7 @@ public class QueryExecutor {
             metricResult.addResult(metricValueResult);
             queryResult.addMetricResult(metricResult);
           }
-
         } else {
-
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {

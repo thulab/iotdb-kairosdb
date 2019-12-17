@@ -9,6 +9,7 @@ public class Config {
   public int STORAGE_GROUP_SIZE = 50;
   public String REST_PORT = "6666";
   public String AGG_FUNCTION = "AVG";
+  public String SPECIAL_TAG = "device";
   public int MAX_ROLLUP = 100;
   public int DEBUG = 0;
   public int CONNECTION_NUM = 20;

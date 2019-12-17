@@ -47,7 +47,7 @@ public class IKR {
 
   private static HttpServer startServer(String[] argv) throws SQLException, ClassNotFoundException {
     CommandCli cli = new CommandCli();
-    // argv = new String[]{"-cf", "conf/config.properties"};
+    //argv = new String[]{"-cf", "conf/config.properties"};
     if (!cli.init(argv)) {
       System.exit(1);
     }
