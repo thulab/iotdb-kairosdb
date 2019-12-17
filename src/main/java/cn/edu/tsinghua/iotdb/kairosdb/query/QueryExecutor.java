@@ -79,6 +79,7 @@ public class QueryExecutor {
     List<QueryMetric> newQueryMetricList = new CopyOnWriteArrayList<>();
     List<ConcurrentHashMap> qmjList = new CopyOnWriteArrayList<>();
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
+        specialTag) != null && query.getQueryMetrics().get(0).getTags().get(
         specialTag).size() > 1) {
       QueryMetric queryMetric = query.getQueryMetrics().get(0);
       List<String> deviceList = queryMetric.getTags().get(specialTag);
