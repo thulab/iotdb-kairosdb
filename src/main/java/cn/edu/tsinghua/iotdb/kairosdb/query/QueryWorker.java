@@ -4,11 +4,16 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
+import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBySerializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -34,7 +39,15 @@ import org.slf4j.LoggerFactory;
 public class QueryWorker extends Thread {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryWorker.class);
-  private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+  private static final Gson gson = new GsonBuilder()
+      .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+      .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+      .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+      .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+      .registerTypeAdapter(
+          cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+      .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+      .create();
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private CountDownLatch queryLatch;
   private Map<String, StringBuilder> queryMetricStr;

@@ -30,7 +30,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,6 +52,15 @@ public class QueryExecutor {
       Integer.MAX_VALUE,
       60L, TimeUnit.SECONDS,
       new SynchronousQueue<Runnable>());
+  private static final Gson gson = new GsonBuilder()
+      .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+      .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+      .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+      .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+      .registerTypeAdapter(
+          cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+      .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+      .create();
 
   private Query query;
 
@@ -122,15 +130,6 @@ public class QueryExecutor {
       Thread.currentThread().interrupt();
     }
     if (newQueryMetricList != query.getQueryMetrics()) {
-      Gson gson = new GsonBuilder()
-          .registerTypeAdapter(QueryMetric.class, new QueryMetric())
-          .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
-          .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
-          .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
-          .registerTypeAdapter(
-              cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
-          .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
-          .create();
       MetricResult metricResult = null;
       for (ConcurrentHashMap<String, StringBuilder> queryMetricJsonMap : qmjList) {
         for (StringBuilder builder : queryMetricJsonMap.values()) {
@@ -227,9 +226,7 @@ public class QueryExecutor {
           try {
             Statement statement = conn.createStatement();
             statement.execute(querySql);
-
             ResultSet rs = statement.getResultSet();
-
             List<String> sqlList = buildDeleteSql(rs);
             statement = conn.createStatement();
             for (String sql : sqlList) {
