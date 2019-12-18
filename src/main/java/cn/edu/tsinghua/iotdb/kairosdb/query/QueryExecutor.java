@@ -23,6 +23,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -157,7 +158,9 @@ public class QueryExecutor {
         LOGGER.info("metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());");
         queryResultStr.append("{\"queries\":[");
         LOGGER.info("queryResultStr.append(\"{\\\"queries\\\":[\");");
-        String s = gson.toJson(metricResult);
+        StringWriter metricString = new StringWriter();
+        gson.toJson(metricResult, metricString);
+        String s = metricString.toString();
         LOGGER.info("String s = gson.toJson(metricResult);");
         queryResultStr.append(s);
         LOGGER.info("queryResultStr.append(s);");

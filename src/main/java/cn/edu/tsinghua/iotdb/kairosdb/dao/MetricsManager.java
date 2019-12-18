@@ -387,7 +387,6 @@ public class MetricsManager {
 //      hashCode = device.substring(0, 1).hashCode();
 //    }
 //    int hashCode = path.split("\\.")[1].hashCode();
-//    int protocal = 0;
     for (int i = 0; i < config.PROTOCAL_NUM; i++) {
       if (config.PROTOCAL_MACHINE.get(i).contains(device)) {
         return String.format("%s%s", STORAGE_GROUP_PREFIX, i);
