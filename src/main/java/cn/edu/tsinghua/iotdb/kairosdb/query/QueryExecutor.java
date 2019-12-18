@@ -53,15 +53,6 @@ public class QueryExecutor {
       Integer.MAX_VALUE,
       60L, TimeUnit.SECONDS,
       new SynchronousQueue<Runnable>());
-  private static final Gson gson = new GsonBuilder()
-      .registerTypeAdapter(QueryMetric.class, new QueryMetric())
-      .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
-      .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
-      .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
-      .registerTypeAdapter(
-          cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
-      .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
-      .create();
 
   private Query query;
 
@@ -150,6 +141,15 @@ public class QueryExecutor {
         if (metricResult.getResults() != null) {
           sampleSize = metricResult.getResults().get(0).getDatapoints().size();
         }
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+            .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+            .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+            .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+            .registerTypeAdapter(
+                cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+            .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+            .create();
         LOGGER.info("sampleSize = metricResult.getResults().get(0).getDatapoints().size();");
         metricResult.setSampleSize(sampleSize);
         LOGGER.info("metricResult.setSampleSize(sampleSize);");
@@ -157,8 +157,10 @@ public class QueryExecutor {
         LOGGER.info("metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());");
         queryResultStr.append("{\"queries\":[");
         LOGGER.info("queryResultStr.append(\"{\\\"queries\\\":[\");");
-        queryResultStr.append(gson.toJson(metricResult));
-        LOGGER.info("queryResultStr.append(gson.toJson(metricResult));");
+        String s = gson.toJson(metricResult);
+        LOGGER.info("String s = gson.toJson(metricResult);");
+        queryResultStr.append(s);
+        LOGGER.info("queryResultStr.append(s);");
         queryResultStr.append("]}");
       } catch (Exception e) {
         LOGGER.error("Make JSON error", e);
