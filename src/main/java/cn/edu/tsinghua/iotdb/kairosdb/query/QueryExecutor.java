@@ -146,14 +146,18 @@ public class QueryExecutor {
       }
       LOGGER.info("Merge metric result finished");
       long sampleSize = 0;
-      if (metricResult.getResults() != null) {
-        sampleSize = metricResult.getResults().get(0).getDatapoints().size();
+      try {
+        if (metricResult.getResults() != null) {
+          sampleSize = metricResult.getResults().get(0).getDatapoints().size();
+        }
+        metricResult.setSampleSize(sampleSize);
+        metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
+        queryResultStr.append("{\"queries\":[");
+        queryResultStr.append(gson.toJson(metricResult));
+        queryResultStr.append("]}");
+      } catch (Exception e) {
+        LOGGER.error("Make JSON error", e);
       }
-      metricResult.setSampleSize(sampleSize);
-      metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
-      queryResultStr.append("{\"queries\":[");
-      queryResultStr.append(gson.toJson(metricResult));
-      queryResultStr.append("]}");
       LOGGER.info("JSON closed");
     } else {
       StringBuilder midMetricBuilder = new StringBuilder();
