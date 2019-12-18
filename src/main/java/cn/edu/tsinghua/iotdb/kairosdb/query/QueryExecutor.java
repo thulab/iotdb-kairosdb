@@ -36,7 +36,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -80,7 +79,7 @@ public class QueryExecutor {
     this.endTime = query.getEndTimestamp();
   }
 
-  public String executeV2() throws QueryException {
+  public String executeV2() {
     StringBuilder queryResultStr = new StringBuilder();
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);

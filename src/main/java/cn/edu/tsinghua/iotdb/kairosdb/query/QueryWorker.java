@@ -9,6 +9,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
+import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAvg;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
@@ -85,10 +86,18 @@ public class QueryWorker extends Thread {
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
         if (metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(
             QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
+          long value = config.GROUP_BY_UNIT;
+          try {
+            QueryAggregatorAvg queryAggregatorAvg = (QueryAggregatorAvg) metric.getAggregators()
+                .get(0);
+            value = queryAggregatorAvg.getSampling().toMillisecond();
+          } catch (Exception e) {
+            LOGGER.warn("Can't convert queryAggregatorAvg", e);
+          }
           sql = sql.replace(metric.getName(), config.AGG_FUNCTION + "(" + metric.getName() + ")");
           sql = sql.substring(0, sql.indexOf("where"));
           String sqlBuilder = sql + " group by ("
-              + config.GROUP_BY_UNIT
+              + value
               + "ms, ["
               + startTime
               + ", "
