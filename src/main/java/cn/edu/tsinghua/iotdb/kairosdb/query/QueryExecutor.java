@@ -150,10 +150,15 @@ public class QueryExecutor {
         if (metricResult.getResults() != null) {
           sampleSize = metricResult.getResults().get(0).getDatapoints().size();
         }
+        LOGGER.info("sampleSize = metricResult.getResults().get(0).getDatapoints().size();");
         metricResult.setSampleSize(sampleSize);
+        LOGGER.info("metricResult.setSampleSize(sampleSize);");
         metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
+        LOGGER.info("metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());");
         queryResultStr.append("{\"queries\":[");
+        LOGGER.info("queryResultStr.append(\"{\\\"queries\\\":[\");");
         queryResultStr.append(gson.toJson(metricResult));
+        LOGGER.info("queryResultStr.append(gson.toJson(metricResult));");
         queryResultStr.append("]}");
       } catch (Exception e) {
         LOGGER.error("Make JSON error", e);
