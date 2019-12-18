@@ -154,6 +154,7 @@ public class MetricsResource {
       if (config.ENABLE_PROFILER) {
         Measurement.getInstance().add(Profile.IKR_QUERY, System.nanoTime() - start);
       }
+
       return Response.status(Status.OK)
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", NO_CACHE)
