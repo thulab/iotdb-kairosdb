@@ -181,6 +181,7 @@ public class QueryExecutor {
       }
       queryResultStr.append("]}");
     }
+    LOGGER.info("query string tail:{}", queryResultStr.substring(queryResultStr.length() - 100));
     LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
   }
