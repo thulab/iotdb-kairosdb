@@ -129,6 +129,7 @@ public class QueryExecutor {
     try {
       // wait for all clients finish test
       queryLatch.await();
+      LOGGER.info("All Query Worker finished");
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
@@ -143,6 +144,7 @@ public class QueryExecutor {
               .addAll(m.getResults().get(0).getDatapoints());
         }
       }
+      LOGGER.info("Merge metric result finished");
       long sampleSize = 0;
       if (metricResult.getResults() != null) {
         sampleSize = metricResult.getResults().get(0).getDatapoints().size();
@@ -152,6 +154,7 @@ public class QueryExecutor {
       queryResultStr.append("{\"queries\":[");
       queryResultStr.append(gson.toJson(metricResult));
       queryResultStr.append("]}");
+      LOGGER.info("JSON closed");
     } else {
       StringBuilder midMetricBuilder = new StringBuilder();
       for (StringBuilder metricBuilder : queryMetricJsons.values()) {
