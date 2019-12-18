@@ -136,6 +136,7 @@ public class QueryWorker extends Thread {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
     } finally {
       queryLatch.countDown();
+      LOGGER.info("{} Query Worker finished", Thread.currentThread().getName());
     }
   }
 
