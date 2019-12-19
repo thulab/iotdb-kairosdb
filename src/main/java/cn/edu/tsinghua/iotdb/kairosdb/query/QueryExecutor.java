@@ -72,7 +72,7 @@ public class QueryExecutor {
   }
 
   public String executeV2() {
-    StringBuilder queryResultStr = new StringBuilder();
+    StringWriter queryResultStr = new StringWriter();
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
@@ -180,12 +180,11 @@ public class QueryExecutor {
       midMetricBuilder.delete(0, 1);
       queryResultStr.append("{\"queries\":[");
       if (queryMetricNum > 0) {
-        queryResultStr.append(midMetricBuilder.toString());
+        queryResultStr.append(midMetricBuilder);
       }
       queryResultStr.append("]}");
     }
-    LOGGER.info("query string tail:{}", queryResultStr.substring(queryResultStr.length() - 100));
-    LOGGER.info("query string size:{}", queryResultStr.length());
+    // LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
   }
 
