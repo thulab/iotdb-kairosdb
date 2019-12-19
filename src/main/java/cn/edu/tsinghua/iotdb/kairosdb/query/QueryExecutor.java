@@ -82,7 +82,8 @@ public class QueryExecutor {
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
     List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new LinkedList<>());
-    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections.synchronizedList(new LinkedList<>());
+    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections
+        .synchronizedList(new LinkedList<>());
     List<MetricResult> metricResultList = Collections.synchronizedList(new LinkedList<>());
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
@@ -108,7 +109,7 @@ public class QueryExecutor {
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
         metricResultList.add(new MetricResult());
-        queryWorkerPool.submit(new QueryWorker(this,1, queryLatch, qmjList.get(i),
+        queryWorkerPool.submit(new QueryWorker(this, 1, queryLatch, qmjList.get(i),
             newQueryMetricList.get(i),
             metricResultList.get(i),
             startTime,
@@ -138,15 +139,16 @@ public class QueryExecutor {
       for (MetricResult m : metricResultList) {
         if (metricResult == null) {
           metricResult = m;
-          if(metricResult.getResults().size() == 0) {
-            metricResult.getResults().add(new MetricValueResult(query.getQueryMetrics().get(0).getName()));
+          if (metricResult.getResults().size() == 0) {
+            metricResult.getResults()
+                .add(new MetricValueResult(query.getQueryMetrics().get(0).getName()));
             metricResult.getResults().get(0).setGroupBy(null);
           }
         } else {
-          int totalSize = metricResult.getResults().size();
-          int thisSize = m.getResults().size();
-          if((totalSize + thisSize) < config.POINT_EDGE) {
-            if (thisSize > 0) {
+          if (m.getResults().size() > 0) {
+            int totalSize = metricResult.getResults().get(0).getDatapoints().size();
+            int thisSize = m.getResults().get(0).getDatapoints().size();
+            if ((totalSize + thisSize) < config.POINT_EDGE) {
               metricResult.getResults().get(0).getDatapoints()
                   .addAll(m.getResults().get(0).getDatapoints());
             }
