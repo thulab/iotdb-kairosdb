@@ -23,7 +23,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -78,7 +77,7 @@ public class QueryExecutor {
   }
 
   public String executeV2() {
-    StringWriter queryResultStr = new StringWriter();
+    StringBuilder queryResultStr = new StringBuilder();
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
@@ -157,7 +156,6 @@ public class QueryExecutor {
           }
         }
       }
-      LOGGER.info("Merge metric result finished");
       long sampleSize = 0;
       try {
         if (metricResult.getResults() != null && metricResult.getResults().size() > 0) {
@@ -172,21 +170,15 @@ public class QueryExecutor {
                 cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
             .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
             .create();
-        LOGGER.info("sampleSize = metricResult.getResults().get(0).getDatapoints().size();");
         metricResult.setSampleSize(sampleSize);
         LOGGER.info("sampleSize: {}", sampleSize);
-        LOGGER.info("metricResult.setSampleSize(sampleSize);");
         metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
-        LOGGER.info("metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());");
         queryResultStr.append("{\"queries\":[");
-        LOGGER.info("queryResultStr.append(\"{\\\"queries\\\":[\");");
         gson.toJson(metricResult, queryResultStr);
-        LOGGER.info("gson.toJson(metricResult, queryResultStr);");
         queryResultStr.append("]}");
       } catch (Exception e) {
         LOGGER.error("Make JSON error", e);
       }
-      LOGGER.info("JSON closed");
     } else {
       StringBuilder midMetricBuilder = new StringBuilder();
       for (StringBuilder metricBuilder : queryMetricJsons.values()) {
@@ -199,7 +191,7 @@ public class QueryExecutor {
       }
       queryResultStr.append("]}");
     }
-    // LOGGER.info("query string size:{}", queryResultStr.length());
+    LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
   }
 
