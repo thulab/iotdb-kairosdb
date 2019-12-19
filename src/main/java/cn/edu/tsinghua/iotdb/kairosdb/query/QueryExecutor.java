@@ -131,15 +131,21 @@ public class QueryExecutor {
       for (MetricResult m : metricResultList) {
         if (metricResult == null) {
           metricResult = m;
+          if(metricResult.getResults().size() == 0) {
+            metricResult.getResults().add(new MetricValueResult(query.getQueryMetrics().get(0).getName()));
+            metricResult.getResults().get(0).setGroupBy(null);
+          }
         } else {
-          metricResult.getResults().get(0).getDatapoints()
-              .addAll(m.getResults().get(0).getDatapoints());
+          if(metricResult.getResults().size() > 0 && m.getResults().size() > 0) {
+            metricResult.getResults().get(0).getDatapoints()
+                .addAll(m.getResults().get(0).getDatapoints());
+          }
         }
       }
       LOGGER.info("Merge metric result finished");
       long sampleSize = 0;
       try {
-        if (metricResult.getResults() != null) {
+        if (metricResult.getResults() != null && metricResult.getResults().size() > 0) {
           sampleSize = metricResult.getResults().get(0).getDatapoints().size();
         }
         Gson gson = new GsonBuilder()
