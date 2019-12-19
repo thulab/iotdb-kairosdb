@@ -40,15 +40,6 @@ import org.slf4j.LoggerFactory;
 public class QueryWorker extends Thread {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryWorker.class);
-  private static final Gson gson = new GsonBuilder()
-      .registerTypeAdapter(QueryMetric.class, new QueryMetric())
-      .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
-      .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
-      .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
-      .registerTypeAdapter(
-          cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
-      .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
-      .create();
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private CountDownLatch queryLatch;
   private Map<String, StringBuilder> queryMetricStr;
@@ -130,6 +121,15 @@ public class QueryWorker extends Thread {
         metricResult.getResults().get(0).setGroupBy(null);
       }
       if(useJson) {
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+            .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+            .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+            .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+            .registerTypeAdapter(
+                cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+            .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+            .create();
         queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
       }
     } catch (Exception e) {
