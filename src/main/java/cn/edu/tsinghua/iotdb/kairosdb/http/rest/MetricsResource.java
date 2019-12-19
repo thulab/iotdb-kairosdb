@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -125,14 +126,24 @@ public class MetricsResource {
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path(QUERY_URL)
-  public Response postQuery(String json) {
-    Response response = null;
-    try {
-      response = runQuery(json);
-    } catch (Exception e) {
-      LOGGER.error("Query failed because: {}", e.getMessage(), e);
-    }
-    return response;
+  public void postQuery(String json, @Suspended final AsyncResponse asyncResponse) {
+    CompletableFuture<Response> future = veryExpensiveOperation(json);
+    future.thenAccept(resp -> asyncResponse.resume(resp));
+  }
+
+  private CompletableFuture<Response> veryExpensiveOperation(String json){
+    CompletableFuture<Response> completableFuture = new CompletableFuture<>();
+    threadPool.execute(new Thread(() -> {
+      Response response = null;
+      //do expensive stuff here
+      try {
+        response = runQuery(json);
+      } catch (Exception e) {
+        LOGGER.error("Query failed because: {}", e.getMessage(), e);
+      }
+      completableFuture.complete(response);
+    }));
+    return completableFuture;
   }
 
   private Response runQuery(String jsonStr) {
