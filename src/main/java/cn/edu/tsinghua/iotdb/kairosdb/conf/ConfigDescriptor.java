@@ -54,6 +54,7 @@ public class ConfigDescriptor {
         config.AGG_FUNCTION = properties.getProperty("AGG_FUNCTION", "AGG_FUNCTION");
         config.SPECIAL_TAG = properties.getProperty("SPECIAL_TAG", "SPECIAL_TAG");
         config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
+        config.POINT_EDGE = Integer.parseInt(properties.getProperty("POINT_EDGE", "50000000"));
         config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
         config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));

@@ -65,6 +65,12 @@ public class QueryExecutor {
 
   private Map<Integer, List<String>> tmpTags;
 
+  private Boolean isTooLargeEntity = false;
+
+  public void setTooLargeEntity(Boolean tooLargeEntity) {
+    isTooLargeEntity = tooLargeEntity;
+  }
+
   public QueryExecutor(Query query) {
     this.query = query;
     this.startTime = query.getStartTimestamp();
@@ -103,7 +109,7 @@ public class QueryExecutor {
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
         metricResultList.add(new MetricResult());
-        queryWorkerPool.submit(new QueryWorker(queryLatch, qmjList.get(i),
+        queryWorkerPool.submit(new QueryWorker(this,1, queryLatch, qmjList.get(i),
             newQueryMetricList.get(i),
             metricResultList.get(i),
             startTime,
@@ -113,7 +119,9 @@ public class QueryExecutor {
       newQueryMetricList = query.getQueryMetrics();
       for (QueryMetric metric : newQueryMetricList) {
         queryWorkerPool
-            .submit(new QueryWorker(queryLatch, queryMetricJsons, metric, null, startTime,
+            .submit(new QueryWorker(this, queryMetricNum, queryLatch, queryMetricJsons, metric,
+                null,
+                startTime,
                 endTime));
       }
     }
@@ -136,9 +144,16 @@ public class QueryExecutor {
             metricResult.getResults().get(0).setGroupBy(null);
           }
         } else {
-          if(metricResult.getResults().size() > 0 && m.getResults().size() > 0) {
-            metricResult.getResults().get(0).getDatapoints()
-                .addAll(m.getResults().get(0).getDatapoints());
+          int totalSize = metricResult.getResults().size();
+          int thisSize = m.getResults().size();
+          if((totalSize + thisSize) < config.POINT_EDGE) {
+            if (thisSize > 0) {
+              metricResult.getResults().get(0).getDatapoints()
+                  .addAll(m.getResults().get(0).getDatapoints());
+            }
+          } else {
+            isTooLargeEntity = true;
+            break;
           }
         }
       }
@@ -186,6 +201,10 @@ public class QueryExecutor {
     }
     // LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
+  }
+
+  public Boolean getTooLargeEntity() {
+    return isTooLargeEntity;
   }
 
   public QueryResult execute() throws QueryException {

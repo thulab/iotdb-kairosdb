@@ -50,9 +50,11 @@ public class QueryWorker extends Thread {
   private Long startTime;
   private Long endTime;
   private MetricResult metricResult;
+  private int metricCount;
+  private QueryExecutor queryExecutor;
 
-
-  public QueryWorker(CountDownLatch queryLatch, Map<String, StringBuilder> queryMetricStr,
+  public QueryWorker(QueryExecutor queryExecutor, int metricCount, CountDownLatch queryLatch,
+      Map<String, StringBuilder> queryMetricStr,
       QueryMetric metric, MetricResult metricResult,
       Long startTime, Long endTime) {
     this.metricResult = metricResult;
@@ -61,6 +63,8 @@ public class QueryWorker extends Thread {
     this.metric = metric;
     this.startTime = startTime;
     this.endTime = endTime;
+    this.metricCount = metricCount;
+    this.queryExecutor = queryExecutor;
   }
 
   @Override
@@ -219,6 +223,7 @@ public class QueryWorker extends Thread {
       ResultSet rs = statement.getResultSet();
       ResultSetMetaData metaData = rs.getMetaData();
       int columnCount = metaData.getColumnCount();
+      int maxCount = config.POINT_EDGE / metricCount;
       boolean[] paths = new boolean[columnCount - 1];
       while (rs.next()) {
         if (config.ENABLE_PROFILER && isFirstNext) {
@@ -251,6 +256,10 @@ public class QueryWorker extends Thread {
               LOGGER.error("QueryExecutor.execute: invalid type");
           }
           metricValueResult.addDataPoint(dataPoint);
+        }
+        if(sampleSize > maxCount) {
+          queryExecutor.setTooLargeEntity(true);
+          break;
         }
       }
       if (config.ENABLE_PROFILER) {

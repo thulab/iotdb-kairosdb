@@ -166,7 +166,11 @@ public class MetricsResource {
         Measurement.getInstance().add(Profile.IKR_QUERY, System.nanoTime() - start);
       }
 
-      return Response.status(Status.OK)
+      Status status = Status.OK;
+      if(executor.getTooLargeEntity()) {
+        status = Status.REQUEST_ENTITY_TOO_LARGE;
+      }
+      return Response.status(status)
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", NO_CACHE)
           .header("Cache-Control", NO_CACHE)
