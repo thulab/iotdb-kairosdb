@@ -159,17 +159,14 @@ public class QueryExecutor {
             .create();
         LOGGER.info("sampleSize = metricResult.getResults().get(0).getDatapoints().size();");
         metricResult.setSampleSize(sampleSize);
+        LOGGER.info("sampleSize: {}", sampleSize);
         LOGGER.info("metricResult.setSampleSize(sampleSize);");
         metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
         LOGGER.info("metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());");
         queryResultStr.append("{\"queries\":[");
         LOGGER.info("queryResultStr.append(\"{\\\"queries\\\":[\");");
-        StringWriter metricString = new StringWriter();
-        gson.toJson(metricResult, metricString);
-        String s = metricString.toString();
-        LOGGER.info("String s = gson.toJson(metricResult);");
-        queryResultStr.append(s);
-        LOGGER.info("queryResultStr.append(s);");
+        gson.toJson(metricResult, queryResultStr);
+        LOGGER.info("gson.toJson(metricResult, queryResultStr);");
         queryResultStr.append("]}");
       } catch (Exception e) {
         LOGGER.error("Make JSON error", e);
