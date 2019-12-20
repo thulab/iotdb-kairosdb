@@ -62,9 +62,13 @@ public class QueryWorker extends Thread {
     this.queryMetricStr = queryMetricStr;
     this.metric = metric;
     this.startTime = startTime;
-    this.endTime = endTime;
     this.metricCount = metricCount;
     this.queryExecutor = queryExecutor;
+    if(endTime - startTime > config.TIME_EDGE) {
+      this.endTime = startTime + config.TIME_EDGE;
+    } else {
+      this.endTime = endTime;
+    }
   }
 
   @Override
