@@ -109,7 +109,7 @@ public class QueryExecutor {
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
         metricResultList.add(new MetricResult());
-        queryWorkerPool.submit(new QueryWorker(this, 1, queryLatch, qmjList.get(i),
+        queryWorkerPool.submit(new QueryWorker(1, queryLatch, qmjList.get(i),
             newQueryMetricList.get(i),
             metricResultList.get(i),
             startTime,
@@ -119,7 +119,7 @@ public class QueryExecutor {
       newQueryMetricList = query.getQueryMetrics();
       for (QueryMetric metric : newQueryMetricList) {
         queryWorkerPool
-            .submit(new QueryWorker(this, queryMetricNum, queryLatch, queryMetricJsons, metric,
+            .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsons, metric,
                 null,
                 startTime,
                 endTime));

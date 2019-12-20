@@ -51,9 +51,8 @@ public class QueryWorker extends Thread {
   private Long endTime;
   private MetricResult metricResult;
   private int metricCount;
-  private QueryExecutor queryExecutor;
 
-  public QueryWorker(QueryExecutor queryExecutor, int metricCount, CountDownLatch queryLatch,
+  public QueryWorker(int metricCount, CountDownLatch queryLatch,
       Map<String, StringBuilder> queryMetricStr,
       QueryMetric metric, MetricResult metricResult,
       Long startTime, Long endTime) {
@@ -63,7 +62,6 @@ public class QueryWorker extends Thread {
     this.metric = metric;
     this.startTime = startTime;
     this.metricCount = metricCount;
-    this.queryExecutor = queryExecutor;
     if(endTime - startTime > config.TIME_EDGE) {
       this.endTime = startTime + config.TIME_EDGE;
     } else {
@@ -262,7 +260,6 @@ public class QueryWorker extends Thread {
           metricValueResult.addDataPoint(dataPoint);
         }
         if(sampleSize > maxCount) {
-          queryExecutor.setTooLargeEntity(true);
           break;
         }
       }
