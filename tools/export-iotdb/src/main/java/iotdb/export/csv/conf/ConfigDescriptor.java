@@ -1,4 +1,4 @@
-package kairosdb.export.csv.conf;
+package iotdb.export.csv.conf;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,8 +46,8 @@ public class ConfigDescriptor {
       Properties properties = new Properties();
       try {
         properties.load(inputStream);
-        config.KAIROSDB_BASE_URL = properties
-            .getProperty("KAIROSDB_BASE_URL", config.KAIROSDB_BASE_URL);
+        config.IoTDB_URL = properties
+            .getProperty("IoTDB_URL", config.IoTDB_URL);
         config.MACHINE_ID = properties.getProperty("MACHINE_ID", config.MACHINE_ID);
         config.METRIC_LIST = properties.getProperty("METRIC_LIST", config.METRIC_LIST);
         config.START_TIME = properties.getProperty("START_TIME", config.START_TIME);
