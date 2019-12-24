@@ -126,10 +126,17 @@ public class MetricsResource {
   @POST
   @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
   @Path(QUERY_URL)
-  public void postQuery(String json, @Suspended final AsyncResponse asyncResponse) {
-    CompletableFuture<Response> future = veryExpensiveOperation(json);
-    future.thenAccept(resp -> asyncResponse.resume(resp));
+  public Response postQuery(String json) {
+    return runQuery(json);
   }
+
+//  @POST
+//  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+//  @Path(QUERY_URL)
+//  public void postQuery(String json, @Suspended final AsyncResponse asyncResponse) {
+//    CompletableFuture<Response> future = veryExpensiveOperation(json);
+//    future.thenAccept(resp -> asyncResponse.resume(resp));
+//  }
 
   private CompletableFuture<Response> veryExpensiveOperation(String json){
     CompletableFuture<Response> completableFuture = new CompletableFuture<>();
