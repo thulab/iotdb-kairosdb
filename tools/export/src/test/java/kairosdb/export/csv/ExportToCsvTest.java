@@ -2,9 +2,9 @@ package kairosdb.export.csv;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import kairosdb.export.csv.conf.Config;
 import kairosdb.export.csv.conf.ConfigDescriptor;
+import java.io.IOException;
 import kairosdb.export.csv.conf.Constants;
 import org.junit.Test;
 import org.kairosdb.client.HttpClient;
