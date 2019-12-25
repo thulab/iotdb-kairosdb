@@ -219,7 +219,7 @@ public class QueryWorker extends Thread {
 
     Connection connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
     try (Statement statement = connection.createStatement()) {
-      LOGGER.info("Send query SQL: {}", sql);
+      LOGGER.info("{} Send query SQL: {}", Thread.currentThread().getName(), sql);
       boolean isFirstNext = true;
       statement.execute(sql);
       ResultSet rs = statement.getResultSet();
