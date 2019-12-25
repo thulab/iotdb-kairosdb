@@ -64,12 +64,6 @@ public class QueryExecutor {
 
   private Map<Integer, List<String>> tmpTags;
 
-  private Boolean isTooLargeEntity = false;
-
-  public void setTooLargeEntity(Boolean tooLargeEntity) {
-    isTooLargeEntity = tooLargeEntity;
-  }
-
   public QueryExecutor(Query query) {
     this.query = query;
     this.startTime = query.getStartTimestamp();
@@ -150,9 +144,6 @@ public class QueryExecutor {
             if ((totalSize + thisSize) < config.POINT_EDGE) {
               metricResult.getResults().get(0).getDatapoints()
                   .addAll(m.getResults().get(0).getDatapoints());
-            } else {
-              isTooLargeEntity = true;
-              break;
             }
           }
         }
@@ -194,10 +185,6 @@ public class QueryExecutor {
     }
     LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
-  }
-
-  public Boolean getTooLargeEntity() {
-    return isTooLargeEntity;
   }
 
   public QueryResult execute() throws QueryException {
