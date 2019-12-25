@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -51,8 +52,8 @@ public class QueryExecutor {
   private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(
       config.CORE_POOL_SIZE,
       config.MAX_POOL_SIZE,
-      60L, TimeUnit.SECONDS,
-      new SynchronousQueue<Runnable>());
+      300L, TimeUnit.SECONDS,
+      new LinkedBlockingQueue<>());
 
   private Query query;
 
