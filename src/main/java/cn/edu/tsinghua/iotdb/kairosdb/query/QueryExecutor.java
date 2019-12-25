@@ -50,7 +50,7 @@ public class QueryExecutor {
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(
       config.CORE_POOL_SIZE,
-      Integer.MAX_VALUE,
+      300,
       60L, TimeUnit.SECONDS,
       new SynchronousQueue<Runnable>());
 
@@ -150,10 +150,10 @@ public class QueryExecutor {
             if ((totalSize + thisSize) < config.POINT_EDGE) {
               metricResult.getResults().get(0).getDatapoints()
                   .addAll(m.getResults().get(0).getDatapoints());
+            } else {
+              isTooLargeEntity = true;
+              break;
             }
-          } else {
-            isTooLargeEntity = true;
-            break;
           }
         }
       }
