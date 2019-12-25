@@ -42,7 +42,7 @@ public class IoTDBConnectionPool {
   }
 
   public List<Connection> getConnections() {
-    if (loop.incrementAndGet() > config.CONNECTION_NUM * 2) {
+    if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
     List<Connection> connections = new ArrayList<>();
