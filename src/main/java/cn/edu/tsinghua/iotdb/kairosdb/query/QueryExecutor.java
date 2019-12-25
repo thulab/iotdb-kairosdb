@@ -30,12 +30,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -81,10 +81,9 @@ public class QueryExecutor {
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
-    List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new LinkedList<>());
-    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections
-        .synchronizedList(new LinkedList<>());
-    List<MetricResult> metricResultList = Collections.synchronizedList(new LinkedList<>());
+    List<QueryMetric> newQueryMetricList = new CopyOnWriteArrayList<>();
+    List<ConcurrentHashMap<String, StringBuilder>> qmjList = new CopyOnWriteArrayList<>();
+    List<MetricResult> metricResultList = new CopyOnWriteArrayList<>();
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG).size() > 1) {

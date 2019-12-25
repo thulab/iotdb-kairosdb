@@ -113,7 +113,6 @@ public class QueryWorker extends Thread {
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
 
           setTags(metricValueResult);
-          LOGGER.info("setTags(metricValueResult);");
           if (metricResult.getSampleSize() == 0) {
             metricResult = new MetricResult();
             metricResult.addResult(new MetricValueResult(metric.getName()));
@@ -219,7 +218,6 @@ public class QueryWorker extends Thread {
     }
 
     Connection connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
-    LOGGER.info("Connection connection = IoTDBConnectionPool.getInstance().getConnections().get(0);");
     try (Statement statement = connection.createStatement()) {
       LOGGER.info("Send query SQL: {}", sql);
       boolean isFirstNext = true;
@@ -269,9 +267,7 @@ public class QueryWorker extends Thread {
         Measurement.getInstance().add(Profile.IOTDB_QUERY, System.nanoTime() - start);
       }
       getTagValueFromPaths(metaData, paths);
-      LOGGER.info("getTagValueFromPaths(metaData, paths);");
       addBasicGroupByToResult(metaData, metricValueResult);
-      LOGGER.info("addBasicGroupByToResult(metaData, metricValueResult);");
     } catch (SQLException e) {
       LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
     }
