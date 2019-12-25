@@ -50,7 +50,7 @@ public class QueryExecutor {
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(
       config.CORE_POOL_SIZE,
-      300,
+      config.MAX_POOL_SIZE,
       60L, TimeUnit.SECONDS,
       new SynchronousQueue<Runnable>());
 
