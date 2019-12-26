@@ -13,7 +13,6 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -23,6 +22,9 @@ public class TransToTsfile {
   public static void transToTsfile(String dirPath, String tsPath) {
     try {
       File f = new File(tsPath);
+      if (!f.getParentFile().exists()) {
+        f.getParentFile().mkdirs();
+      }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
         File[] csvFiles = new File(dirPath).listFiles();
@@ -49,8 +51,12 @@ public class TransToTsfile {
                 if (points[i].matches(intRegex)) {
                   if (tsDataTypes.get(i) == null) {
                     tsDataTypes.set(i, TSDataType.INT64);
-                    tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                        TSDataType.INT64, TSEncoding.TS_2DIFF));
+                    try {
+                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+                          TSDataType.INT64, TSEncoding.TS_2DIFF));
+                    } catch (Exception e) {
+                      //
+                    }
                     DataPoint intPoint = new LongDataPoint(sensorList.get(i),
                         Long.parseLong(points[i]));
                     tsRecord.addTuple(intPoint);
@@ -62,8 +68,12 @@ public class TransToTsfile {
                 } else if (points[i].matches(floatRegex)) {
                   if (tsDataTypes.get(i) == null) {
                     tsDataTypes.set(i, TSDataType.FLOAT);
-                    tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                        TSDataType.FLOAT, TSEncoding.GORILLA));
+                    try {
+                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+                          TSDataType.FLOAT, TSEncoding.GORILLA));
+                    } catch (Exception e) {
+                      //
+                    }
                     DataPoint floatPoint = new FloatDataPoint(sensorList.get(i),
                         Float.parseFloat(points[i]));
                     tsRecord.addTuple(floatPoint);
@@ -76,8 +86,12 @@ public class TransToTsfile {
                   if (!points[i].equals("")) {
                     if (tsDataTypes.get(i) == null) {
                       tsDataTypes.set(i, TSDataType.TEXT);
-                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                          TSDataType.TEXT, TSEncoding.PLAIN));
+                      try {
+                        tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+                            TSDataType.TEXT, TSEncoding.PLAIN));
+                      } catch (Exception e) {
+                        //
+                      }
                       DataPoint textPoint = new StringDataPoint(sensorList.get(i),
                           Binary.valueOf(points[i]));
                       tsRecord.addTuple(textPoint);

@@ -24,11 +24,14 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.junit.Test;
 
 public class TransToTsfileTest {
+
   @Test
-  public void writeTsfile(){
-    TransToTsfile.transToTsfile("/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.csv",
-        "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.tsfile");
+  public void writeTsfile() {
+    TransToTsfile
+        .transToTsfile("/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.csv",
+            "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.tsfile");
   }
+
   @Test
   public void readTsfile() throws IOException {
     String filePath = "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/SETest_ZC02_2019-1-1T00:00:00+08:00_2019-1-2T00:00:00+08:00_4.tsfile";
@@ -54,7 +57,7 @@ public class TransToTsfileTest {
           ChunkHeader header = reader.readChunkHeader();
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeEncoder),
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
               TSDataType.INT64);
           Decoder valueDecoder = Decoder
               .getDecoderByType(header.getEncodingType(), header.getDataType());
