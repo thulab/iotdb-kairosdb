@@ -143,7 +143,7 @@ public class QueryWorker extends Thread {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
     } finally {
       queryLatch.countDown();
-      LOGGER.info("{} Query Worker finished", Thread.currentThread().getName());
+      LOGGER.debug("{} Query Worker finished", Thread.currentThread().getName());
     }
   }
 
@@ -219,7 +219,7 @@ public class QueryWorker extends Thread {
 
     Connection connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
     try (Statement statement = connection.createStatement()) {
-      LOGGER.info("{} Send query SQL: {}", Thread.currentThread().getName(), sql);
+      LOGGER.debug("{} Send query SQL: {}", Thread.currentThread().getName(), sql);
       boolean isFirstNext = true;
       statement.execute(sql);
       ResultSet rs = statement.getResultSet();

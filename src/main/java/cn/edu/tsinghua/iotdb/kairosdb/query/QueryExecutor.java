@@ -36,11 +36,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -78,7 +76,8 @@ public class QueryExecutor {
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
     List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new ArrayList<>());
-    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections.synchronizedList(new ArrayList<>());
+    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections
+        .synchronizedList(new ArrayList<>());
     List<MetricResult> metricResultList = Collections.synchronizedList(new ArrayList<>());
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
@@ -124,7 +123,7 @@ public class QueryExecutor {
     try {
       // wait for all clients finish test
       queryLatch.await();
-      LOGGER.info("All Query Worker finished");
+      LOGGER.debug("All Query Worker finished");
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
