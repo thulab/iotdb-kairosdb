@@ -64,6 +64,7 @@ public class ConfigDescriptor {
             ""));
         config.PROFILE_INTERVAL = Integer.parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
         config.CORE_POOL_SIZE = Integer.parseInt(properties.getProperty("CORE_POOL_SIZE", config.CORE_POOL_SIZE + ""));
+        config.MAX_POOL_SIZE = Integer.parseInt(properties.getProperty("MAX_POOL_SIZE", config.MAX_POOL_SIZE + ""));
         config.ENABLE_PROFILER = Boolean.parseBoolean(properties.getProperty("ENABLE_PROFILER",
             config.ENABLE_PROFILER + ""));
 

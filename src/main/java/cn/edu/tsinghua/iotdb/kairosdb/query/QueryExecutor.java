@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -50,9 +50,9 @@ public class QueryExecutor {
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(
       config.CORE_POOL_SIZE,
-      Integer.MAX_VALUE,
-      60L, TimeUnit.SECONDS,
-      new SynchronousQueue<Runnable>());
+      config.MAX_POOL_SIZE,
+      300L, TimeUnit.SECONDS,
+      new LinkedBlockingQueue<>());
 
   private Query query;
 
@@ -63,12 +63,6 @@ public class QueryExecutor {
   private Map<Integer, String> pos2tag;
 
   private Map<Integer, List<String>> tmpTags;
-
-  private Boolean isTooLargeEntity = false;
-
-  public void setTooLargeEntity(Boolean tooLargeEntity) {
-    isTooLargeEntity = tooLargeEntity;
-  }
 
   public QueryExecutor(Query query) {
     this.query = query;
@@ -81,10 +75,10 @@ public class QueryExecutor {
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
-    List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new LinkedList<>());
+    List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new ArrayList<>());
     List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections
-        .synchronizedList(new LinkedList<>());
-    List<MetricResult> metricResultList = Collections.synchronizedList(new LinkedList<>());
+        .synchronizedList(new ArrayList<>());
+    List<MetricResult> metricResultList = Collections.synchronizedList(new ArrayList<>());
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG).size() > 1) {
@@ -129,7 +123,7 @@ public class QueryExecutor {
     try {
       // wait for all clients finish test
       queryLatch.await();
-      LOGGER.info("All Query Worker finished");
+      LOGGER.debug("All Query Worker finished");
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
@@ -152,9 +146,6 @@ public class QueryExecutor {
               metricResult.getResults().get(0).getDatapoints()
                   .addAll(m.getResults().get(0).getDatapoints());
             }
-          } else {
-            isTooLargeEntity = true;
-            break;
           }
         }
       }
@@ -195,10 +186,6 @@ public class QueryExecutor {
     }
     LOGGER.info("query string size:{}", queryResultStr.length());
     return queryResultStr.toString();
-  }
-
-  public Boolean getTooLargeEntity() {
-    return isTooLargeEntity;
   }
 
   public QueryResult execute() throws QueryException {

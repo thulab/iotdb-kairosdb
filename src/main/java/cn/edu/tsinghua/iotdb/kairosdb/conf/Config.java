@@ -20,6 +20,7 @@ public class Config {
   public long MAX_RANGE = 20;
   public int PROFILE_INTERVAL = 10;
   public int CORE_POOL_SIZE = 0;
+  public int MAX_POOL_SIZE = 30;
   public boolean ENABLE_PROFILER = false;
 
   public int PROTOCAL_NUM = 12;
