@@ -269,7 +269,62 @@ public class QueryWorker extends Thread {
       getTagValueFromPaths(metaData, paths);
       addBasicGroupByToResult(metaData, metricValueResult);
     } catch (SQLException e) {
-      LOGGER.warn(String.format("QueryExecutor.%s: %s", e.getClass().getName(), e.getMessage()));
+      LOGGER.error("{} Execute failed SQL: {}", Thread.currentThread().getName(), sql, e);
+      IoTDBConnectionPool.getInstance().createConnections();
+      connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
+      try (Statement statement = connection.createStatement()) {
+        LOGGER.info("{} Recreate connections and retry SQL: {}", Thread.currentThread().getName(), sql, e);
+        boolean isFirstNext = true;
+        statement.execute(sql);
+        ResultSet rs = statement.getResultSet();
+        ResultSetMetaData metaData = rs.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        int maxCount = config.POINT_EDGE / metricCount;
+        boolean[] paths = new boolean[columnCount - 1];
+        while (rs.next()) {
+          if (config.ENABLE_PROFILER && isFirstNext) {
+            Measurement.getInstance().add(Profile.FIRST_NEXT, System.nanoTime() - start);
+            isFirstNext = false;
+          }
+          long timestamp = rs.getLong(1);
+          for (int i = 2; i <= columnCount; i++) {
+            String value = rs.getString(i);
+            if (value == null || value.equals(DeleteSqlBuilder.NULL_STR) || value
+                .equals("2.147483646E9")) {
+              continue;
+            }
+            sampleSize++;
+            paths[i - 2] = true;
+            QueryDataPoint dataPoint = null;
+            switch (findType(value)) {
+              case Types.INTEGER:
+                int intValue = rs.getInt(i);
+                dataPoint = new QueryDataPoint(timestamp, intValue);
+                break;
+              case Types.DOUBLE:
+                double doubleValue = rs.getDouble(i);
+                dataPoint = new QueryDataPoint(timestamp, doubleValue);
+                break;
+              case Types.VARCHAR:
+                dataPoint = new QueryDataPoint(timestamp, value);
+                break;
+              default:
+                LOGGER.error("QueryExecutor.execute: invalid type");
+            }
+            metricValueResult.addDataPoint(dataPoint);
+          }
+          if(sampleSize > maxCount) {
+            break;
+          }
+        }
+        if (config.ENABLE_PROFILER) {
+          Measurement.getInstance().add(Profile.IOTDB_QUERY, System.nanoTime() - start);
+        }
+        getTagValueFromPaths(metaData, paths);
+        addBasicGroupByToResult(metaData, metricValueResult);
+      } catch (SQLException ex) {
+        LOGGER.error("{} Retry SQL failed: {}", Thread.currentThread().getName(), sql, e);
+      }
     }
     return sampleSize;
   }
