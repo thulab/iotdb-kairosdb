@@ -48,7 +48,8 @@ public class ConfigDescriptor {
         properties.load(inputStream);
         config.KAIROSDB_BASE_URL = properties
             .getProperty("KAIROSDB_BASE_URL", config.KAIROSDB_BASE_URL);
-        config.MACHINE_ID = properties.getProperty("MACHINE_ID", config.MACHINE_ID);
+        String machine_id_list = properties.getProperty("MACHINE_ID_LIST", "1701");
+        Collections.addAll(config.MACHINE_ID_LIST, machine_id_list.split(","));
         config.METRIC_LIST = properties.getProperty("METRIC_LIST", config.METRIC_LIST);
         config.START_TIME = properties.getProperty("START_TIME", config.START_TIME);
         config.ENDED_TIME = properties.getProperty("ENDED_TIME", config.ENDED_TIME);
@@ -56,6 +57,8 @@ public class ConfigDescriptor {
         config.COLUMN = Integer.parseInt(properties.getProperty("COLUMN", "100"));
         config.STORAGE_GROUP_SIZE = Integer
             .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "10"));
+        config.TAG_NAME = properties.getProperty("TAG_NAME", config.TAG_NAME);
+        config.DELETE_CSV = Boolean.parseBoolean(properties.getProperty("DELETE_CSV", "true"));
         config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
         List<List<String>> protocal_machine = new ArrayList<>();
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
