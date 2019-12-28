@@ -21,11 +21,30 @@ public class IoTDBConnectionPool {
   private List<List<Connection>> connections_list = new ArrayList<>();
 
   private IoTDBConnectionPool() {
+    createConnections();
+  }
+
+  public synchronized void createConnections() {
     try {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     } catch (ClassNotFoundException e) {
       LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
     }
+//    if (!connections_list.isEmpty()) {
+//      for (List<Connection> connections : connections_list) {
+//        for (Connection connection : connections) {
+//          if (connection != null) {
+//            try {
+//              connection.close();
+//            } catch (SQLException e) {
+//              LOGGER.warn("[Not Important] old connection close failed", e);
+//            }
+//          }
+//        }
+//      }
+//      connections_list.clear();
+//    }
+    connections_list.clear();
     for (int j = 0; j < config.URL_LIST.size(); j++) {
       List<Connection> connections = new ArrayList<>();
       for (int i = 0; i < config.CONNECTION_NUM; i++) {
