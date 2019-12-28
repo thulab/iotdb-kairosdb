@@ -17,13 +17,15 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ExportToCsvIoTDB {
 
   private static Config config;
-  //private static final Logger LOGGER = LoggerFactory.getLogger(ExportToCsv.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExportToCsvIoTDB.class);
   private static final String STORAGE_GROUP_PREFIX = "group_";
-  private static final String DIR_NAME = "%s_%s_%s_";
+  private static final String DIR_NAME = "%s_%s_%s";
   private static final String CSV_FILE_SUFFIX = ".csv";
   private static int storageGroupSize;
   private static final String PATH_TEMPLATE = "root.%s%s.%s";
@@ -44,7 +46,7 @@ public class ExportToCsvIoTDB {
           .getConnection(String.format(Constants.IOTDB_URL, config.IoTDB_URL), Constants.ROLE,
               Constants.ROLE);
     } catch (ClassNotFoundException | SQLException e) {
-      e.printStackTrace();
+      LOGGER.error("建立连接异常", e);
     }
   }
 
@@ -59,6 +61,7 @@ public class ExportToCsvIoTDB {
     trainNumber = config.MACHINE_ID;
     column = config.COLUMN;
     header = config.METRIC_LIST.split(",");
+
     int column_loop = (int) Math.ceil((float) config.METRIC_LIST.split(",").length / column);
     String dirPath = String
         .format(DIR_NAME, config.MACHINE_ID, config.START_TIME, config.ENDED_TIME);
@@ -71,7 +74,7 @@ public class ExportToCsvIoTDB {
     if (!config.START_TIME.equals("") && !config.ENDED_TIME.equals("")) {
       startTime = TimeUtils.convertDateStrToTimestamp(config.START_TIME);
       endTime = TimeUtils.convertDateStrToTimestamp(config.ENDED_TIME);
-      System.out.println("开始查询IoTDB的数据...");
+      LOGGER.info("开始查询IoTDB的数据");
       long start;
       long loadElapse = 0;
       long exportCsvElapse = 0;
@@ -89,11 +92,9 @@ public class ExportToCsvIoTDB {
         exportDataTable(i);
         exportCsvElapse += System.currentTimeMillis() - start;
       }
-      System.out.println(
-          "查询IoTDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms");
+      LOGGER.info("数据导出成功,查询IoTDB数据耗时:{}ms,导出成CSV文件耗时:{}ms", loadElapse, exportCsvElapse);
     } else {
-      System.out.println("必须指定导出数据的起止时间！");
-      //LOGGER.error("必须指定导出数据的起止时间！");
+      LOGGER.error("必须指定导出数据的起止时间！");
     }
 
   }
@@ -101,12 +102,19 @@ public class ExportToCsvIoTDB {
   private static void loadAllMetricsOfOneTrain() {
     StringBuilder queryString = new StringBuilder();
     queryString.append("select ");
-    for (String metric : metrics) {
-      queryString.append(metric).append(",");
+    if (header.length == 1 && (header[0].equals("use_rawdata") || header[0]
+        .equals("serial_number"))) {
+      queryString.append(header[0]);
+      queryString.append(" from root.*.*").append(config.MACHINE_ID).append(" where time>")
+          .append(startTime).append(" and time<").append(endTime);
+    } else {
+      for (String metric : metrics) {
+        queryString.append(metric).append(",");
+      }
+      queryString.deleteCharAt(queryString.length() - 1);
+      queryString.append(" from root.*.").append(config.MACHINE_ID).append(" where time>")
+          .append(startTime).append(" and time<").append(endTime);
     }
-    queryString.deleteCharAt(queryString.length() - 1);
-    queryString.append(" from root.*.").append(config.MACHINE_ID).append(" where time>")
-        .append(startTime).append(" and time<").append(endTime);
 
     try (Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(queryString.toString());
@@ -134,14 +142,11 @@ public class ExportToCsvIoTDB {
 
   private static void exportDataTable(int i) {
 
-    String csvFileName = dirAbsolutePath + File.separator + i + CSV_FILE_SUFFIX;
+    String csvFileName = dirAbsolutePath + File.separator + trainNumber + "-" + i + CSV_FILE_SUFFIX;
 
     File file = new File(csvFileName);
 
-    //LOGGER.info("正在导出{}列, {}行数据到 {} ...", metrics.length, dataTable.size(), path);
-    System.out
-        .println(
-            String.format("正在导出%d列, %d行数据到 %s ...", metrics.length, dataTable.size(), csvFileName));
+    LOGGER.info("正在导出{}列, {}行数据到 {} ...", metrics.length, dataTable.size(), csvFileName);
     int count = 0;
     int stage = dataTable.size() / 20;
     try {
@@ -157,7 +162,8 @@ public class ExportToCsvIoTDB {
 
         //
         for (Map.Entry<Long, Map<String, Object>> entry : dataTable.entrySet()) {
-          StringBuilder lineBuilder = new StringBuilder(TimeUtils.timstamp2DateTime(entry.getKey()) + "");
+          StringBuilder lineBuilder = new StringBuilder(
+              TimeUtils.timstamp2DateTime(entry.getKey()) + "");
           Map<String, Object> record = entry.getValue();
           for (String metric : metrics) {
             Object value = record.get(metric);
@@ -174,20 +180,18 @@ public class ExportToCsvIoTDB {
             if (count % stage == 0) {
               double a = count * 100.0 / dataTable.size();
               String p = String.format("%.1f", a);
-              System.out.println("已完成 " + p + "%");
+              LOGGER.info("已完成 {}%", p);
             }
           } else {
             double a = count * 100.0 / dataTable.size();
             String p = String.format("%.1f", a);
-            System.out.println("已完成 " + p + "%");
+            LOGGER.info("已完成 {}%", p);
           }
         }
       }
       dataTable = new LinkedHashMap<>();
     } catch (IOException e) {
-//      LOGGER.error("IoTDB数据导出为CSV文件失败", e);
-      System.out.println("IoTDB数据导出为CSV文件失败");
-      e.printStackTrace();
+      LOGGER.error("IoTDB数据导出为CSV文件失败", e);
     }
   }
 
@@ -202,7 +206,7 @@ public class ExportToCsvIoTDB {
       }
     }
     int hashCode = device.hashCode();
-//    LOGGER.error("协议中不存在车辆{}", device);
+//    LOGGER.warn("协议中不存在车辆{}", device);
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 

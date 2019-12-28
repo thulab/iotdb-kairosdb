@@ -3,8 +3,7 @@
 
 ### 1.1 环境要求
 - Java 8
-- Maven
-- Git
+- Bash
 
 ### 1.2 使用步骤
 
@@ -14,10 +13,6 @@
 ```
 2. 启动导出脚本
 ```
-> ./export-csv.sh
+> ./export-iotdb-csv.sh
 ```
-若要自动导出多个车的数据，则使用以下命令
-```
-> ./multi-device-export-csv.sh
-```
-修改该脚本中的```DEVICE_ID_LIST```变量可指定车号列表
+运行成功后在用户指定的 EXPORT_FILE_DIR 目录下会生成CSV格式的文件
