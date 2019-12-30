@@ -112,9 +112,9 @@ public class DataPointsParser {
         try {
           sendMetricsData();
         } catch (SQLException exc) {
-          LOGGER.debug("Exception occur for final send:,", exc);
+          LOGGER.error("Exception occur for final send:,", exc);
         }
-        LOGGER.debug("Exception occur for create and send:,", ex);
+        LOGGER.error("Exception occur for create and send:,", ex);
         validationErrors.addErrorMessage(
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
       }
@@ -167,8 +167,7 @@ public class DataPointsParser {
           try {
             statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
           } catch (Exception e) {
-            LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{},报错信息为{}", entry.getKey().toString(), count,
-                e.getMessage());
+            LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{}", entry.getKey(), count, e);
           }
         }
       }
@@ -181,7 +180,6 @@ public class DataPointsParser {
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
-    int count = 0;
     for (Connection conn : connections) {
       try (Statement statement = conn.createStatement()) {
         for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
@@ -200,12 +198,9 @@ public class DataPointsParser {
           sensorPartBuilder.append(")");
           valuePartBuilder.append(")");
           sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-//          LOGGER.info("插入数据的连接序号为:{},执行插入的SQL语句：{}，", count, sqlBuilder.toString());
           statement.execute(sqlBuilder.toString());
         }
       }
-//      LOGGER.info("插入数据的连接序号为:{}", count);
-      count++;
     }
     if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;
