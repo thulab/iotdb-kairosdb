@@ -60,6 +60,7 @@ public class ConfigDescriptor {
         config.MAX_RANGE = Long.parseLong(properties.getProperty("MAX_RANGE", config.MAX_RANGE +
             ""));
         config.PROFILE_INTERVAL = Integer.parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
+        config.CORE_POOL_SIZE = Integer.parseInt(properties.getProperty("CORE_POOL_SIZE", config.CORE_POOL_SIZE + ""));
         config.ENABLE_PROFILER = Boolean.parseBoolean(properties.getProperty("ENABLE_PROFILER",
             config.ENABLE_PROFILER + ""));
 

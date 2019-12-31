@@ -11,7 +11,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -142,8 +141,7 @@ public class MetricsResource {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
-      QueryResult result = executor.execute();
-      String entity = parser.parseResultToJson(result);
+      String entity = executor.executeV2();
       if (config.ENABLE_PROFILER) {
         Measurement.getInstance().add(Profile.IKR_QUERY, System.nanoTime() - start);
       }

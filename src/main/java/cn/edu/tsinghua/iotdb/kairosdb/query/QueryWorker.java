@@ -13,9 +13,10 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -26,81 +27,45 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class QueryExecutor {
+public class QueryWorker extends Thread {
 
-  public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryWorker.class);
+  private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
-  private static final ExecutorService queryWorkerPool = new ThreadPoolExecutor(config.CORE_POOL_SIZE,
-      Integer.MAX_VALUE,
-      60L, TimeUnit.SECONDS,
-      new SynchronousQueue<Runnable>());
-
-  private Query query;
-
+  private CountDownLatch queryLatch;
+  private Map<String, StringBuilder> queryMetricStr;
+  private QueryMetric metric;
+  private Map<String, Integer> tag2pos;
+  private Map<Integer, String> pos2tag;
+  private Map<Integer, List<String>> tmpTags;
   private Long startTime;
   private Long endTime;
 
-  private Map<String, Integer> tag2pos;
-  private Map<Integer, String> pos2tag;
 
-  private Map<Integer, List<String>> tmpTags;
-
-  public QueryExecutor(Query query) {
-    this.query = query;
-    this.startTime = query.getStartTimestamp();
-    this.endTime = query.getEndTimestamp();
+  public QueryWorker(CountDownLatch queryLatch, Map<String, StringBuilder> queryMetricStr,
+      QueryMetric metric,
+      Long startTime, Long endTime) {
+    this.queryLatch = queryLatch;
+    this.queryMetricStr = queryMetricStr;
+    this.metric = metric;
+    this.startTime = startTime;
+    this.endTime = endTime;
   }
 
-  public String executeV2() throws QueryException {
-    StringBuilder queryResultStr = new StringBuilder();
-    int queryMetricNum = query.getQueryMetrics().size();
-    CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
-    ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
-    for (QueryMetric metric : query.getQueryMetrics()) {
-      queryWorkerPool.submit(new QueryWorker(queryLatch, queryMetricJsons, metric, startTime,
-          endTime));
-    }
+  @Override
+  public void run() {
     try {
-      // wait for all clients finish test
-      queryLatch.await();
-    } catch (InterruptedException e) {
-      LOGGER.error("Exception occurred during waiting for all threads finish.", e);
-      Thread.currentThread().interrupt();
-    }
-    StringBuilder midMetricBuilder = new StringBuilder();
-
-    for (StringBuilder metricBuilder : queryMetricJsons.values()) {
-      midMetricBuilder.append(",").append(metricBuilder);
-    }
-    midMetricBuilder.delete(0, 1);
-    queryResultStr.append("{\"queries\":[");
-    if (queryMetricNum > 0) {
-      queryResultStr.append(midMetricBuilder.toString());
-    }
-    queryResultStr.append("]}");
-    return queryResultStr.toString();
-  }
-
-  public QueryResult execute() throws QueryException {
-    QueryResult queryResult = new QueryResult();
-    for (QueryMetric metric : query.getQueryMetrics()) {
+      MetricResult metricResult = new MetricResult();
       if (getMetricMapping(metric)) {
-        MetricResult metricResult = new MetricResult();
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
         long interval = endTime - startTime;
         String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        if(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
-
+        if (metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(
+            QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
           sql = sql.replace(metric.getName(), config.AGG_FUNCTION + "(" + metric.getName() + ")");
           sql = sql.substring(0, sql.indexOf("where"));
           String sqlBuilder = sql + " group by ("
@@ -113,57 +78,74 @@ public class QueryExecutor {
           metricResult.setSampleSize(getValueResult(sqlBuilder, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
-            queryResult.addVoidMetricResult(metric.getName());
+            metricResult = new MetricResult();
+            metricResult.addResult(new MetricValueResult(metric.getName()));
+            metricResult.getResults().get(0).setGroupBy(null);
           } else {
             metricResult.addResult(metricValueResult);
-            queryResult.addMetricResult(metricResult);
           }
-
         } else {
-
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
-            queryResult.addVoidMetricResult(metric.getName());
+            metricResult = new MetricResult();
+            metricResult.addResult(new MetricValueResult(metric.getName()));
+            metricResult.getResults().get(0).setGroupBy(null);
           } else {
             metricResult.addResult(metricValueResult);
             metricResult = doAggregations(metric, metricResult);
-            queryResult.addMetricResult(metricResult);
           }
-
         }
       } else {
-        queryResult.addVoidMetricResult(metric.getName());
+        metricResult = new MetricResult();
+        metricResult.addResult(new MetricValueResult(metric.getName()));
+        metricResult.getResults().get(0).setGroupBy(null);
       }
+      queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
+    } catch (Exception e) {
+      LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
+    } finally {
+      queryLatch.countDown();
     }
-    return queryResult;
   }
 
-  public void delete() {
-    for (QueryMetric metric : query.getQueryMetrics()) {
+  private MetricResult doAggregations(QueryMetric metric, MetricResult result)
+      throws QueryException {
 
-      if (getMetricMapping(metric)) {
-        String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
-        for (Connection conn : connections) {
-          try {
-            Statement statement = conn.createStatement();
-            statement.execute(querySql);
+    for (QueryAggregator aggregator : metric.getAggregators()) {
+      if (aggregator instanceof QueryAggregatorAlignable) {
+        ((QueryAggregatorAlignable) aggregator).setStartTimestamp(startTime);
+        ((QueryAggregatorAlignable) aggregator).setEndTimestamp(endTime);
+      }
+      result = aggregator.doAggregate(result);
+    }
 
-            ResultSet rs = statement.getResultSet();
+    return result;
+  }
 
-            List<String> sqlList = buildDeleteSql(rs);
-            statement = conn.createStatement();
-            for (String sql : sqlList) {
-              statement.addBatch(sql);
-            }
-            statement.executeBatch();
-          } catch (SQLException e) {
-            LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
-          }
-        }
+  private String buildSqlStatement(QueryMetric metric, Map<Integer, String> pos2tag, int maxPath,
+      long startTime, long endTime) {
+    QuerySqlBuilder sqlBuilder = new QuerySqlBuilder(metric.getName());
+    for (int i = 0; i < maxPath; i++) {
+      String tmpKey = pos2tag.getOrDefault(i, null);
+      if (tmpKey == null) {
+        sqlBuilder.append("*");
+      } else {
+        sqlBuilder.append(metric.getTags().get(tmpKey));
+      }
+    }
+    return sqlBuilder.generateSql(startTime, endTime);
+  }
+
+  private void setTags(MetricValueResult metricValueResult) {
+    if (tmpTags != null) {
+      for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
+        pos2tag.put(entry.getValue(), entry.getKey());
       }
 
+      for (Map.Entry<Integer, List<String>> entry : tmpTags.entrySet()) {
+        metricValueResult.setTag(pos2tag.get(entry.getKey() - 2), entry.getValue());
+      }
     }
   }
 
@@ -183,50 +165,7 @@ public class QueryExecutor {
         pos2tag.put(tempPosition, tmpKey);
       }
     }
-
     return true;
-  }
-
-  private String buildSqlStatement(QueryMetric metric, Map<Integer, String> pos2tag, int maxPath,
-      long startTime, long endTime) {
-    QuerySqlBuilder sqlBuilder = new QuerySqlBuilder(metric.getName());
-
-    for (int i = 0; i < maxPath; i++) {
-      String tmpKey = pos2tag.getOrDefault(i, null);
-      if (tmpKey == null) {
-        sqlBuilder.append("*");
-      } else {
-        sqlBuilder.append(metric.getTags().get(tmpKey));
-      }
-    }
-
-    return sqlBuilder.generateSql(startTime, endTime);
-  }
-
-  private List<String> buildDeleteSql(ResultSet rs) throws SQLException {
-    ResultSetMetaData metaData = rs.getMetaData();
-
-    String[] paths = new String[metaData.getColumnCount() - 1];
-    int[] types = new int[metaData.getColumnCount() - 1];
-
-    for (int i = 2; i <= metaData.getColumnCount(); i++) {
-      paths[i - 2] = metaData.getColumnName(i);
-      types[i - 2] = metaData.getColumnType(i);
-    }
-
-    DeleteSqlBuilder builder;
-    builder = new DeleteSqlBuilder();
-
-    while (rs.next()) {
-      String timestamp = rs.getString(1);
-      for (int i = 2; i <= metaData.getColumnCount(); i++) {
-        if (rs.getString(i) != null) {
-          builder.appendDataPoint(paths[i - 2], timestamp);
-        }
-      }
-    }
-
-    return builder.build(paths, types);
   }
 
   private long getValueResult(String sql, MetricValueResult metricValueResult) {
@@ -318,42 +257,6 @@ public class QueryExecutor {
     }
   }
 
-  private void setTags(MetricValueResult metricValueResult) {
-    if (tmpTags != null) {
-      for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
-        pos2tag.put(entry.getValue(), entry.getKey());
-      }
-
-      for (Map.Entry<Integer, List<String>> entry : tmpTags.entrySet()) {
-        metricValueResult.setTag(pos2tag.get(entry.getKey() - 2), entry.getValue());
-      }
-    }
-  }
-
-  private void addBasicGroupByToResult(
-      ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
-    int type = metaData.getColumnType(2);
-    if (type == Types.VARCHAR) {
-      metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
-    } else {
-      metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
-    }
-  }
-
-  private MetricResult doAggregations(QueryMetric metric, MetricResult result)
-      throws QueryException {
-
-    for (QueryAggregator aggregator : metric.getAggregators()) {
-      if (aggregator instanceof QueryAggregatorAlignable) {
-        ((QueryAggregatorAlignable) aggregator).setStartTimestamp(startTime);
-        ((QueryAggregatorAlignable) aggregator).setEndTimestamp(endTime);
-      }
-      result = aggregator.doAggregate(result);
-    }
-
-    return result;
-  }
-
   private int findType(String string) {
     if (isNumeric(string)) {
       return Types.INTEGER;
@@ -373,6 +276,16 @@ public class QueryExecutor {
       }
     }
     return true;
+  }
+
+  private void addBasicGroupByToResult(
+      ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
+    int type = metaData.getColumnType(2);
+    if (type == Types.VARCHAR) {
+      metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
+    } else {
+      metricValueResult.addGroupBy(GroupByType.getNumberTypeInstance());
+    }
   }
 
 }
