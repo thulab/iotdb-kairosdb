@@ -62,6 +62,7 @@ public class IngestionWorker extends Thread {
     } catch (JsonIOException | MalformedJsonException | JsonSyntaxException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
       response = builder.addError(e.getMessage()).build();
+      LOGGER.error("Received bad request", e);
     } catch (Exception e) {
       LOGGER.error("Failed to add metric.", e);
       response = setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)

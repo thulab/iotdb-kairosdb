@@ -1,0 +1,16 @@
+{
+  "start_absolute" : 1,
+  "end_relative": {
+    "value": "5",
+    "unit": "days"
+  },
+  "time_zone": "Asia/Kabul",
+  "metrics": [
+    {
+      "name": "test_query6",
+      "tags": {
+        "host": [ "server1" ]
+      }
+    }
+  ]
+}

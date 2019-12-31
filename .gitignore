@@ -26,6 +26,7 @@ hs_err_pid*
 .idea/
 target/
 *.iml
+lib/
 
 # Database files
 *.db

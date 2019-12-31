@@ -59,11 +59,11 @@ public class Duration {
 
   public long toRelatedTimestamp() {
     long timeNow = new Date().getTime();
-    long durationTime = toTimestamp();
+    long durationTime = toMillisecond();
     return timeNow - durationTime;
   }
 
-  public long toTimestamp() {
+  public long toMillisecond() {
     return value * TimeUnit.getUnitTime(unit);
   }
 

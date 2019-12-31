@@ -25,7 +25,12 @@ else
     JAVA=java
 fi
 
+JMX_PORT="31998"
 
-exec "$JAVA" -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml  -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+IOTDB_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
+
+
+exec "$JAVA" $IOTDB_JMX_OPTS -Xmx50g -Xms50g -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 
 exit $?

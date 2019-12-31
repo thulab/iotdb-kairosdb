@@ -62,7 +62,7 @@ public class RollUp implements Runnable {
     long currTime = System.currentTimeMillis();
     for (RollUpQuery rollUpQuery : rollups) {
       Query query = rollUpQuery.getQuery();
-      query.setStartAbsolute(currTime - interval.toTimestamp());
+      query.setStartAbsolute(currTime - interval.toMillisecond());
       query.setEndAbsolute(currTime);
       QueryExecutor executor = new QueryExecutor(query);
       try {

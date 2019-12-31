@@ -1,13 +1,16 @@
 package cn.edu.tsinghua.iotdb.kairosdb.http.rest;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IngestionWorker;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.JsonResponseBuilder;
+import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
+import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.Query;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryException;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryExecutor;
 import cn.edu.tsinghua.iotdb.kairosdb.query.QueryParser;
-import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -16,8 +19,11 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -35,6 +41,8 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/api/v1")
 public class MetricsResource {
@@ -42,6 +50,9 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
   private static final String NO_CACHE = "no-cache";
   private static final ExecutorService threadPool = Executors.newCachedThreadPool();
+  private static final ScheduledExecutorService profilerPool = Executors.newSingleThreadScheduledExecutor();
+  private static final Config config = ConfigDescriptor.getInstance().getConfig();
+  public static final Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -50,6 +61,10 @@ public class MetricsResource {
   public MetricsResource() {
     GsonBuilder builder = new GsonBuilder();
     gson = builder.disableHtmlEscaping().create();
+    if (config.ENABLE_PROFILER) {
+      profilerPool.scheduleAtFixedRate(() -> Measurement.getInstance().show(),
+          config.PROFILE_INTERVAL, config.PROFILE_INTERVAL, TimeUnit.SECONDS);
+    }
   }
 
   static Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder) {
@@ -90,7 +105,6 @@ public class MetricsResource {
     if (queryJson == null) {
       return setHeaders(Response.status(Status.BAD_REQUEST)).build();
     }
-
     try {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(queryJson);
@@ -116,7 +130,34 @@ public class MetricsResource {
     return runQuery(json);
   }
 
+//  @POST
+//  @Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
+//  @Path(QUERY_URL)
+//  public void postQuery(String json, @Suspended final AsyncResponse asyncResponse) {
+//    CompletableFuture<Response> future = veryExpensiveOperation(json);
+//    future.thenAccept(resp -> asyncResponse.resume(resp));
+//  }
+
+  private CompletableFuture<Response> veryExpensiveOperation(String json){
+    CompletableFuture<Response> completableFuture = new CompletableFuture<>();
+    threadPool.execute(new Thread(() -> {
+      Response response = null;
+      //do expensive stuff here
+      try {
+        response = runQuery(json);
+      } catch (Exception e) {
+        LOGGER.error("Query failed because: {}", e.getMessage(), e);
+      }
+      completableFuture.complete(response);
+    }));
+    return completableFuture;
+  }
+
   private Response runQuery(String jsonStr) {
+    long start = 0;
+    if (config.ENABLE_PROFILER) {
+      start = System.nanoTime();
+    }
     try {
       if (jsonStr == null) {
         throw new BeanValidationException(
@@ -127,13 +168,19 @@ public class MetricsResource {
       QueryParser parser = new QueryParser();
       Query query = parser.parseQueryMetric(jsonStr);
       QueryExecutor executor = new QueryExecutor(query);
-      QueryResult result = executor.execute();
-      String entity = parser.parseResultToJson(result);
+      String entity = executor.executeV2();
+      if (config.ENABLE_PROFILER) {
+        Measurement.getInstance().add(Profile.IKR_QUERY, System.nanoTime() - start);
+      }
+
       return Response.status(Status.OK)
           .header("Access-Control-Allow-Origin", "*")
           .header("Pragma", NO_CACHE)
           .header("Cache-Control", NO_CACHE)
           .header("Expires", 0)
+//          .header("Vary","Accept-Encoding, User-Agent")
+//          .header("Transfer-Encoding","chunked")
+//          .header("Server","Jetty(8.1.16.v20140903)")
           .entity(entity)
           .build();
 

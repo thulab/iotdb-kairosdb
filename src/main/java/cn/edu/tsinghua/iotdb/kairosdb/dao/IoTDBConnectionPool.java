@@ -15,33 +15,61 @@ public class IoTDBConnectionPool {
 
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnectionPool.class);
-  private static final String URL = "jdbc:iotdb://%s:%s/";
+  private static final String CONNECT_STRING = "jdbc:iotdb://%s/";
   private AtomicInteger loop = new AtomicInteger(0);
 
-  private List<Connection> connections = new ArrayList<>();
+  private List<List<Connection>> connections_list = new ArrayList<>();
 
   private IoTDBConnectionPool() {
-    for (int i = 0; i < config.CONNECTION_NUM; i++) {
-      try {
-        Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      } catch (ClassNotFoundException e) {
-        LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
+    createConnections();
+  }
+
+  public synchronized void createConnections() {
+    try {
+      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    } catch (ClassNotFoundException e) {
+      LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
+    }
+//    if (!connections_list.isEmpty()) {
+//      for (List<Connection> connections : connections_list) {
+//        for (Connection connection : connections) {
+//          if (connection != null) {
+//            try {
+//              connection.close();
+//            } catch (SQLException e) {
+//              LOGGER.warn("[Not Important] old connection close failed", e);
+//            }
+//          }
+//        }
+//      }
+//      connections_list.clear();
+//    }
+    connections_list.clear();
+    for (int j = 0; j < config.URL_LIST.size(); j++) {
+      List<Connection> connections = new ArrayList<>();
+      for (int i = 0; i < config.CONNECTION_NUM; i++) {
+        try {
+          Connection con = DriverManager
+              .getConnection(String.format(CONNECT_STRING, config.URL_LIST.get(j)), "root", "root");
+          connections.add(con);
+        } catch (SQLException e) {
+          LOGGER.error("Get new connection failed ", e);
+        }
       }
-      try {
-        Connection con = DriverManager
-            .getConnection(String.format(URL, config.HOST, config.PORT), "root", "root");
-        connections.add(con);
-      } catch (SQLException e) {
-        LOGGER.error("Get new connection failed ", e);
-      }
+      connections_list.add(connections);
     }
   }
 
-  public Connection getConnection() {
-    if (loop.incrementAndGet() > config.CONNECTION_NUM * 2) {
+  public List<Connection> getConnections() {
+    if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    return connections.get(loop.getAndIncrement() % config.CONNECTION_NUM);
+    List<Connection> connections = new ArrayList<>();
+    for (int i = 0; i < config.URL_LIST.size(); i++) {
+      connections.add(connections_list.get(i)
+          .get(loop.getAndIncrement() % config.CONNECTION_NUM));
+    }
+    return connections;
   }
 
   private static class IoTDBConnectionPoolHolder {

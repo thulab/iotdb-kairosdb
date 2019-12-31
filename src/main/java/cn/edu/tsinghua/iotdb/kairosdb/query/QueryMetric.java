@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class QueryMetric implements JsonDeserializer<QueryMetric> {
+public class QueryMetric implements JsonDeserializer<QueryMetric>, Cloneable {
 
   @SerializedName("name")
   private String name;
@@ -72,6 +72,19 @@ public class QueryMetric implements JsonDeserializer<QueryMetric> {
   public void setGroupBy(List<GroupBy> groupBy) {
     this.groupBy = groupBy;
   }
+
+  @Override
+  public QueryMetric clone() {
+    QueryMetric demo = new QueryMetric();
+    demo.name = name;
+    demo.limit = limit;
+    demo.tags = new HashMap<>();
+    demo.aggregators = new ArrayList<>();
+    demo.groupBy = new ArrayList<>();
+
+    return demo;
+  }
+
 
   @Override
   public QueryMetric deserialize(JsonElement jsonElement, Type type,

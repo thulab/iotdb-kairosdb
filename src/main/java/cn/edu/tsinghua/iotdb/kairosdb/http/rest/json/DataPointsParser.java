@@ -20,7 +20,9 @@ import java.io.Reader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
@@ -48,10 +50,10 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
-  private Connection connection;
+  private List<Connection> connections = new ArrayList<>();
 
   public DataPointsParser(Reader stream, Gson gson) {
-    connection = IoTDBConnectionPool.getInstance().getConnection();
+    connections = IoTDBConnectionPool.getInstance().getConnections();
     this.inputStream = stream;
     this.gson = gson;
   }
@@ -106,15 +108,15 @@ public class DataPointsParser {
       try {
         createTimeSeries();
         sendMetricsData();
-      } catch (SQLException ex) {
+      } catch (Exception ex) {
         try {
           sendMetricsData();
-        } catch (SQLException exc) {
-          LOGGER.error("Exception occur:", exc);
+        } catch (Exception exc) {
+          validationErrors.addErrorMessage(
+              String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
+          LOGGER.warn("Exception occur for retry send:", exc);
         }
-        LOGGER.error("Exception occur:", ex);
-        validationErrors.addErrorMessage(
-            String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
+        LOGGER.warn("Exception occur for create and send, retried send", ex);
       }
     }
 
@@ -158,11 +160,18 @@ public class DataPointsParser {
   }
 
   private void createTimeSeries() throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
-        statement.addBatch(createTimeSeriesSql(entry.getKey(), entry.getValue()));
+    int count = 0;
+    for (Connection conn : connections) {
+      try (Statement statement = conn.createStatement()) {
+        for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
+          try {
+            statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
+          } catch (Exception e) {
+            LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{}", entry.getKey(), count, e);
+          }
+        }
       }
-      statement.executeBatch();
+      count++;
     }
   }
 
@@ -171,24 +180,30 @@ public class DataPointsParser {
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
-    try (Statement statement = connection.createStatement()) {
-      for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
-        StringBuilder sqlBuilder = new StringBuilder();
-        StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
-        StringBuilder valuePartBuilder = new StringBuilder(" values(");
-        long timestamp = entry.getKey().getTimestamp();
-        String path = entry.getKey().getDevice();
-        String sqlPrefix = String
-            .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
-        valuePartBuilder.append(timestamp);
-        for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
-          sensorPartBuilder.append(",").append(subEntry.getKey());
-          valuePartBuilder.append(",").append(subEntry.getValue());
+    for (Connection conn : connections) {
+      try (Statement statement = conn.createStatement()) {
+        for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
+          StringBuilder sqlBuilder = new StringBuilder();
+          StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
+          StringBuilder valuePartBuilder = new StringBuilder(" values(");
+          long timestamp = entry.getKey().getTimestamp();
+          String path = entry.getKey().getDevice();
+          String sqlPrefix = String
+              .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
+          valuePartBuilder.append(timestamp);
+          for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
+            sensorPartBuilder.append(",").append(subEntry.getKey());
+            valuePartBuilder.append(",").append(subEntry.getValue());
+          }
+          sensorPartBuilder.append(")");
+          valuePartBuilder.append(")");
+          sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
+          String sql = sqlBuilder.toString();
+          if(config.DEBUG == 3) {
+            LOGGER.info("{} execute ingestion SQL: {}", Thread.currentThread().getName(), sql);
+          }
+          statement.execute(sql);
         }
-        sensorPartBuilder.append(")");
-        valuePartBuilder.append(")");
-        sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-        statement.execute(sqlBuilder.toString());
       }
     }
     if (config.DEBUG == 2) {

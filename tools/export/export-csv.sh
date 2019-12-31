@@ -5,7 +5,7 @@ if [ -z "${EXPORT_CSV_HOME}" ]; then
 fi
 
 #git pull
-rm -rf lib
-mvn clean package -Dmaven.test.skip=true
+#rm -rf lib
+#mvn clean package -Dmaven.test.skip=true
 cd $EXPORT_CSV_HOME/bin
 sh ./startup.sh -cf ../conf/config.properties

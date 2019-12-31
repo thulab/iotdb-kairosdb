@@ -6,6 +6,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
 import java.net.URI;
+import java.sql.Connection;
 import java.sql.SQLException;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -36,20 +37,26 @@ public class IKR {
   }
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    LOGGER.info("Ready to connect to IoTDB.");
-    IoTDBUtil.initConnection(config.HOST, config.PORT, USER, PSW);
-    LOGGER.info("Connected successfully.");
-    MetricsManager.loadMetadata();
+    for (String url : config.URL_LIST) {
+      LOGGER.info("Ready to connect to IoTDB. {}", url);
+      Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
+      LOGGER.info("Connected {} successfully.", url);
+      MetricsManager.loadMetadata(connection);
+    }
   }
 
   private static HttpServer startServer(String[] argv) throws SQLException, ClassNotFoundException {
     CommandCli cli = new CommandCli();
+    //argv = new String[]{"-cf", "conf/config.properties"};
     if (!cli.init(argv)) {
       System.exit(1);
     }
     config = ConfigDescriptor.getInstance().getConfig();
     baseURI = getBaseURI();
-    LOGGER.info("host = {}, port = {}", config.HOST, config.PORT);
+    LOGGER.info("connection informations for IoTDB");
+    for (String url : config.URL_LIST) {
+      LOGGER.info("host = {}, port = {}", url.split(":")[0], url.split(":")[1]);
+    }
     return startServer();
   }
 
