@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -74,10 +74,9 @@ public class QueryExecutor {
     StringBuilder queryResultStr = new StringBuilder();
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
-    ConcurrentHashMap<String, StringBuilder> queryMetricJsons = new ConcurrentHashMap<>();
+    List<StringBuilder> queryMetricJsonsList = Collections.synchronizedList(new ArrayList<>());
     List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new ArrayList<>());
-    List<ConcurrentHashMap<String, StringBuilder>> qmjList = Collections
-        .synchronizedList(new ArrayList<>());
+    List<List<StringBuilder>> qmjList = Collections.synchronizedList(new ArrayList<>());
     List<MetricResult> metricResultList = Collections.synchronizedList(new ArrayList<>());
     if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
         config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
@@ -85,8 +84,8 @@ public class QueryExecutor {
       QueryMetric queryMetric = query.getQueryMetrics().get(0);
       List<String> deviceList = queryMetric.getTags().get(config.SPECIAL_TAG);
       for (String device : deviceList) {
-        ConcurrentHashMap<String, StringBuilder> queryMetricJson1 = new ConcurrentHashMap<>();
-        qmjList.add(queryMetricJson1);
+        List<StringBuilder> newSeparatedQueryMetricJson = Collections.synchronizedList(new ArrayList<>());
+        qmjList.add(newSeparatedQueryMetricJson);
         QueryMetric queryMetric1 = new QueryMetric();
         queryMetric1.setName(queryMetric.getName());
         queryMetric1.setLimit(queryMetric.getLimit());
@@ -102,10 +101,9 @@ public class QueryExecutor {
       int lsize = newQueryMetricList.size();
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
-        metricResultList.add(new MetricResult());
         queryWorkerPool.submit(new QueryWorker(1, queryLatch, qmjList.get(i),
             newQueryMetricList.get(i),
-            metricResultList.get(i),
+            metricResultList,
             startTime,
             endTime));
       }
@@ -113,7 +111,7 @@ public class QueryExecutor {
       newQueryMetricList = query.getQueryMetrics();
       for (QueryMetric metric : newQueryMetricList) {
         queryWorkerPool
-            .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsons, metric,
+            .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsonsList, metric,
                 null,
                 startTime,
                 endTime));
@@ -174,7 +172,7 @@ public class QueryExecutor {
       }
     } else {
       StringBuilder midMetricBuilder = new StringBuilder();
-      for (StringBuilder metricBuilder : queryMetricJsons.values()) {
+      for (StringBuilder metricBuilder : queryMetricJsonsList) {
         midMetricBuilder.append(",").append(metricBuilder);
       }
       midMetricBuilder.delete(0, 1);

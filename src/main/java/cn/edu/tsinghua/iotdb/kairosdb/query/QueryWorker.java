@@ -24,6 +24,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -42,23 +43,23 @@ public class QueryWorker extends Thread {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryWorker.class);
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
   private CountDownLatch queryLatch;
-  private Map<String, StringBuilder> queryMetricStr;
+  private List<StringBuilder> queryMetricStrList;
   private QueryMetric metric;
   private Map<String, Integer> tag2pos;
   private Map<Integer, String> pos2tag;
   private Map<Integer, List<String>> tmpTags;
   private Long startTime;
   private Long endTime;
-  private MetricResult metricResult;
+  private List<MetricResult> metricResultList;
   private int metricCount;
 
   public QueryWorker(int metricCount, CountDownLatch queryLatch,
-      Map<String, StringBuilder> queryMetricStr,
-      QueryMetric metric, MetricResult metricResult,
+      List<StringBuilder> queryMetricStrList,
+      QueryMetric metric, List<MetricResult> metricResultList,
       Long startTime, Long endTime) {
-    this.metricResult = metricResult;
+    this.metricResultList = metricResultList;
     this.queryLatch = queryLatch;
-    this.queryMetricStr = queryMetricStr;
+    this.queryMetricStrList = queryMetricStrList;
     this.metric = metric;
     this.startTime = startTime;
     this.metricCount = metricCount;
@@ -71,12 +72,8 @@ public class QueryWorker extends Thread {
 
   @Override
   public void run() {
+    MetricResult metricResult = new MetricResult();
     try {
-      boolean useJson = false;
-      if(metricResult == null) {
-        useJson = true;
-        metricResult = new MetricResult();
-      }
       if (getMetricMapping(metric)) {
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
         long interval = endTime - startTime;
@@ -111,7 +108,6 @@ public class QueryWorker extends Thread {
           }
         } else {
           metricResult.setSampleSize(getValueResult(sql, metricValueResult));
-
           setTags(metricValueResult);
           if (metricResult.getSampleSize() == 0) {
             metricResult = new MetricResult();
@@ -127,7 +123,8 @@ public class QueryWorker extends Thread {
         metricResult.addResult(new MetricValueResult(metric.getName()));
         metricResult.getResults().get(0).setGroupBy(null);
       }
-      if(useJson) {
+
+      if(metricResultList == null) {
         Gson gson = new GsonBuilder()
             .registerTypeAdapter(QueryMetric.class, new QueryMetric())
             .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
@@ -137,7 +134,9 @@ public class QueryWorker extends Thread {
                 cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
             .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
             .create();
-        queryMetricStr.put(metric.getName(), new StringBuilder(gson.toJson(metricResult)));
+        queryMetricStrList.add(new StringBuilder(gson.toJson(metricResult)));
+      } else {
+        metricResultList.add(metricResult);
       }
     } catch (Exception e) {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
@@ -270,8 +269,15 @@ public class QueryWorker extends Thread {
       addBasicGroupByToResult(metaData, metricValueResult);
     } catch (SQLException e) {
       LOGGER.error("{} Execute failed SQL: {}", Thread.currentThread().getName(), sql, e);
-      IoTDBConnectionPool.getInstance().createConnections();
-      connection = IoTDBConnectionPool.getInstance().getConnections().get(0);
+      try {
+        Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+        connection = DriverManager
+            .getConnection(String.format(IoTDBConnectionPool.CONNECT_STRING,
+                config.URL_LIST.get(0)), "root",
+                "root");
+      } catch (SQLException | ClassNotFoundException ex) {
+        LOGGER.error("{} Reconnect IoTDB failed", Thread.currentThread().getName(), ex);
+      }
       try (Statement statement = connection.createStatement()) {
         LOGGER.info("{} Recreate connections and retry SQL: {}", Thread.currentThread().getName(), sql, e);
         boolean isFirstNext = true;
