@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBSessionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
@@ -25,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.session.IoTDBSessionException;
+import org.apache.iotdb.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,9 +54,11 @@ public class DataPointsParser {
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
   private List<Connection> connections = new ArrayList<>();
+  private List<Session> sessions;
 
   public DataPointsParser(Reader stream, Gson gson) {
     connections = IoTDBConnectionPool.getInstance().getConnections();
+    sessions = IoTDBSessionPool.getInstance().getSessions();
     this.inputStream = stream;
     this.gson = gson;
   }
@@ -104,7 +109,7 @@ public class DataPointsParser {
     }
     try {
       sendMetricsData();
-    } catch (SQLException e) {
+    } catch (Exception e) {
       try {
         createTimeSeries();
         sendMetricsData();
@@ -175,35 +180,27 @@ public class DataPointsParser {
     }
   }
 
-  private void sendMetricsData() throws SQLException {
+  private void sendMetricsData() throws IoTDBSessionException {
     long start = 0;
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
-        for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
-          StringBuilder sqlBuilder = new StringBuilder();
-          StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
-          StringBuilder valuePartBuilder = new StringBuilder(" values(");
-          long timestamp = entry.getKey().getTimestamp();
-          String path = entry.getKey().getDevice();
-          String sqlPrefix = String
-              .format("insert into root.%s%s", MetricsManager.getStorageGroupName(path), path);
-          valuePartBuilder.append(timestamp);
-          for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
-            sensorPartBuilder.append(",").append(subEntry.getKey());
-            valuePartBuilder.append(",").append(subEntry.getValue());
-          }
-          sensorPartBuilder.append(")");
-          valuePartBuilder.append(")");
-          sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
-          String sql = sqlBuilder.toString();
-          if(config.DEBUG == 3) {
-            LOGGER.info("{} execute ingestion SQL: {}", Thread.currentThread().getName(), sql);
-          }
-          statement.execute(sql);
+    for (Session session : sessions) {
+      for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
+        long timestamp = entry.getKey().getTimestamp();
+        String path = entry.getKey().getDevice();
+        String deviceId = "root." + MetricsManager.getStorageGroupName(path) + path;
+        List<String> measurements = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
+          measurements.add(subEntry.getKey());
+          values.add(subEntry.getValue());
         }
+        if (config.DEBUG == 3) {
+          LOGGER.info("{} execute ingestion: {}, {}, {}, {}", Thread.currentThread().getName(),
+              timestamp, deviceId, measurements, values);
+        }
+        session.insert(deviceId, timestamp, measurements, values);
       }
     }
     if (config.DEBUG == 2) {
