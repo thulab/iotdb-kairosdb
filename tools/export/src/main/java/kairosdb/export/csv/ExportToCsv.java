@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import kairosdb.export.csv.conf.CommandCli;
 import kairosdb.export.csv.conf.Config;
 import kairosdb.export.csv.conf.ConfigDescriptor;
@@ -23,12 +25,10 @@ public class ExportToCsv {
   private static final String STORAGE_GROUP_PREFIX = "group_";
   private static final String DIR_NAME = "root.%s";
 
-  private static final String TSFILE_FILE_NAME = "%s-%s-%s.tsfile";
   private static int storageGroupSize;
   private static List<String> trainList;
   private static long startTime;
   private static long endTime;
-  private static String tsFilePath;
   private static int column;
   private static String[] header;
   public static String dirAbsolutePath;
@@ -87,8 +87,11 @@ public class ExportToCsv {
       endTime = TimeUtils.convertDateStrToTimestamp(config.ENDED_TIME);
       dayNumber = TimeUtils.timeRange(startTime, endTime);
       CountDownLatch downLatch = new CountDownLatch(dayNumber);
-      ExecutorService executorService = Executors.newFixedThreadPool(dayNumber);
-      for (int i = 0; i < dayNumber; i++) {
+//      ExecutorService executorService = Executors.newFixedThreadPool(dayNumber);
+      ExecutorService executorService = new ThreadPoolExecutor(config.THREAD_NUM, 1024,
+          Long.MAX_VALUE, TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(4096));
+      for (long i = 0; i < dayNumber; i++) {
         if (i == dayNumber - 1) {
           executorService.submit(
               new ExportTsfileOneDay(startTime + i * Constants.TIME_DAY, endTime, trainList, header,
@@ -106,32 +109,7 @@ public class ExportToCsv {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-      LOGGER.info("开始转换CSV文件为TsFile文件...");
-      for (int i = 0; i < dayNumber; i++) {
-        long tmpTime = startTime + i * Constants.TIME_DAY;
-        tsFilePath =
-            dirAbsolutePath + File.separator + Constants.SEQUENCE_DIR + File.separator + String
-                .format(TSFILE_FILE_NAME, tmpTime, 0, 0);
-        TransToTsfile.transToTsfile(
-            dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator + tmpTime,
-            tsFilePath);
-//        long exportTsFileElapse = System.currentTimeMillis() - start;
-//        System.out.println(
-//            "查询KairosDB的数据耗时 " + loadElapse + " ms, " + "导出成CSV文件耗时 " + exportCsvElapse + " ms, "
-//                + "CSV转换为TsFile耗时 " + exportTsFileElapse + " ms");
-        if (config.DELETE_CSV) {
-          File[] files = new File(
-              dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator + tmpTime)
-              .listFiles();
-          for (File file : files) {
-            file.delete();
-          }
-          new File(dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator + tmpTime)
-              .delete();
-        }
-      }
     } else {
-//      System.out.println("必须指定导出数据的起止时间！");
       LOGGER.error("必须指定导出数据的起止时间！");
     }
 

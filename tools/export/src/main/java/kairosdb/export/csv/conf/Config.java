@@ -17,6 +17,7 @@ public class Config {
   public boolean DELETE_CSV = true;
   public int PROTOCAL_NUM = 12;
   public List<List<String>> PROTOCAL_MACHINE = new ArrayList<>();
+  public int THREAD_NUM = 128;
 
   Config() {
   }

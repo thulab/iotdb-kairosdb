@@ -68,6 +68,7 @@ public class ConfigDescriptor {
           protocal_machine.add(machines);
         }
         config.PROTOCAL_MACHINE = protocal_machine;
+        config.THREAD_NUM = Integer.parseInt(properties.getProperty("THREAD_NUM", "128"));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }

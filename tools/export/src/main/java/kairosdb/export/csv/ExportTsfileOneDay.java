@@ -129,8 +129,7 @@ public class ExportTsfileOneDay extends Thread {
       try {
         client = new HttpClient(config.KAIROSDB_BASE_URL);
       } catch (MalformedURLException e) {
-        System.out.println("初始化KairosDB客户端失败");
-        e.printStackTrace();
+        LOGGER.error("初始化KairosDB客户端失败", e);
       }
       QueryResponse response = client.query(builder);
 
@@ -153,13 +152,12 @@ public class ExportTsfileOneDay extends Thread {
               }
             }
           } else {
-            System.out
-                .println("查询不到对应machine_id为 " + trainNumber + " 的数据，metric: " + result.getName());
+            LOGGER.error("查询不到对应machine_id为 {} 的数据，metric: {}", trainNumber, result.getName());
           }
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("查询数据失败", e);
     }
     closeClient();
     return dataTable;
@@ -184,6 +182,8 @@ public class ExportTsfileOneDay extends Thread {
       for (String train : trainList) {
         exportOneTrainCsv(train);
       }
+      deleteFile();
+
       downLatch.countDown();
     } catch (Exception e) {
       LOGGER.error("发生异常", e);
@@ -195,6 +195,25 @@ public class ExportTsfileOneDay extends Thread {
       client.close();
     } catch (IOException e) {
       LOGGER.error("关闭KairosDB客户端失败", e);
+    }
+  }
+
+  private void deleteFile() {
+    String tsFilePath =
+        ExportToCsv.dirAbsolutePath + File.separator + Constants.SEQUENCE_DIR + File.separator
+            + String.format(Constants.TSFILE_FILE_NAME, startTime, 0, 0);
+    TransToTsfile.transToTsfile(
+        ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
+            + startTime, tsFilePath);
+    if (config.DELETE_CSV) {
+      File[] files = new File(
+          ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
+              + startTime).listFiles();
+      for (File file : files) {
+        file.delete();
+      }
+      new File(ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
+          + startTime).delete();
     }
   }
 

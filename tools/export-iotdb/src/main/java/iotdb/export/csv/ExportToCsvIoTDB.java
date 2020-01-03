@@ -89,7 +89,7 @@ public class ExportToCsvIoTDB {
         loadElapse += System.currentTimeMillis() - start;
 
         start = System.currentTimeMillis();
-        exportDataTable(i);
+        exportDataTable();
         exportCsvElapse += System.currentTimeMillis() - start;
       }
       LOGGER.info("数据导出成功,查询IoTDB数据耗时:{}ms,导出成CSV文件耗时:{}ms", loadElapse, exportCsvElapse);
@@ -105,7 +105,7 @@ public class ExportToCsvIoTDB {
     if (header.length == 1 && (header[0].equals("use_rawdata") || header[0]
         .equals("serial_number"))) {
       queryString.append(header[0]);
-      queryString.append(" from root.*.*").append(config.MACHINE_ID).append(" where time>")
+      queryString.append(" from root.*.*.").append(config.MACHINE_ID).append(" where time>")
           .append(startTime).append(" and time<").append(endTime);
     } else {
       for (String metric : metrics) {
@@ -140,9 +140,10 @@ public class ExportToCsvIoTDB {
     return String.format(PATH_TEMPLATE, group, devicePath, sensor);
   }
 
-  private static void exportDataTable(int i) {
+  private static void exportDataTable() {
 
-    String csvFileName = dirAbsolutePath + File.separator + trainNumber + "-" + i + CSV_FILE_SUFFIX;
+    String csvFileName =
+        dirAbsolutePath + File.separator + trainNumber + "-" + metrics[0] + CSV_FILE_SUFFIX;
 
     File file = new File(csvFileName);
 
