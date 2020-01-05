@@ -16,8 +16,12 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TransToTsfile {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TransToTsfile.class);
 
   public static void transToTsfile(String dirPath, String tsPath) {
     try {
@@ -103,20 +107,24 @@ public class TransToTsfile {
                   }
                 }
               }
-              tsFileWriter.write(tsRecord);
+              try {
+                tsFileWriter.write(tsRecord);
+              } catch (Exception e) {
+                LOGGER.error("write record error: {}", e.getMessage(), e);
+              }
             }
           }
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("error occurs when generate tsfile", e);
     }
 
   }
 
   public static void main(String[] args) {
-    transToTsfile("/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.csv",
-        "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test.tsfile");
+    transToTsfile("/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/csv",
+        "/Users/tianyu/git_project/iotdb-kairosdb/tools/export/res/test1.tsfile");
   }
 
 }
