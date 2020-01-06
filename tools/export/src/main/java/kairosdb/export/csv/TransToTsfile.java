@@ -31,6 +31,9 @@ public class TransToTsfile {
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+        if (!new File(dirPath).exists()) {
+          return;
+        }
         File[] csvFiles = new File(dirPath).listFiles();
         for (File csvFile : csvFiles) {
           try (BufferedReader csvReader = new BufferedReader(new FileReader(csvFile))) {
@@ -110,7 +113,8 @@ public class TransToTsfile {
               try {
                 tsFileWriter.write(tsRecord);
               } catch (Exception e) {
-                LOGGER.error("write record error: {}", e.getMessage(), e);
+                LOGGER.error("write record error: {}, error csv: {}", e.getMessage(),
+                    csvFile.getAbsolutePath(), e);
               }
             }
           }

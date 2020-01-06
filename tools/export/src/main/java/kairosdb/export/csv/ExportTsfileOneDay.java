@@ -54,10 +54,19 @@ public class ExportTsfileOneDay extends Thread {
           + startTime).mkdir();
     }
 
-    String csvFileName =
-        ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
-            + startTime + File.separator + trainNum + Constants.FILE_NAME_SEP + i
-            + Constants.CSV_FILE_SUFFIX;
+    String csvFileName;
+
+    if (config.COLUMN == 1) {
+      csvFileName =
+          ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
+              + startTime + File.separator + trainNum + Constants.FILE_NAME_SEP + metrics[0]
+              + Constants.CSV_FILE_SUFFIX;
+    } else {
+      csvFileName =
+          ExportToCsv.dirAbsolutePath + File.separator + Constants.CSV_DIR + File.separator
+              + startTime + File.separator + trainNum + Constants.FILE_NAME_SEP + i
+              + Constants.CSV_FILE_SUFFIX;
+    }
 
     File file = new File(csvFileName);
 
@@ -172,7 +181,9 @@ public class ExportTsfileOneDay extends Thread {
       }
       Map<Long, Map<String, Object>> dataTable = loadAllMetricsOfOneTrain(trainNum);
 
-      exportDataTable(trainNum, dataTable, i);
+      if (dataTable.size() > 0) {
+        exportDataTable(trainNum, dataTable, i);
+      }
     }
   }
 
