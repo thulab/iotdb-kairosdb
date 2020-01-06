@@ -55,24 +55,25 @@ public class TransToTsfile {
               TSRecord tsRecord = new TSRecord(time, device);
               String[] points = Arrays.copyOfRange(line.split(","), 1, line.split(",").length);
               for (int i = 0; i < points.length; i++) {
-                if (points[i].matches(intRegex)) {
-                  if (tsDataTypes.get(i) == null) {
-                    tsDataTypes.set(i, TSDataType.INT64);
-                    try {
-                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
-                          TSDataType.INT64, TSEncoding.TS_2DIFF));
-                    } catch (Exception e) {
-                      //
-                    }
-                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
-                        Long.parseLong(points[i]));
-                    tsRecord.addTuple(intPoint);
-                  } else {
-                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
-                        Long.parseLong(points[i]));
-                    tsRecord.addTuple(intPoint);
-                  }
-                } else if (points[i].matches(floatRegex)) {
+//                if (points[i].matches(intRegex)) {
+//                  if (tsDataTypes.get(i) == null) {
+//                    tsDataTypes.set(i, TSDataType.INT64);
+//                    try {
+//                      tsFileWriter.addMeasurement(new MeasurementSchema(sensorList.get(i),
+//                          TSDataType.INT64, TSEncoding.TS_2DIFF));
+//                    } catch (Exception e) {
+//                      //
+//                    }
+//                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
+//                        Long.parseLong(points[i]));
+//                    tsRecord.addTuple(intPoint);
+//                  } else {
+//                    DataPoint intPoint = new LongDataPoint(sensorList.get(i),
+//                        Long.parseLong(points[i]));
+//                    tsRecord.addTuple(intPoint);
+//                  }
+//                } else
+                if (points[i].matches(intRegex) || points[i].matches(floatRegex)) {
                   if (tsDataTypes.get(i) == null) {
                     tsDataTypes.set(i, TSDataType.FLOAT);
                     try {
