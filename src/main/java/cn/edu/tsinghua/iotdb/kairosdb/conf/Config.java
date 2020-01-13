@@ -6,6 +6,9 @@ import java.util.List;
 public class Config {
 
   public List<String> URL_LIST = new ArrayList<>();
+  public List<Long> TIME_DIMENSION_SPLIT = new ArrayList<>();
+  public List<List<String>> IoTDB_READ_ONLY_LIST = new ArrayList<>();
+
   public int STORAGE_GROUP_SIZE = 50;
   public int POINT_EDGE = 50000000;
   public int TIME_EDGE = 50000000;
@@ -18,6 +21,7 @@ public class Config {
 
   public int GROUP_BY_UNIT = 20;
   public long MAX_RANGE = 20;
+  public long LATEST_TIME_RANGE = 3600000;
   public int PROFILE_INTERVAL = 10;
   public int CORE_POOL_SIZE = 0;
   public int MAX_POOL_SIZE = 30;

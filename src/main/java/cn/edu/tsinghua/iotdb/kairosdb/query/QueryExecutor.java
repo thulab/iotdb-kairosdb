@@ -35,7 +35,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -70,6 +69,10 @@ public class QueryExecutor {
     this.endTime = query.getEndTimestamp();
   }
 
+  public static ExecutorService getQueryWorkerPool() {
+    return queryWorkerPool;
+  }
+
   public String executeV2() {
     StringBuilder queryResultStr = new StringBuilder();
     int queryMetricNum = query.getQueryMetrics().size();
@@ -84,7 +87,8 @@ public class QueryExecutor {
       QueryMetric queryMetric = query.getQueryMetrics().get(0);
       List<String> deviceList = queryMetric.getTags().get(config.SPECIAL_TAG);
       for (String device : deviceList) {
-        List<StringBuilder> newSeparatedQueryMetricJson = Collections.synchronizedList(new ArrayList<>());
+        List<StringBuilder> newSeparatedQueryMetricJson = Collections
+            .synchronizedList(new ArrayList<>());
         qmjList.add(newSeparatedQueryMetricJson);
         QueryMetric queryMetric1 = new QueryMetric();
         queryMetric1.setName(queryMetric.getName());

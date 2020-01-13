@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,25 +47,44 @@ public class ConfigDescriptor {
       try {
         properties.load(inputStream);
         String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
-        List<String> urls = new ArrayList<>();
-        Collections.addAll(urls, urlList.split(","));
-        config.URL_LIST = urls;
+        String timeVertexListStr = properties.getProperty("TIME_DIMENSION_SPLIT",
+            "2018-9-20T00:00:00+08:00,2018-10-20T00:00:00+08:00");
+        String readOnlyListStr = properties.getProperty("IoTDB_READ_ONLY_LIST", "127.0.0.1:6667");
+        for (String vertex : timeVertexListStr.split(",")) {
+          DateTime dateTime = new DateTime(vertex);
+          config.TIME_DIMENSION_SPLIT.add(dateTime.getMillis());
+        }
+        Collections.sort(config.TIME_DIMENSION_SPLIT);
+        for (String vertex : readOnlyListStr.split(";")) {
+          List<String> readOnlyUrls = new ArrayList<>();
+          Collections.addAll(readOnlyUrls, vertex.split(","));
+          config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
+        }
+        Collections.addAll(config.URL_LIST, urlList.split(","));
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
-
         config.AGG_FUNCTION = properties.getProperty("AGG_FUNCTION", "AGG_FUNCTION");
         config.SPECIAL_TAG = properties.getProperty("SPECIAL_TAG", "SPECIAL_TAG");
-        config.STORAGE_GROUP_SIZE = Integer.parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
+        config.STORAGE_GROUP_SIZE = Integer
+            .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.POINT_EDGE = Integer.parseInt(properties.getProperty("POINT_EDGE", "50000000"));
         config.TIME_EDGE = Integer.parseInt(properties.getProperty("TIME_EDGE", "50000000"));
-        config.MAX_ROLLUP = Integer.parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
+        config.MAX_ROLLUP = Integer
+            .parseInt(properties.getProperty("MAX_ROLLUP", config.MAX_ROLLUP + ""));
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
-        config.CONNECTION_NUM = Integer.parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
-        config.GROUP_BY_UNIT = Integer.parseInt(properties.getProperty("GROUP_BY_UNIT", config.GROUP_BY_UNIT + ""));
-        config.MAX_RANGE = Long.parseLong(properties.getProperty("MAX_RANGE", config.MAX_RANGE +
-            ""));
-        config.PROFILE_INTERVAL = Integer.parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
-        config.CORE_POOL_SIZE = Integer.parseInt(properties.getProperty("CORE_POOL_SIZE", config.CORE_POOL_SIZE + ""));
-        config.MAX_POOL_SIZE = Integer.parseInt(properties.getProperty("MAX_POOL_SIZE", config.MAX_POOL_SIZE + ""));
+        config.CONNECTION_NUM = Integer
+            .parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
+        config.GROUP_BY_UNIT = Integer
+            .parseInt(properties.getProperty("GROUP_BY_UNIT", config.GROUP_BY_UNIT + ""));
+        config.MAX_RANGE = Long
+            .parseLong(properties.getProperty("MAX_RANGE", config.MAX_RANGE + ""));
+        config.LATEST_TIME_RANGE = Long
+            .parseLong(properties.getProperty("LATEST_TIME_RANGE", config.LATEST_TIME_RANGE + ""));
+        config.PROFILE_INTERVAL = Integer
+            .parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
+        config.CORE_POOL_SIZE = Integer
+            .parseInt(properties.getProperty("CORE_POOL_SIZE", config.CORE_POOL_SIZE + ""));
+        config.MAX_POOL_SIZE = Integer
+            .parseInt(properties.getProperty("MAX_POOL_SIZE", config.MAX_POOL_SIZE + ""));
         config.ENABLE_PROFILER = Boolean.parseBoolean(properties.getProperty("ENABLE_PROFILER",
             config.ENABLE_PROFILER + ""));
 

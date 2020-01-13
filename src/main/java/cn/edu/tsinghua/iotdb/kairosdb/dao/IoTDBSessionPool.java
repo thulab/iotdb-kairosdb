@@ -44,17 +44,12 @@ public class IoTDBSessionPool {
     }
   }
 
-  public List<Session> getSessions() {
-    List<Session> sessions;
+  public Session getSessions() {
     if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    sessions = new ArrayList<>();
-    for (int i = 0; i < config.URL_LIST.size(); i++) {
-      sessions.add(sessionsList.get(i)
-          .get(loop.getAndIncrement() % config.CONNECTION_NUM));
-    }
-    return sessions;
+    return sessionsList.get(config.URL_LIST.size() - 1)
+        .get(loop.getAndIncrement() % config.CONNECTION_NUM);
   }
 
   private static class IoTDBSessionPoolHolder {

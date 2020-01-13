@@ -53,8 +53,8 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
-  private List<Connection> connections = new ArrayList<>();
-  private List<Session> sessions;
+  private List<Connection> connections;
+  private Session sessions;
 
   public DataPointsParser(Reader stream, Gson gson) {
     connections = IoTDBConnectionPool.getInstance().getConnections();
@@ -185,23 +185,22 @@ public class DataPointsParser {
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
     }
-    for (Session session : sessions) {
-      for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
-        long timestamp = entry.getKey().getTimestamp();
-        String path = entry.getKey().getDevice();
-        String deviceId = "root." + MetricsManager.getStorageGroupName(path) + path;
-        List<String> measurements = new ArrayList<>();
-        List<String> values = new ArrayList<>();
-        for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
-          measurements.add(subEntry.getKey());
-          values.add(subEntry.getValue());
-        }
-        if (config.DEBUG == 3) {
-          LOGGER.info("{} execute ingestion: {}, {}, {}, {}", Thread.currentThread().getName(),
-              timestamp, deviceId, measurements, values);
-        }
-        session.insert(deviceId, timestamp, measurements, values);
+
+    for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
+      long timestamp = entry.getKey().getTimestamp();
+      String path = entry.getKey().getDevice();
+      String deviceId = "root." + MetricsManager.getStorageGroupName(path) + path;
+      List<String> measurements = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+      for (Map.Entry<String, String> subEntry : entry.getValue().entrySet()) {
+        measurements.add(subEntry.getKey());
+        values.add(subEntry.getValue());
       }
+      if (config.DEBUG == 3) {
+        LOGGER.info("{} execute ingestion: {}, {}, {}, {}", Thread.currentThread().getName(),
+            timestamp, deviceId, measurements, values);
+      }
+      sessions.insert(deviceId, timestamp, measurements, values);
     }
     if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;

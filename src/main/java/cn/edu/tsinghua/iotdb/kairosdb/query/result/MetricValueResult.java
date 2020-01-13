@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlign;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,7 +28,7 @@ public class MetricValueResult {
     this.name = name;
     groupBy = new LinkedList<>();
     tags = new HashMap<>();
-    values = new LinkedList<>();
+    values = Collections.synchronizedList(new LinkedList<>());
   }
 
   public List<List<QueryDataPoint>> splitDataPoint(
