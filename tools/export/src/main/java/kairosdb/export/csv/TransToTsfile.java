@@ -1,5 +1,7 @@
 package kairosdb.export.csv;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -22,6 +24,43 @@ import org.slf4j.LoggerFactory;
 public class TransToTsfile {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransToTsfile.class);
+
+  public static boolean isNumber(String s) {
+    checkNotNull(s);
+
+    if (s.isEmpty()) {
+      return false;
+    }
+
+    int start = 0;
+    char firstChar = s.charAt(0);
+    if (firstChar == '+' || firstChar == '-' || firstChar == '.') {
+      start = 1;
+      if (s.length() == 1) {
+        return false;
+      }
+    }
+    int pointCount = 0;
+    for (int i = start; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (pointCount > 1) {
+        return false;
+      }
+      if (c == '.') {
+        pointCount++;
+      }
+      if (!Character.isDigit(c) && c != '.') {
+        return false;
+      }
+    }
+
+    //noinspection RedundantIfStatement
+    if (s.charAt(s.length() - 1) == '.') {
+      return false; // can't have trailing period
+    }
+
+    return true;
+  }
 
   public static void transToTsfile(String dirPath, String tsPath) {
     try {
@@ -46,8 +85,8 @@ public class TransToTsfile {
               sensorList.set(i, sensorList.get(i).replace(device, "").substring(1));
             }
             List<TSDataType> tsDataTypes = Arrays.asList(new TSDataType[sensorList.size()]);
-            String intRegex = "[0-9]+";
-            String floatRegex = "[0-9]+.[0-9]+";
+//            String intRegex = "[0-9]+";
+//            String floatRegex = "[0-9]+.[0-9]+";
             String line;
             while ((line = csvReader.readLine()) != null) {
               // construct TSRecord
@@ -72,8 +111,8 @@ public class TransToTsfile {
 //                        Long.parseLong(points[i]));
 //                    tsRecord.addTuple(intPoint);
 //                  }
-//                } else
-                if (points[i].matches(intRegex) || points[i].matches(floatRegex)) {
+//                } else if (points[i].matches(intRegex) || points[i].matches(floatRegex)) {
+                if (isNumber(points[i])) {
                   if (tsDataTypes.get(i) == null) {
                     tsDataTypes.set(i, TSDataType.FLOAT);
                     try {
