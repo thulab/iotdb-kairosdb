@@ -24,13 +24,13 @@ public class IoTDBSessionPool {
   public synchronized void createSessions() {
 
     sessionsList.clear();
-    for (int j = 0; j < config.URL_LIST.size(); j++) {
+    for (int j = 0; j < config.IoTDB_LIST.size(); j++) {
       // for different IoTDB
       List<Session> sessions = new ArrayList<>();
       for (int i = 0; i < config.CONNECTION_NUM; i++) {
         // each IoTDB creates multiple sessions
         try {
-          String url = config.URL_LIST.get(j);
+          String url = config.IoTDB_LIST.get(j);
           String host = url.split(":")[0];
           int port = Integer.parseInt(url.split(":")[1]);
           Session session = new Session(host, port, "root", "root");
@@ -44,12 +44,15 @@ public class IoTDBSessionPool {
     }
   }
 
-  public Session getSessions() {
+  public List<Session> getSessions() {
     if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    return sessionsList.get(config.URL_LIST.size() - 1)
-        .get(loop.getAndIncrement() % config.CONNECTION_NUM);
+    List<Session> list = new ArrayList<>();
+    for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
+      list.add(sessionsList.get(i).get(loop.getAndIncrement() % config.CONNECTION_NUM));
+    }
+    return list;
   }
 
   private static class IoTDBSessionPoolHolder {

@@ -60,7 +60,7 @@ public class ConfigDescriptor {
           Collections.addAll(readOnlyUrls, vertex.split(","));
           config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
         }
-        Collections.addAll(config.URL_LIST, urlList.split(","));
+        Collections.addAll(config.IoTDB_LIST, urlList.split(","));
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.AGG_FUNCTION = properties.getProperty("AGG_FUNCTION", "AGG_FUNCTION");
         config.SPECIAL_TAG = properties.getProperty("SPECIAL_TAG", "SPECIAL_TAG");

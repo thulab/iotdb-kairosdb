@@ -252,7 +252,7 @@ public class SegmentQueryWorker implements Runnable {
           Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
           connection = DriverManager
               .getConnection(String.format(IoTDBConnectionPool.CONNECT_STRING,
-                  config.URL_LIST.get(0)), "root",
+                  config.IoTDB_LIST.get(0)), "root",
                   "root");
           try (Statement statement = connection.createStatement()) {
             LOGGER

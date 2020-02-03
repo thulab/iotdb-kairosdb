@@ -54,7 +54,7 @@ public class DataPointsParser {
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
   private List<Connection> connections;
-  private Session sessions;
+  private List<Session> sessions;
 
   public DataPointsParser(Reader stream, Gson gson) {
     connections = IoTDBConnectionPool.getInstance().getConnections();
@@ -200,12 +200,22 @@ public class DataPointsParser {
         LOGGER.info("{} execute ingestion: {}, {}, {}, {}", Thread.currentThread().getName(),
             timestamp, deviceId, measurements, values);
       }
-      sessions.insert(deviceId, timestamp, measurements, values);
+      int zone = getInsertZone(timestamp);
+      sessions.get(zone).insert(deviceId, timestamp, measurements, values);
     }
     if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;
       LOGGER.info("sendMetricsData() 执行的时间: ,{}, ms", elapse);
     }
+  }
+
+  private int getInsertZone(long timestamp) {
+    for (int i = config.TIME_DIMENSION_SPLIT.size() - 1; i >= 0; i--) {
+      if (timestamp > config.TIME_DIMENSION_SPLIT.get(i)) {
+        return i + 1;
+      }
+    }
+    return 0;
   }
 
   private NewMetric parseMetric(JsonReader reader) {

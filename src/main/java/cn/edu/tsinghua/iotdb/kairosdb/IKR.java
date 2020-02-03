@@ -37,7 +37,7 @@ public class IKR {
   }
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    for (String url : config.URL_LIST) {
+    for (String url : config.IoTDB_LIST) {
       LOGGER.info("Ready to connect to IoTDB. {}", url);
       Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
       LOGGER.info("Connected {} successfully.", url);
@@ -54,7 +54,7 @@ public class IKR {
     config = ConfigDescriptor.getInstance().getConfig();
     baseURI = getBaseURI();
     LOGGER.info("connection informations for IoTDB");
-    for (String url : config.URL_LIST) {
+    for (String url : config.IoTDB_LIST) {
       LOGGER.info("host = {}, port = {}", url.split(":")[0], url.split(":")[1]);
     }
     return startServer();

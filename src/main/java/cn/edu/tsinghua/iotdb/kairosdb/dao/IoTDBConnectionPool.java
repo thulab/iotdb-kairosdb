@@ -46,12 +46,12 @@ public class IoTDBConnectionPool {
       LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
     }
     writeReadConnectionsList.clear();
-    for (int j = 0; j < config.URL_LIST.size(); j++) {
+    for (int j = 0; j < config.IoTDB_LIST.size(); j++) {
       List<Connection> connections = new ArrayList<>();
       for (int i = 0; i < config.CONNECTION_NUM; i++) {
         try {
           Connection con = DriverManager
-              .getConnection(String.format(CONNECT_STRING, config.URL_LIST.get(j)), "root",
+              .getConnection(String.format(CONNECT_STRING, config.IoTDB_LIST.get(j)), "root",
                   "root");
           connections.add(con);
         } catch (SQLException e) {
@@ -80,7 +80,6 @@ public class IoTDBConnectionPool {
         }
         connections.add(sameInstanceConnections);
       }
-      connections.add(writeReadConnectionsList.get(i));
       readOnlyConnectionsList.add(connections);
     }
   }
@@ -91,7 +90,7 @@ public class IoTDBConnectionPool {
       loop.set(0);
     }
     connections = new ArrayList<>();
-    for (int i = 0; i < config.URL_LIST.size(); i++) {
+    for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
       connections.add(writeReadConnectionsList.get(i)
           .get(loop.getAndIncrement() % config.CONNECTION_NUM));
     }

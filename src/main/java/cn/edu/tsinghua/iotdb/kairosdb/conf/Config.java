@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Config {
 
-  public List<String> URL_LIST = new ArrayList<>();
+  public List<String> IoTDB_LIST = new ArrayList<>();
   public List<Long> TIME_DIMENSION_SPLIT = new ArrayList<>();
   public List<List<String>> IoTDB_READ_ONLY_LIST = new ArrayList<>();
 
