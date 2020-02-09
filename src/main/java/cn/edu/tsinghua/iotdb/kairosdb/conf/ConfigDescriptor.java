@@ -50,15 +50,19 @@ public class ConfigDescriptor {
         String timeVertexListStr = properties.getProperty("TIME_DIMENSION_SPLIT",
             "2018-9-20T00:00:00+08:00,2018-10-20T00:00:00+08:00");
         String readOnlyListStr = properties.getProperty("IoTDB_READ_ONLY_LIST", "127.0.0.1:6667");
-        for (String vertex : timeVertexListStr.split(",")) {
-          DateTime dateTime = new DateTime(vertex);
-          config.TIME_DIMENSION_SPLIT.add(dateTime.getMillis());
+        if(!timeVertexListStr.equals("")) {
+          for (String vertex : timeVertexListStr.split(",")) {
+            DateTime dateTime = new DateTime(vertex);
+            config.TIME_DIMENSION_SPLIT.add(dateTime.getMillis());
+          }
+          Collections.sort(config.TIME_DIMENSION_SPLIT);
         }
-        Collections.sort(config.TIME_DIMENSION_SPLIT);
-        for (String vertex : readOnlyListStr.split(";")) {
-          List<String> readOnlyUrls = new ArrayList<>();
-          Collections.addAll(readOnlyUrls, vertex.split(","));
-          config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
+        if(!readOnlyListStr.equals("")) {
+          for (String vertex : readOnlyListStr.split(";")) {
+            List<String> readOnlyUrls = new ArrayList<>();
+            Collections.addAll(readOnlyUrls, vertex.split(","));
+            config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
+          }
         }
         Collections.addAll(config.IoTDB_LIST, urlList.split(","));
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
