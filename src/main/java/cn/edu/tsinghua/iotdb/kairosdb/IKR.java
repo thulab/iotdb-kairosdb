@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.kairosdb;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBSessionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
@@ -43,6 +45,10 @@ public class IKR {
       LOGGER.info("Connected {} successfully.", url);
       MetricsManager.loadMetadata(connection);
     }
+    // init connections
+    LOGGER.info("Initializing DB connections ...");
+    IoTDBConnectionPool.getInstance().getConnections();
+    IoTDBSessionPool.getInstance().getSessions();
   }
 
   private static HttpServer startServer(String[] argv) throws SQLException, ClassNotFoundException {

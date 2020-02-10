@@ -186,7 +186,7 @@ public class QueryExecutor {
       }
       queryResultStr.append("]}");
     }
-    LOGGER.info("query string size:{}", queryResultStr.length());
+    LOGGER.info("Query result string length:{}", queryResultStr.length());
     return queryResultStr.toString();
   }
 

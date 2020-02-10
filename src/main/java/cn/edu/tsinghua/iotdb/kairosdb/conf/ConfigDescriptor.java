@@ -47,6 +47,7 @@ public class ConfigDescriptor {
       try {
         properties.load(inputStream);
         String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
+        Collections.addAll(config.IoTDB_LIST, urlList.split(";"));
         String timeVertexListStr = properties.getProperty("TIME_DIMENSION_SPLIT",
             "2018-9-20T00:00:00+08:00,2018-10-20T00:00:00+08:00");
         String readOnlyListStr = properties.getProperty("IoTDB_READ_ONLY_LIST", "127.0.0.1:6667");
@@ -57,14 +58,21 @@ public class ConfigDescriptor {
           }
           Collections.sort(config.TIME_DIMENSION_SPLIT);
         }
-        if(!readOnlyListStr.equals("")) {
-          for (String vertex : readOnlyListStr.split(";")) {
+        if (!readOnlyListStr.equals("")) {
+          String[] readOnlyArray = readOnlyListStr.split(";");
+          // if parameter is correct, the length of readOnlyArray and IoTDB_LIST should be the same
+          for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
             List<String> readOnlyUrls = new ArrayList<>();
-            Collections.addAll(readOnlyUrls, vertex.split(","));
+            if (!readOnlyArray[i].equals("null")) {
+              Collections.addAll(readOnlyUrls, readOnlyArray[i].split(","));
+            }
+            readOnlyUrls.add(config.IoTDB_LIST.get(i));
             config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
           }
+        } else {
+          LOGGER.error("Configuration IoTDB_READ_ONLY_LIST can not be empty!");
         }
-        Collections.addAll(config.IoTDB_LIST, urlList.split(","));
+
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.AGG_FUNCTION = properties.getProperty("AGG_FUNCTION", "AGG_FUNCTION");
         config.SPECIAL_TAG = properties.getProperty("SPECIAL_TAG", "SPECIAL_TAG");
