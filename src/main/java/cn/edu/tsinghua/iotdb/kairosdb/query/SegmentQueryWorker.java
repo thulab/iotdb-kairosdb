@@ -199,7 +199,7 @@ public class SegmentQueryWorker implements Runnable {
         ResultSet rs = statement.getResultSet();
         ResultSetMetaData metaData = rs.getMetaData();
         int columnCount = metaData.getColumnCount();
-        int maxCount = config.POINT_EDGE / metricCount;
+        long maxCount = config.POINT_EDGE / metricCount;
         boolean[] paths = new boolean[columnCount - 1];
         while (rs.next()) {
           if (config.ENABLE_PROFILER && isFirstNext) {
@@ -263,7 +263,7 @@ public class SegmentQueryWorker implements Runnable {
             ResultSet rs = statement.getResultSet();
             ResultSetMetaData metaData = rs.getMetaData();
             int columnCount = metaData.getColumnCount();
-            int maxCount = config.POINT_EDGE / metricCount;
+            long maxCount = config.POINT_EDGE / metricCount;
             boolean[] paths = new boolean[columnCount - 1];
             while (rs.next()) {
               if (config.ENABLE_PROFILER && isFirstNext) {

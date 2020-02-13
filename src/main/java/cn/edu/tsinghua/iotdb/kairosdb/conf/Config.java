@@ -10,8 +10,8 @@ public class Config {
   public List<List<String>> IoTDB_READ_ONLY_LIST = new ArrayList<>();
 
   public int STORAGE_GROUP_SIZE = 50;
-  public int POINT_EDGE = 50000000;
-  public int TIME_EDGE = 50000000;
+  public long POINT_EDGE = 50000000;
+  public long TIME_EDGE = 50000000;
   public String REST_PORT = "6666";
   public String AGG_FUNCTION = "AVG";
   public String SPECIAL_TAG = "device";
