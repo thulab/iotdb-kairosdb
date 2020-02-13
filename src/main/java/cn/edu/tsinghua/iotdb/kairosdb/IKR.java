@@ -10,6 +10,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -39,11 +40,13 @@ public class IKR {
   }
 
   private static void initDB() throws SQLException, ClassNotFoundException {
-    for (String url : config.IoTDB_LIST) {
-      LOGGER.info("Ready to connect to IoTDB. {}", url);
-      Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
-      LOGGER.info("Connected {} successfully.", url);
-      MetricsManager.loadMetadata(connection);
+    for (List<String> urls : config.IoTDB_LIST) {
+      for(String url: urls) {
+        LOGGER.info("Ready to connect to IoTDB. {}", url);
+        Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
+        LOGGER.info("Connected {} successfully.", url);
+        MetricsManager.loadMetadata(connection);
+      }
     }
     // init connections
     LOGGER.info("Initializing DB connections ...");
@@ -60,8 +63,10 @@ public class IKR {
     config = ConfigDescriptor.getInstance().getConfig();
     baseURI = getBaseURI();
     LOGGER.info("connection informations for IoTDB");
-    for (String url : config.IoTDB_LIST) {
-      LOGGER.info("host = {}, port = {}", url.split(":")[0], url.split(":")[1]);
+    for (List<String> urls : config.IoTDB_LIST) {
+      for(String url: urls) {
+        LOGGER.info("host = {}, port = {}", url.split(":")[0], url.split(":")[1]);
+      }
     }
     return startServer();
   }

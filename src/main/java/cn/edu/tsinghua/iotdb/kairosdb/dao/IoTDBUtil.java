@@ -25,9 +25,11 @@ public class IoTDBUtil {
   public static List<Connection> getNewConnection() throws SQLException, ClassNotFoundException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     List<Connection> connections = new ArrayList<>();
-    for (String url : ConfigDescriptor.getInstance().getConfig().IoTDB_LIST) {
-      connections
-          .add(DriverManager.getConnection(String.format(CONNECT_String, url), user, password));
+    for (List<String> urls : ConfigDescriptor.getInstance().getConfig().IoTDB_LIST) {
+      for (String url : urls) {
+        connections
+            .add(DriverManager.getConnection(String.format(CONNECT_String, url), user, password));
+      }
     }
     return connections;
   }

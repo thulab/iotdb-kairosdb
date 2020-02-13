@@ -250,6 +250,7 @@ public class SegmentQueryWorker implements Runnable {
         LOGGER.error("{} Execute failed SQL: {}", Thread.currentThread().getName(), sql, e);
         try {
           Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+          //TODO: update connection
           connection = DriverManager
               .getConnection(String.format(IoTDBConnectionPool.CONNECT_STRING,
                   config.IoTDB_LIST.get(0)), "root",

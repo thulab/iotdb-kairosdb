@@ -5,9 +5,9 @@ import java.util.List;
 
 public class Config {
 
-  public List<String> IoTDB_LIST = new ArrayList<>();
+  public List<List<String>> IoTDB_LIST = new ArrayList<>();
   public List<Long> TIME_DIMENSION_SPLIT = new ArrayList<>();
-  public List<List<String>> IoTDB_READ_ONLY_LIST = new ArrayList<>();
+  public List<List<List<String>>> IoTDB_READ_ONLY_LIST = new ArrayList<>();
 
   public int STORAGE_GROUP_SIZE = 50;
   public long POINT_EDGE = 50000000;
@@ -31,7 +31,7 @@ public class Config {
   public List<List<String>> PROTOCAL_MACHINE = new ArrayList<>();
 
 
-  Config() {
+  public Config() {
 
   }
 

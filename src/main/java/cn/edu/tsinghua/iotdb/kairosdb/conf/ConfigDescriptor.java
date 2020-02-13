@@ -1,5 +1,9 @@
 package cn.edu.tsinghua.iotdb.kairosdb.conf;
 
+import cn.edu.tsinghua.iotdb.kairosdb.util.ReadFileUtils;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -33,6 +37,42 @@ public class ConfigDescriptor {
     return config;
   }
 
+  private void loadDeploymentInfo() {
+    String deploymentJsonStr = ReadFileUtils.readJsonFile("conf/DeploymentDescriptor.json");
+    try {
+      JSONArray jsonArray = JSON.parseArray(deploymentJsonStr);
+      assert jsonArray != null;
+      for (int i = 0; i < jsonArray.size(); i++) {
+        JSONObject sameTimeSegment = (JSONObject) jsonArray.get(i);
+
+        if (i > 0) {
+          DateTime dateTime = new DateTime(sameTimeSegment.getString("scaleTime"));
+          config.TIME_DIMENSION_SPLIT.add(dateTime.getMillis());
+        }
+        JSONArray schemaSplitArray = sameTimeSegment.getJSONArray("schemaSplit");
+        List<String> writeReadUrlList = new ArrayList<>();
+        List<List<String>> sameTimeSegmentReadOnlyUrlList = new ArrayList<>();
+        for (int j = 0; j < schemaSplitArray.size(); j++) {
+          JSONObject sameSchema = (JSONObject) schemaSplitArray.get(j);
+          String writeReadUrl = sameSchema.getString("writeRead");
+          writeReadUrlList.add(writeReadUrl);
+          List<String> sameSchemaReadOnlyUrlList = new ArrayList<>();
+          JSONArray readOnlyUrlArray = sameSchema.getJSONArray("readOnly");
+          for (int k = 0; k < readOnlyUrlArray.size(); k++) {
+            sameSchemaReadOnlyUrlList.add((String) readOnlyUrlArray.get(k));
+          }
+          sameTimeSegmentReadOnlyUrlList.add(sameSchemaReadOnlyUrlList);
+        }
+        config.IoTDB_LIST.add(writeReadUrlList);
+        config.IoTDB_READ_ONLY_LIST.add(sameTimeSegmentReadOnlyUrlList);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Load deployment information failed! Please check the DeploymentDescriptor"
+              + ".json file"
+          , e);
+    }
+  }
+
   private void loadProps() {
     String url = System.getProperty(Constants.REST_CONF, null);
     if (url != null) {
@@ -46,32 +86,6 @@ public class ConfigDescriptor {
       Properties properties = new Properties();
       try {
         properties.load(inputStream);
-        String urlList = properties.getProperty("IoTDB_LIST", "127.0.0.1:6667");
-        Collections.addAll(config.IoTDB_LIST, urlList.split(";"));
-        String timeVertexListStr = properties.getProperty("TIME_DIMENSION_SPLIT",
-            "2018-9-20T00:00:00+08:00,2018-10-20T00:00:00+08:00");
-        String readOnlyListStr = properties.getProperty("IoTDB_READ_ONLY_LIST", "127.0.0.1:6667");
-        if(!timeVertexListStr.equals("")) {
-          for (String vertex : timeVertexListStr.split(",")) {
-            DateTime dateTime = new DateTime(vertex);
-            config.TIME_DIMENSION_SPLIT.add(dateTime.getMillis());
-          }
-          Collections.sort(config.TIME_DIMENSION_SPLIT);
-        }
-        if (!readOnlyListStr.equals("")) {
-          String[] readOnlyArray = readOnlyListStr.split(";");
-          // if parameter is correct, the length of readOnlyArray and IoTDB_LIST should be the same
-          for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
-            List<String> readOnlyUrls = new ArrayList<>();
-            if (!readOnlyArray[i].equals("null")) {
-              Collections.addAll(readOnlyUrls, readOnlyArray[i].split(","));
-            }
-            readOnlyUrls.add(config.IoTDB_LIST.get(i));
-            config.IoTDB_READ_ONLY_LIST.add(readOnlyUrls);
-          }
-        } else {
-          LOGGER.error("Configuration IoTDB_READ_ONLY_LIST can not be empty!");
-        }
 
         config.REST_PORT = properties.getProperty("REST_PORT", "localhost");
         config.AGG_FUNCTION = properties.getProperty("AGG_FUNCTION", "AGG_FUNCTION");

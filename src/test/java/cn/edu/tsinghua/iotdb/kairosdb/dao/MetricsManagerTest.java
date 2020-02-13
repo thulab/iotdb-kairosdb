@@ -1,7 +1,5 @@
 package cn.edu.tsinghua.iotdb.kairosdb.dao;
 
-import static org.junit.Assert.*;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.joda.time.DateTime;

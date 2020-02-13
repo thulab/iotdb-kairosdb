@@ -15,7 +15,7 @@ public class IoTDBSessionPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionPool.class);
   private AtomicInteger loop = new AtomicInteger(0);
 
-  private List<List<Session>> sessionsList = new ArrayList<>();
+  private List<List<List<Session>>> sessionsList = new ArrayList<>();
 
   private IoTDBSessionPool() {
     createSessions();
@@ -24,23 +24,27 @@ public class IoTDBSessionPool {
   public synchronized void createSessions() {
 
     sessionsList.clear();
-    for (int j = 0; j < config.IoTDB_LIST.size(); j++) {
-      // for different IoTDB
-      List<Session> sessions = new ArrayList<>();
-      for (int i = 0; i < config.CONNECTION_NUM; i++) {
-        // each IoTDB creates multiple sessions
-        try {
-          String url = config.IoTDB_LIST.get(j);
-          String host = url.split(":")[0];
-          int port = Integer.parseInt(url.split(":")[1]);
-          Session session = new Session(host, port, "root", "root");
-          session.open();
-          sessions.add(session);
-        } catch (Exception e) {
-          LOGGER.error("Get new session failed ", e);
+    for (int timeSegmentIndex = 0; timeSegmentIndex < config.IoTDB_LIST.size();
+        timeSegmentIndex++) {
+      List<String> sameTimeSegmentUrlList = config.IoTDB_LIST.get(timeSegmentIndex);
+      List<List<Session>> sameTimeSegmentSessionList = new ArrayList<>();
+      for (String url : sameTimeSegmentUrlList) {
+        List<Session> sessions = new ArrayList<>();
+        for (int i = 0; i < config.CONNECTION_NUM; i++) {
+          // each IoTDB creates multiple sessions
+          try {
+            String host = url.split(":")[0];
+            int port = Integer.parseInt(url.split(":")[1]);
+            Session session = new Session(host, port, "root", "root");
+            session.open();
+            sessions.add(session);
+          } catch (Exception e) {
+            LOGGER.error("Get new session failed ", e);
+          }
         }
+        sameTimeSegmentSessionList.add(sessions);
       }
-      sessionsList.add(sessions);
+      sessionsList.add(sameTimeSegmentSessionList);
     }
   }
 
@@ -49,6 +53,7 @@ public class IoTDBSessionPool {
       loop.set(0);
     }
     List<Session> list = new ArrayList<>();
+    //TODO: change
     for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
       list.add(sessionsList.get(i).get(loop.getAndIncrement() % config.CONNECTION_NUM));
     }

@@ -28,9 +28,11 @@ public class RollUpStoreImpl implements RollUpStore {
   public RollUpStoreImpl() {
     try {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      for (String url : config.IoTDB_LIST) {
-        connections.add(DriverManager
-            .getConnection(String.format(CONNECT_STRING, url), USER, PWD));
+      for (List<String> writeReadList : config.IoTDB_LIST) {
+        for (String url : writeReadList) {
+          connections.add(DriverManager
+              .getConnection(String.format(CONNECT_STRING, url), USER, PWD));
+        }
       }
     } catch (Exception e) {
       LOGGER.error("Initialize RollUpStoreImpl IoTDB connection failed because ", e);
