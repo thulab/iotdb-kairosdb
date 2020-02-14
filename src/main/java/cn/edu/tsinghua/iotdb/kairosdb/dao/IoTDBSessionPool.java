@@ -48,14 +48,19 @@ public class IoTDBSessionPool {
     }
   }
 
-  public List<Session> getSessions() {
+  public List<List<Session>> getSessions() {
     if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    List<Session> list = new ArrayList<>();
-    //TODO: change
+    List<List<Session>> list = new ArrayList<>();
     for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
-      list.add(sessionsList.get(i).get(loop.getAndIncrement() % config.CONNECTION_NUM));
+      List<List<Session>> sameSegmentWriteRead = sessionsList.get(i);
+      List<Session> sameSegmentWriteReadCurrent = new ArrayList<>();
+      for (List<Session> sessions : sameSegmentWriteRead) {
+        sameSegmentWriteReadCurrent
+            .add(sessions.get(loop.getAndIncrement() % config.CONNECTION_NUM));
+      }
+      list.add(sameSegmentWriteReadCurrent);
     }
     return list;
   }

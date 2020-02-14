@@ -3,7 +3,6 @@ package cn.edu.tsinghua.it.rollup;
 import static org.junit.Assert.assertEquals;
 
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
 import cn.edu.tsinghua.it.RestService;
 import cn.edu.tsinghua.util.HttpUtil;
@@ -64,7 +63,10 @@ public class RollupTest {
   @After
   public void after() throws SQLException, ClassNotFoundException {
     // clean up test data in root.SYSTEM.ROLLUP.json
-    List<Connection> connections = IoTDBConnectionPool.getInstance().getConnections();
+    List<Connection> connections = new ArrayList<>();
+    for(List<Connection> list: IoTDBConnectionPool.getInstance().getWriteReadConnections()) {
+      connections.addAll(list);
+    }
     try (Statement statement = connections.get(0).createStatement()) {
       statement.execute("DELETE TIMESERIES root.SYSTEM.ROLLUP.json");
       statement
@@ -90,7 +92,8 @@ public class RollupTest {
       RollUpStoreImpl rollUpStore = new RollUpStoreImpl();
       rollUpStore.remove(id);
 
-      try (Statement statement = IoTDBConnectionPool.getInstance().getConnections().get(0)
+      try (Statement statement =
+          IoTDBConnectionPool.getInstance().getWriteReadConnections().get(0).get(0)
           .createStatement()) {
         String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
         ResultSet rs = statement.executeQuery(sql);
@@ -126,7 +129,8 @@ public class RollupTest {
       httpUtil = new HttpUtil(url);
       response = httpUtil.delete();
 
-      try (Statement statement = IoTDBConnectionPool.getInstance().getConnections().get(0)
+      try (Statement statement =
+          IoTDBConnectionPool.getInstance().getWriteReadConnections().get(0).get(0)
           .createStatement()) {
         String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
         ResultSet rs = statement.executeQuery(sql);
@@ -225,7 +229,8 @@ public class RollupTest {
           id, id);
       assertEquals(expected, res);
 
-      try (Statement statement = IoTDBConnectionPool.getInstance().getConnections().get(0)
+      try (Statement statement =
+          IoTDBConnectionPool.getInstance().getWriteReadConnections().get(0).get(0)
           .createStatement()) {
         String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
         ResultSet rs = statement.executeQuery(sql);
@@ -261,7 +266,8 @@ public class RollupTest {
           id, id);
       assertEquals(expected, res);
 
-      try (Statement statement = IoTDBConnectionPool.getInstance().getConnections().get(0)
+      try (Statement statement =
+          IoTDBConnectionPool.getInstance().getWriteReadConnections().get(0).get(0)
           .createStatement()) {
         String sql = String.format("select json from root.SYSTEM.ROLLUP where time = %s", id);
         ResultSet rs = statement.executeQuery(sql);

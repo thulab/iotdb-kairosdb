@@ -50,7 +50,7 @@ public class IKR {
     }
     // init connections
     LOGGER.info("Initializing DB connections ...");
-    IoTDBConnectionPool.getInstance().getConnections();
+    IoTDBConnectionPool.getInstance().getWriteReadConnections();
     IoTDBSessionPool.getInstance().getSessions();
   }
 

@@ -53,11 +53,11 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
-  private List<Connection> connections;
-  private List<Session> sessions;
+  private List<List<Connection>> connections;
+  private List<List<Session>> sessions;
 
   public DataPointsParser(Reader stream, Gson gson) {
-    connections = IoTDBConnectionPool.getInstance().getConnections();
+    connections = IoTDBConnectionPool.getInstance().getWriteReadConnections();
     sessions = IoTDBSessionPool.getInstance().getSessions();
     this.inputStream = stream;
     this.gson = gson;
@@ -166,13 +166,16 @@ public class DataPointsParser {
 
   private void createTimeSeries() throws SQLException {
     int count = 0;
-    for (Connection conn : connections) {
-      try (Statement statement = conn.createStatement()) {
-        for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
-          try {
-            statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
-          } catch (Exception e) {
-            LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{}", entry.getKey(), count, e);
+    for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+        .getWriteReadConnections()) {
+      for (Connection conn : connectionList) {
+        try (Statement statement = conn.createStatement()) {
+          for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
+            try {
+              statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
+            } catch (Exception e) {
+              LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{}", entry.getKey(), count, e);
+            }
           }
         }
       }
@@ -201,7 +204,10 @@ public class DataPointsParser {
             timestamp, deviceId, measurements, values);
       }
       int zone = getInsertZone(timestamp);
-      sessions.get(zone).insert(deviceId, timestamp, measurements, values);
+      int a = sessions.get(zone).size();
+
+      sessions.get(zone).get(Math.abs(deviceId.hashCode() % a)).insert(deviceId, timestamp,
+          measurements, values);
     }
     if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;

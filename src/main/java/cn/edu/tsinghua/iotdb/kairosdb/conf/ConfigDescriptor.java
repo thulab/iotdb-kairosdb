@@ -38,6 +38,10 @@ public class ConfigDescriptor {
   }
 
   private void loadDeploymentInfo() {
+    // TODO:
+    //  optimize and refactor:
+    //  initialize the connection and session pools in this function, so that we can remove
+    //  the IoTDB_LIST and IoTDB_READ_ONLY_LIST
     String deploymentJsonStr = ReadFileUtils.readJsonFile("conf/DeploymentDescriptor.json");
     try {
       JSONArray jsonArray = JSON.parseArray(deploymentJsonStr);
@@ -52,14 +56,15 @@ public class ConfigDescriptor {
         JSONArray schemaSplitArray = sameTimeSegment.getJSONArray("schemaSplit");
         List<String> writeReadUrlList = new ArrayList<>();
         List<List<String>> sameTimeSegmentReadOnlyUrlList = new ArrayList<>();
-        for (int j = 0; j < schemaSplitArray.size(); j++) {
-          JSONObject sameSchema = (JSONObject) schemaSplitArray.get(j);
+        for (Object o : schemaSplitArray) {
+          JSONObject sameSchema = (JSONObject) o;
           String writeReadUrl = sameSchema.getString("writeRead");
           writeReadUrlList.add(writeReadUrl);
           List<String> sameSchemaReadOnlyUrlList = new ArrayList<>();
+          sameSchemaReadOnlyUrlList.add(writeReadUrl);
           JSONArray readOnlyUrlArray = sameSchema.getJSONArray("readOnly");
-          for (int k = 0; k < readOnlyUrlArray.size(); k++) {
-            sameSchemaReadOnlyUrlList.add((String) readOnlyUrlArray.get(k));
+          for (Object value : readOnlyUrlArray) {
+            sameSchemaReadOnlyUrlList.add((String) value);
           }
           sameTimeSegmentReadOnlyUrlList.add(sameSchemaReadOnlyUrlList);
         }
@@ -75,6 +80,7 @@ public class ConfigDescriptor {
 
   private void loadProps() {
     String url = System.getProperty(Constants.REST_CONF, null);
+    loadDeploymentInfo();
     if (url != null) {
       InputStream inputStream;
       try {
@@ -115,14 +121,14 @@ public class ConfigDescriptor {
             config.ENABLE_PROFILER + ""));
 
         config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
-        List<List<String>> protocal_machine = new ArrayList<>();
+        List<List<String>> protocolMachine = new ArrayList<>();
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
           List<String> machines = new ArrayList<>();
-          String machine_list = properties.getProperty("PROTOCAL_" + i, "");
-          Collections.addAll(machines, machine_list.split(","));
-          protocal_machine.add(machines);
+          String machineList = properties.getProperty("PROTOCAL_" + i, "");
+          Collections.addAll(machines, machineList.split(","));
+          protocolMachine.add(machines);
         }
-        config.PROTOCAL_MACHINE = protocal_machine;
+        config.PROTOCAL_MACHINE = protocolMachine;
         config.STORAGE_GROUP_SIZE = Integer
             .parseInt(properties.getProperty("STORAGE_GROUP_SIZE", "50"));
         config.MAX_ROLLUP = Integer
@@ -164,14 +170,14 @@ public class ConfigDescriptor {
       try {
         properties.load(inputStream);
         config.PROTOCAL_NUM = Integer.parseInt(properties.getProperty("PROTOCAL_NUM", "12"));
-        List<List<String>> protocal_machine = new ArrayList<>();
+        List<List<String>> protocolMachine = new ArrayList<>();
         for (int i = 1; i <= config.PROTOCAL_NUM; i++) {
           List<String> machines = new ArrayList<>();
-          String machine_list = properties.getProperty("PROTOCAL_" + i, "");
-          Collections.addAll(machines, machine_list.split(","));
-          protocal_machine.add(machines);
+          String machineList = properties.getProperty("PROTOCAL_" + i, "");
+          Collections.addAll(machines, machineList.split(","));
+          protocolMachine.add(machines);
         }
-        config.PROTOCAL_MACHINE = protocal_machine;
+        config.PROTOCAL_MACHINE = protocolMachine;
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }

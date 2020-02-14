@@ -31,14 +31,15 @@ public class ConfigTest {
       JSONArray schemaSplitArray = sameTimeSegment.getJSONArray("schemaSplit");
       List<String> writeReadUrlList = new ArrayList<>();
       List<List<String>> sameTimeSegmentReadOnlyUrlList = new ArrayList<>();
-      for (int j = 0; j < schemaSplitArray.size(); j++) {
-        JSONObject sameSchema = (JSONObject) schemaSplitArray.get(j);
+      for (Object o : schemaSplitArray) {
+        JSONObject sameSchema = (JSONObject) o;
         String writeReadUrl = sameSchema.getString("writeRead");
         writeReadUrlList.add(writeReadUrl);
         List<String> sameSchemaReadOnlyUrlList = new ArrayList<>();
+        sameSchemaReadOnlyUrlList.add(writeReadUrl);
         JSONArray readOnlyUrlArray = sameSchema.getJSONArray("readOnly");
-        for (int k = 0; k < readOnlyUrlArray.size(); k++) {
-          sameSchemaReadOnlyUrlList.add((String) readOnlyUrlArray.get(k));
+        for (Object value : readOnlyUrlArray) {
+          sameSchemaReadOnlyUrlList.add((String) value);
         }
         sameTimeSegmentReadOnlyUrlList.add(sameSchemaReadOnlyUrlList);
       }

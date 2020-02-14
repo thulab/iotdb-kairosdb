@@ -18,20 +18,28 @@ public class IoTDBConnectionPool {
   public static final String CONNECT_STRING = "jdbc:iotdb://%s/";
   private AtomicInteger loop = new AtomicInteger(0);
   private AtomicInteger readOnlyLoop = new AtomicInteger(0);
-  private List<List<Connection>> writeReadConnectionsList = new ArrayList<>();
-  private List<List<List<Connection>>> readOnlyConnectionsList = new ArrayList<>();
+  private List<List<List<Connection>>> writeReadConnectionsList = new ArrayList<>();
+  private List<List<List<List<Connection>>>> readOnlyConnectionsList = new ArrayList<>();
 
-  // lock-less by using AtomicInteger
-  public Connection getReadOnlyConnection(int zone, String schema) {
+
+  public List<Connection> getReadConnections(int zone) {
+    List<List<Connection>> lists = getWriteReadConnections();
+    return lists.get(zone);
+  }
+
+  public Connection getReadOnlyConnection(int zone, String writeSchema, String readSchema) {
     if (readOnlyLoop.incrementAndGet() > config.CONNECTION_NUM * 1000) {
       readOnlyLoop.set(0);
     }
     // use schema's hash code because we want use the query cache in IoTDB
-    if(schema == null) {
-      schema = "d";
+    if (readSchema == null) {
+      readSchema = "d";
     }
-    int sameZoneIndex = Math.abs(schema.hashCode() % config.IoTDB_READ_ONLY_LIST.get(zone).size());
-    return readOnlyConnectionsList.get(zone).get(sameZoneIndex)
+    int schemaSegmentIndex =
+        Math.abs(writeSchema.hashCode() % config.IoTDB_READ_ONLY_LIST.get(zone).size());
+    int sameInstanceIndex =
+        Math.abs(readSchema.hashCode() % config.IoTDB_READ_ONLY_LIST.get(zone).get(schemaSegmentIndex).size());
+    return readOnlyConnectionsList.get(zone).get(schemaSegmentIndex).get(sameInstanceIndex)
         .get(readOnlyLoop.getAndIncrement() % config.CONNECTION_NUM);
   }
 
@@ -46,53 +54,67 @@ public class IoTDBConnectionPool {
       LOGGER.error("Class.forName(\"org.apache.iotdb.jdbc.IoTDBDriver\") failed ", e);
     }
     writeReadConnectionsList.clear();
-    for (int j = 0; j < config.IoTDB_LIST.size(); j++) {
-      List<Connection> connections = new ArrayList<>();
-      for (int i = 0; i < config.CONNECTION_NUM; i++) {
-        try {
-          Connection con = DriverManager
-              .getConnection(String.format(CONNECT_STRING, config.IoTDB_LIST.get(j)), "root",
-                  "root");
-          connections.add(con);
-        } catch (SQLException e) {
-          LOGGER.error("Get new connection failed ", e);
-        }
-      }
-      writeReadConnectionsList.add(connections);
-    }
-
-    readOnlyConnectionsList.clear();
-    for (int i = 0; i < config.IoTDB_READ_ONLY_LIST.size(); i++) {
-      List<List<Connection>> connections = new ArrayList<>();
-      for (int j = 0; j < config.IoTDB_READ_ONLY_LIST.get(i).size(); j++) {
+    for (int timeSegmentIndex = 0; timeSegmentIndex < config.IoTDB_LIST.size();
+        timeSegmentIndex++) {
+      List<String> sameTimeSegmentUrlList = config.IoTDB_LIST.get(timeSegmentIndex);
+      List<List<Connection>> sameTimeSegmentWriteReadCons = new ArrayList<>();
+      for (String url : sameTimeSegmentUrlList) {
         List<Connection> sameInstanceConnections = new ArrayList<>();
-        for (int k = 0; k < config.CONNECTION_NUM; k++) {
+        for (int i = 0; i < config.CONNECTION_NUM; i++) {
           try {
             Connection con = DriverManager
-                .getConnection(String.format(CONNECT_STRING,
-                    config.IoTDB_READ_ONLY_LIST.get(i).get(j)),
-                    "root",
-                    "root");
+                .getConnection(String.format(CONNECT_STRING, url), "root", "root");
             sameInstanceConnections.add(con);
           } catch (SQLException e) {
             LOGGER.error("Get new connection failed ", e);
           }
         }
-        connections.add(sameInstanceConnections);
+        sameTimeSegmentWriteReadCons.add(sameInstanceConnections);
       }
-      readOnlyConnectionsList.add(connections);
+      writeReadConnectionsList.add(sameTimeSegmentWriteReadCons);
     }
+
+//    readOnlyConnectionsList.clear();
+//    for (int timeSegmentIndex = 0; timeSegmentIndex < config.IoTDB_READ_ONLY_LIST.size();
+//        timeSegmentIndex++) {
+//      List<List<String>> sameTimeSegmentROUrlList = config.IoTDB_READ_ONLY_LIST.get(
+//          timeSegmentIndex);
+//      List<List<List<Connection>>> sameTimeSegmentReadOnlyCons = new ArrayList<>();
+//      for (List<String> sameSchemaSegmentROUrlList : sameTimeSegmentROUrlList) {
+//        List<List<Connection>> sameSchemaSegmentROCons = new ArrayList<>();
+//        for (int j = 0; j < sameSchemaSegmentROUrlList.size(); j++) {
+//          List<Connection> sameInstanceCons = new ArrayList<>();
+//          for (int k = 0; k < config.CONNECTION_NUM; k++) {
+//            try {
+//              Connection con = DriverManager
+//                  .getConnection(String.format(CONNECT_STRING, sameTimeSegmentROUrlList.get(j)),
+//                      "root",
+//                      "root");
+//              sameInstanceCons.add(con);
+//            } catch (SQLException e) {
+//              LOGGER.error("Get new connection failed ", e);
+//            }
+//          }
+//          sameSchemaSegmentROCons.add(sameInstanceCons);
+//        }
+//        sameTimeSegmentReadOnlyCons.add(sameSchemaSegmentROCons);
+//      }
+//      readOnlyConnectionsList.add(sameTimeSegmentReadOnlyCons);
+//    }
   }
 
-  public List<Connection> getConnections() {
-    List<Connection> connections;
+  public List<List<Connection>> getWriteReadConnections() {
+    List<List<Connection>> connections = new ArrayList<>();
     if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    connections = new ArrayList<>();
-    for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
-      connections.add(writeReadConnectionsList.get(i)
-          .get(loop.getAndIncrement() % config.CONNECTION_NUM));
+    for (List<List<Connection>> lists : writeReadConnectionsList) {
+      List<Connection> sameTimeSegmentConsCurrent = new ArrayList<>();
+      for (List<Connection> sameTimeSegmentCon : lists) {
+        sameTimeSegmentConsCurrent
+            .add(sameTimeSegmentCon.get(loop.getAndIncrement() % config.CONNECTION_NUM));
+      }
+      connections.add(sameTimeSegmentConsCurrent);
     }
     return connections;
   }
