@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
@@ -42,85 +43,25 @@ public class QueryWorker implements Runnable {
   private List<MetricResult> metricResultList;
   private int metricCount;
   private long[] timeVertex;
-  private List<List<Connection>> connections = new ArrayList<>();
+  private List<List<List<Connection>>> connections;
 
   public QueryWorker(int metricCount, CountDownLatch queryLatch,
       List<StringBuilder> queryMetricStrList,
-      QueryMetric metric, List<MetricResult> metricResultList,
-      Long startTime, Long endTime) {
+      QueryMetric metric, List<MetricResult> metricResultList, SegmentManager segmentManager) {
     this.metricResultList = metricResultList;
     this.queryLatch = queryLatch;
     this.queryMetricStrList = queryMetricStrList;
     this.metric = metric;
-    this.startTime = startTime;
+    this.startTime = segmentManager.getStartTime();
+    this.endTime = segmentManager.getEndTime();
     this.metricCount = metricCount;
-    if (endTime - startTime > config.TIME_EDGE) {
-      this.endTime = startTime + config.TIME_EDGE;
-    } else {
-      this.endTime = endTime;
-    }
+    timeVertex = segmentManager.getTimeVertex();
+    connections = segmentManager.getConnections();
   }
 
   @Override
   public void run() {
-    int splitSize = config.TIME_DIMENSION_SPLIT.size();
 
-    long[] timeSplit = new long[splitSize + 1];
-    for (int m = 0; m < splitSize; m++) {
-      timeSplit[m] = config.TIME_DIMENSION_SPLIT.get(m);
-    }
-    timeSplit[splitSize] = System.currentTimeMillis();
-    int startZone = 0;
-    for (int i = 0; i < timeSplit.length; i++) {
-      if (this.startTime <= timeSplit[i]) {
-        startZone = i;
-        break;
-      } else {
-        startZone = i + 1;
-      }
-    }
-    int endZone = 0;
-    for (int j = timeSplit.length - 1; j >= 0; j--) {
-      if (this.endTime >= timeSplit[j]) {
-        endZone = j;
-        break;
-      } else {
-        endZone = -1;
-      }
-    }
-
-    StringBuilder schemaStr = new StringBuilder();
-    for (List<String> tags : metric.getTags().values()) {
-      for (String s : tags) {
-        schemaStr.append(s).append(".");
-      }
-    }
-    timeVertex = new long[endZone - startZone + 1 + 2];
-    if (startZone > endZone) {
-      timeVertex[0] = this.startTime;
-      timeVertex[1] = this.endTime;
-      if (startZone == timeSplit.length) {
-        // query latest data, use write&read IoTDB Instance
-        List<List<Connection>> writeReadConnections =
-            IoTDBConnectionPool.getInstance().getWriteReadConnections();
-        int lastTimeSegmentIndex = writeReadConnections.size() - 1;
-        List<Connection> latestWriteReadCons = writeReadConnections.get(lastTimeSegmentIndex);
-        connections.add(latestWriteReadCons);
-      } else {
-        connections.add(IoTDBConnectionPool.getInstance().getReadConnections(startZone));
-      }
-    } else {
-      int midIndex = 1;
-      timeVertex[0] = this.startTime;
-      timeVertex[timeVertex.length - 1] = this.endTime;
-      for (int index = startZone; index <= endZone; index++) {
-        timeVertex[midIndex] = timeSplit[index];
-        midIndex++;
-      }
-      for (int zone = startZone; zone <= endZone + 1; zone++) {
-        connections.add(IoTDBConnectionPool.getInstance().getReadConnections(zone));
-      }
-    }
 
     MetricResult metricResult = new MetricResult();
     try {
@@ -205,19 +146,16 @@ public class QueryWorker implements Runnable {
       return 0L;
     }
     AtomicBoolean hasMetaData = new AtomicBoolean(false);
-    int segmentQueryWorkerNum = 0;
-    for (List<Connection> connectionList : connections) {
-      segmentQueryWorkerNum += connectionList.size();
-    }
-    CountDownLatch segmentQueryLatch = new CountDownLatch(segmentQueryWorkerNum);
-    for (int timeSegmentIndex = 0; timeSegmentIndex < connections.size(); timeSegmentIndex++) {
-      for (Connection connection : connections.get(timeSegmentIndex)) {
+    int timeSegmentNum = timeVertex.length - 1;
+    CountDownLatch segmentQueryLatch = new CountDownLatch(timeSegmentNum);
+    for (int timeSegmentIndex = 0; timeSegmentIndex < timeSegmentNum; timeSegmentIndex++) {
+
         long segmentStartTime = timeVertex[timeSegmentIndex];
         long segmentEndTime = timeVertex[timeSegmentIndex + 1];
         QueryExecutor.getQueryWorkerPool().submit(new SegmentQueryWorker(segmentStartTime,
-            segmentEndTime, metric, metricValueResult, connection, hasMetaData,
-            sampleSize, metricCount, segmentQueryLatch));
-      }
+            segmentEndTime, metric, metricValueResult, connections, hasMetaData,
+            sampleSize, metricCount, segmentQueryLatch, timeSegmentIndex));
+
     }
     try {
       segmentQueryLatch.await();

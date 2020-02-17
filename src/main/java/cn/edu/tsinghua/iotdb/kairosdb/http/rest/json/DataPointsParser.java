@@ -2,9 +2,11 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBSessionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Validator;
@@ -53,11 +55,9 @@ public class DataPointsParser {
   private static final String TEXT_ENCODING = "PLAIN";
   private static final String INT64_ENCODING = "TS_2DIFF";
   private static final String DOUBLE_ENCODING = "GORILLA";
-  private List<List<Connection>> connections;
   private List<List<Session>> sessions;
 
   public DataPointsParser(Reader stream, Gson gson) {
-    connections = IoTDBConnectionPool.getInstance().getWriteReadConnections();
     sessions = IoTDBSessionPool.getInstance().getSessions();
     this.inputStream = stream;
     this.gson = gson;
@@ -203,10 +203,10 @@ public class DataPointsParser {
         LOGGER.info("{} execute ingestion: {}, {}, {}, {}", Thread.currentThread().getName(),
             timestamp, deviceId, measurements, values);
       }
-      int zone = getInsertZone(timestamp);
-      int a = sessions.get(zone).size();
-
-      sessions.get(zone).get(Math.abs(deviceId.hashCode() % a)).insert(deviceId, timestamp,
+      int timeSegmentIndex = getTimeSegmentIndex(timestamp);
+      String hashField = deviceId.split("\\.")[Constants.SCHEMA_SEGMENT_PATH_INDEX];
+      int schemaSegmentIndex = SegmentManager.writeSchemaHashCode(hashField, timeSegmentIndex);
+      sessions.get(timeSegmentIndex).get(schemaSegmentIndex).insert(deviceId, timestamp,
           measurements, values);
     }
     if (config.DEBUG == 2) {
@@ -215,7 +215,7 @@ public class DataPointsParser {
     }
   }
 
-  private int getInsertZone(long timestamp) {
+  private int getTimeSegmentIndex(long timestamp) {
     for (int i = config.TIME_DIMENSION_SPLIT.size() - 1; i >= 0; i--) {
       if (timestamp > config.TIME_DIMENSION_SPLIT.get(i)) {
         return i + 1;

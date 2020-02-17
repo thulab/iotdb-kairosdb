@@ -2,8 +2,9 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAvg;
@@ -14,7 +15,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -41,24 +41,27 @@ public class SegmentQueryWorker implements Runnable {
   private Map<Integer, String> pos2tag;
   private Map<Integer, List<String>> tmpTags;
   private MetricValueResult metricValueResult;
-  private Connection connection;
+  private List<List<List<Connection>>> connections;
   private AtomicBoolean hasMetaData;
   private AtomicLong sampleSize;
   private int metricCount;
   private CountDownLatch segmentQueryLatch;
+  private int timeSegmentIndex;
 
   public SegmentQueryWorker(long segmentStartTime, long segmentEndTime, QueryMetric metric,
-      MetricValueResult metricValueResult, Connection connection, AtomicBoolean hasMetaData,
-      AtomicLong sampleSize, int metricCount, CountDownLatch segmentQueryLatch) {
+      MetricValueResult metricValueResult, List<List<List<Connection>>> connections,
+      AtomicBoolean hasMetaData,
+      AtomicLong sampleSize, int metricCount, CountDownLatch segmentQueryLatch, int timeSegmentIndex) {
     this.segmentEndTime = segmentEndTime;
     this.segmentStartTime = segmentStartTime;
     this.metric = metric;
     this.metricValueResult = metricValueResult;
-    this.connection = connection;
+    this.connections = connections;
     this.hasMetaData = hasMetaData;
     this.sampleSize = sampleSize;
     this.metricCount = metricCount;
     this.segmentQueryLatch = segmentQueryLatch;
+    this.timeSegmentIndex = timeSegmentIndex;
     getMetricMapping(metric);
   }
 
@@ -187,7 +190,12 @@ public class SegmentQueryWorker implements Runnable {
             + segmentEndTime
             + "])";
       }
-
+      // use schema's hash code to use the query cache in IoTDB
+      String hashField = sql.split("\\.")[Constants.SCHEMA_SEGMENT_PATH_INDEX];
+      int schemaSegmentIndex = SegmentManager.writeSchemaHashCode(hashField, timeSegmentIndex);
+      int readInstanceIndex = SegmentManager.readSchemaHashCode(metric.getName(), timeSegmentIndex,
+          schemaSegmentIndex);
+      Connection connection = connections.get(timeSegmentIndex).get(schemaSegmentIndex).get(readInstanceIndex);
       long start = 0;
       if (config.ENABLE_PROFILER) {
         start = System.nanoTime();
@@ -251,10 +259,10 @@ public class SegmentQueryWorker implements Runnable {
         try {
           Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
           //TODO: update connection
-          connection = DriverManager
-              .getConnection(String.format(IoTDBConnectionPool.CONNECT_STRING,
-                  config.IoTDB_LIST.get(0)), "root",
-                  "root");
+//          connection = DriverManager
+//              .getConnection(String.format(IoTDBConnectionPool.CONNECT_STRING,
+//                  config.IoTDB_LIST.get(0)), "root",
+//                  "root");
           try (Statement statement = connection.createStatement()) {
             LOGGER
                 .info("{} Recreate connections and retry SQL: {}", Thread.currentThread().getName(),
@@ -312,7 +320,7 @@ public class SegmentQueryWorker implements Runnable {
           } catch (SQLException ex) {
             LOGGER.error("{} Retry SQL failed: {}", Thread.currentThread().getName(), sql, e);
           }
-        } catch (SQLException | ClassNotFoundException ex) {
+        } catch (ClassNotFoundException ex) {
           LOGGER.error("{} Reconnect IoTDB failed", Thread.currentThread().getName(), ex);
         }
       }

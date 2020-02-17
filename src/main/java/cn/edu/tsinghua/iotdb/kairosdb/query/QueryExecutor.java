@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
@@ -54,19 +55,21 @@ public class QueryExecutor {
       new LinkedBlockingQueue<>());
 
   private Query query;
-
   private Long startTime;
   private Long endTime;
-
   private Map<String, Integer> tag2pos;
   private Map<Integer, String> pos2tag;
-
   private Map<Integer, List<String>> tmpTags;
+  private SegmentManager segmentManager;
 
   public QueryExecutor(Query query) {
     this.query = query;
     this.startTime = query.getStartTimestamp();
     this.endTime = query.getEndTimestamp();
+    if (endTime - startTime > config.TIME_EDGE) {
+      this.endTime = startTime + config.TIME_EDGE;
+    }
+    segmentManager = new SegmentManager(startTime, endTime);
   }
 
   public static ExecutorService getQueryWorkerPool() {
@@ -106,19 +109,14 @@ public class QueryExecutor {
       queryLatch = new CountDownLatch(lsize);
       for (int i = 0; i < lsize; i++) {
         queryWorkerPool.submit(new QueryWorker(1, queryLatch, qmjList.get(i),
-            newQueryMetricList.get(i),
-            metricResultList,
-            startTime,
-            endTime));
+            newQueryMetricList.get(i), metricResultList, segmentManager));
       }
     } else {
       newQueryMetricList = query.getQueryMetrics();
       for (QueryMetric metric : newQueryMetricList) {
         queryWorkerPool
             .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsonsList, metric,
-                null,
-                startTime,
-                endTime));
+                null, segmentManager));
       }
     }
 
