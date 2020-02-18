@@ -165,6 +165,7 @@ public class QueryExecutor {
             .create();
         metricResult.setSampleSize(sampleSize);
         LOGGER.info("sampleSize: {}", sampleSize);
+        // FIXME: fix the query result tags when a tag key contains multiple tag values if needed
         metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
         queryResultStr.append("{\"queries\":[");
         gson.toJson(metricResult, queryResultStr);

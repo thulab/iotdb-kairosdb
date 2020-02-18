@@ -2,7 +2,6 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
@@ -19,7 +18,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.sql.Connection;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,13 +147,11 @@ public class QueryWorker implements Runnable {
     int timeSegmentNum = timeVertex.length - 1;
     CountDownLatch segmentQueryLatch = new CountDownLatch(timeSegmentNum);
     for (int timeSegmentIndex = 0; timeSegmentIndex < timeSegmentNum; timeSegmentIndex++) {
-
-        long segmentStartTime = timeVertex[timeSegmentIndex];
-        long segmentEndTime = timeVertex[timeSegmentIndex + 1];
-        QueryExecutor.getQueryWorkerPool().submit(new SegmentQueryWorker(segmentStartTime,
-            segmentEndTime, metric, metricValueResult, connections, hasMetaData,
-            sampleSize, metricCount, segmentQueryLatch, timeSegmentIndex));
-
+      long segmentStartTime = timeVertex[timeSegmentIndex];
+      long segmentEndTime = timeVertex[timeSegmentIndex + 1];
+      QueryExecutor.getQueryWorkerPool().submit(new TimeSegmentQueryWorker(segmentStartTime,
+          segmentEndTime, metric, metricValueResult, connections, hasMetaData,
+          sampleSize, metricCount, segmentQueryLatch, timeSegmentIndex));
     }
     try {
       segmentQueryLatch.await();

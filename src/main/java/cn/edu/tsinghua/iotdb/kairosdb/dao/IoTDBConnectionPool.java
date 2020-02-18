@@ -72,7 +72,7 @@ public class IoTDBConnectionPool {
           for (int j = 0; j < sameSchemaSegmentROUrlList.size(); j++) {
             try {
               Connection con = DriverManager
-                  .getConnection(String.format(CONNECT_STRING, sameTimeSegmentROUrlList.get(j)),
+                  .getConnection(String.format(CONNECT_STRING, sameSchemaSegmentROUrlList.get(j)),
                       "root",
                       "root");
               sameInstanceCons.add(con);
