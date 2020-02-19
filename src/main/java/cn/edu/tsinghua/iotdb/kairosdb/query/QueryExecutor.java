@@ -5,16 +5,11 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
-import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.TimeUnitDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement.Profile;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorAlignable;
-import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorDeserializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregatorType;
-import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
-import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByDeserializer;
-import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBySerializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupByType;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
@@ -22,8 +17,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -81,45 +74,11 @@ public class QueryExecutor {
     int queryMetricNum = query.getQueryMetrics().size();
     CountDownLatch queryLatch = new CountDownLatch(queryMetricNum);
     List<StringBuilder> queryMetricJsonsList = Collections.synchronizedList(new ArrayList<>());
-    List<QueryMetric> newQueryMetricList = Collections.synchronizedList(new ArrayList<>());
-    List<List<StringBuilder>> qmjList = Collections.synchronizedList(new ArrayList<>());
-    List<MetricResult> metricResultList = Collections.synchronizedList(new ArrayList<>());
-    if (query.getQueryMetrics().size() == 1 && query.getQueryMetrics().get(0).getTags().get(
-        config.SPECIAL_TAG) != null && query.getQueryMetrics().get(0).getTags().get(
-        config.SPECIAL_TAG).size() > 1) {
-      QueryMetric queryMetric = query.getQueryMetrics().get(0);
-      List<String> deviceList = queryMetric.getTags().get(config.SPECIAL_TAG);
-      for (String device : deviceList) {
-        List<StringBuilder> newSeparatedQueryMetricJson = Collections
-            .synchronizedList(new ArrayList<>());
-        qmjList.add(newSeparatedQueryMetricJson);
-        QueryMetric queryMetric1 = new QueryMetric();
-        queryMetric1.setName(queryMetric.getName());
-        queryMetric1.setLimit(queryMetric.getLimit());
-        queryMetric1.setAggregators(queryMetric.getAggregators());
-        queryMetric1.setGroupBy(queryMetric.getGroupBy());
-        List<String> queryMetric1List = new ArrayList<>();
-        queryMetric1List.add(device);
-        HashMap<String, List<String>> map = new HashMap<>();
-        map.put(config.SPECIAL_TAG, queryMetric1List);
-        queryMetric1.setTags(map);
-        newQueryMetricList.add(queryMetric1);
-      }
-      int lsize = newQueryMetricList.size();
-      queryLatch = new CountDownLatch(lsize);
-      for (int i = 0; i < lsize; i++) {
-        queryWorkerPool.submit(new QueryWorker(1, queryLatch, qmjList.get(i),
-            newQueryMetricList.get(i), metricResultList, segmentManager));
-      }
-    } else {
-      newQueryMetricList = query.getQueryMetrics();
-      for (QueryMetric metric : newQueryMetricList) {
-        queryWorkerPool
-            .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsonsList, metric,
-                null, segmentManager));
-      }
+    for (QueryMetric metric : query.getQueryMetrics()) {
+      queryWorkerPool
+          .submit(new QueryWorker(queryMetricNum, queryLatch, queryMetricJsonsList, metric,
+              segmentManager));
     }
-
     try {
       // wait for all clients finish test
       queryLatch.await();
@@ -128,63 +87,16 @@ public class QueryExecutor {
       LOGGER.error("Exception occurred during waiting for all threads finish.", e);
       Thread.currentThread().interrupt();
     }
-    if (newQueryMetricList != query.getQueryMetrics()) {
-      MetricResult metricResult = null;
-      for (MetricResult m : metricResultList) {
-        if (metricResult == null) {
-          metricResult = m;
-          if (metricResult.getResults().size() == 0) {
-            metricResult.getResults()
-                .add(new MetricValueResult(query.getQueryMetrics().get(0).getName()));
-            metricResult.getResults().get(0).setGroupBy(null);
-          }
-        } else {
-          if (m.getResults().size() > 0) {
-            int totalSize = metricResult.getResults().get(0).getDatapoints().size();
-            int thisSize = m.getResults().get(0).getDatapoints().size();
-            if ((totalSize + thisSize) < config.POINT_EDGE) {
-              metricResult.getResults().get(0).getDatapoints()
-                  .addAll(m.getResults().get(0).getDatapoints());
-            }
-          }
-        }
-      }
-      long sampleSize = 0;
-      try {
-        if (metricResult.getResults() != null && metricResult.getResults().size() > 0) {
-          sampleSize = metricResult.getResults().get(0).getDatapoints().size();
-        }
-        Gson gson = new GsonBuilder()
-            .registerTypeAdapter(QueryMetric.class, new QueryMetric())
-            .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
-            .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
-            .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
-            .registerTypeAdapter(
-                cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
-            .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
-            .create();
-        metricResult.setSampleSize(sampleSize);
-        LOGGER.info("sampleSize: {}", sampleSize);
-        // FIXME: fix the query result tags when a tag key contains multiple tag values if needed
-        metricResult.getResults().get(0).setTags(query.getQueryMetrics().get(0).getTags());
-        queryResultStr.append("{\"queries\":[");
-        gson.toJson(metricResult, queryResultStr);
-        queryResultStr.append("]}");
-      } catch (Exception e) {
-        LOGGER.error("Make JSON error", e);
-      }
-    } else {
-      StringBuilder midMetricBuilder = new StringBuilder();
-      for (StringBuilder metricBuilder : queryMetricJsonsList) {
-        midMetricBuilder.append(",").append(metricBuilder);
-      }
-      midMetricBuilder.delete(0, 1);
-      queryResultStr.append("{\"queries\":[");
-      if (queryMetricNum > 0) {
-        queryResultStr.append(midMetricBuilder);
-      }
-      queryResultStr.append("]}");
+    StringBuilder midMetricBuilder = new StringBuilder();
+    for (StringBuilder metricBuilder : queryMetricJsonsList) {
+      midMetricBuilder.append(",").append(metricBuilder);
     }
+    midMetricBuilder.delete(0, 1);
+    queryResultStr.append("{\"queries\":[");
+    if (queryMetricNum > 0) {
+      queryResultStr.append(midMetricBuilder);
+    }
+    queryResultStr.append("]}");
     LOGGER.info("Query result string length:{}", queryResultStr.length());
     return queryResultStr.toString();
   }

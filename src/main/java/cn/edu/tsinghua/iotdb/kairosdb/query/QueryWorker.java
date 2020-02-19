@@ -18,7 +18,6 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.sql.Connection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -34,19 +33,15 @@ public class QueryWorker implements Runnable {
   private CountDownLatch queryLatch;
   private List<StringBuilder> queryMetricStrList;
   private QueryMetric metric;
-  private Map<String, Integer> tag2pos;
-  private Map<Integer, String> pos2tag;
   private Long startTime;
   private Long endTime;
-  private List<MetricResult> metricResultList;
   private int metricCount;
   private long[] timeVertex;
   private List<List<List<Connection>>> connections;
 
   public QueryWorker(int metricCount, CountDownLatch queryLatch,
       List<StringBuilder> queryMetricStrList,
-      QueryMetric metric, List<MetricResult> metricResultList, SegmentManager segmentManager) {
-    this.metricResultList = metricResultList;
+      QueryMetric metric, SegmentManager segmentManager) {
     this.queryLatch = queryLatch;
     this.queryMetricStrList = queryMetricStrList;
     this.metric = metric;
@@ -59,7 +54,6 @@ public class QueryWorker implements Runnable {
 
   @Override
   public void run() {
-
 
     MetricResult metricResult = new MetricResult();
     try {
@@ -85,20 +79,19 @@ public class QueryWorker implements Runnable {
         metricResult.addResult(new MetricValueResult(metric.getName()));
         metricResult.getResults().get(0).setGroupBy(null);
       }
-
-      if (metricResultList == null) {
-        Gson gson = new GsonBuilder()
-            .registerTypeAdapter(QueryMetric.class, new QueryMetric())
-            .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
-            .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
-            .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
-            .registerTypeAdapter(
-                cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
-            .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
-            .create();
+      Gson gson = new GsonBuilder()
+          .registerTypeAdapter(QueryMetric.class, new QueryMetric())
+          .registerTypeAdapter(GroupBy.class, new GroupByDeserializer())
+          .registerTypeAdapter(GroupBy.class, new GroupBySerializer())
+          .registerTypeAdapter(QueryAggregator.class, new QueryAggregatorDeserializer())
+          .registerTypeAdapter(
+              cn.edu.tsinghua.iotdb.kairosdb.datastore.TimeUnit.class, new TimeUnitDeserializer())
+          .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
+          .create();
+      if (metricResult != null) {
         queryMetricStrList.add(new StringBuilder(gson.toJson(metricResult)));
       } else {
-        metricResultList.add(metricResult);
+        LOGGER.error("metricResult is null !!!");
       }
     } catch (Exception e) {
       LOGGER.error("{} execute query failed because", Thread.currentThread().getName(), e);
@@ -121,21 +114,8 @@ public class QueryWorker implements Runnable {
   }
 
   private boolean getMetricMapping(QueryMetric metric) {
-    tag2pos = MetricsManager.getTagOrder(metric.getName());
-    pos2tag = new HashMap<>();
-    if (tag2pos == null) {
-      return false;
-    } else {
-      for (Map.Entry<String, List<String>> tag : metric.getTags().entrySet()) {
-        String tmpKey = tag.getKey();
-        Integer tempPosition = tag2pos.getOrDefault(tmpKey, null);
-        if (tempPosition == null) {
-          return false;
-        }
-        pos2tag.put(tempPosition, tmpKey);
-      }
-    }
-    return true;
+    Map<String, Integer> tag2pos = MetricsManager.getTagOrder(metric.getName());
+    return tag2pos != null;
   }
 
   private long getValueResult(MetricValueResult metricValueResult) {
