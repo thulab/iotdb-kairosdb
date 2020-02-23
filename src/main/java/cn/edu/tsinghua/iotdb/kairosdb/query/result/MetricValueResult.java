@@ -5,10 +5,10 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
 import java.sql.Types;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MetricValueResult {
 
@@ -26,8 +26,8 @@ public class MetricValueResult {
 
   public MetricValueResult(String name) {
     this.name = name;
-    groupBy = new LinkedList<>();
-    tags = new HashMap<>();
+    groupBy = Collections.synchronizedList(new LinkedList<>());
+    tags = new ConcurrentHashMap<>();
     values = Collections.synchronizedList(new LinkedList<>());
   }
 
@@ -116,8 +116,9 @@ public class MetricValueResult {
   }
 
   public void addDataPoint(QueryDataPoint point) {
-    if (point == null)
+    if (point == null) {
       return;
+    }
     values.add(point);
   }
 

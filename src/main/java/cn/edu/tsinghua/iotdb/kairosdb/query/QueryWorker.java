@@ -89,7 +89,9 @@ public class QueryWorker implements Runnable {
           .registerTypeAdapter(QueryDataPoint.class, new QueryDataPoint())
           .create();
       if (metricResult != null) {
-        queryMetricStrList.add(new StringBuilder(gson.toJson(metricResult)));
+        synchronized (gson) {
+          queryMetricStrList.add(new StringBuilder(gson.toJson(metricResult)));
+        }
       } else {
         LOGGER.error("metricResult is null !!!");
       }

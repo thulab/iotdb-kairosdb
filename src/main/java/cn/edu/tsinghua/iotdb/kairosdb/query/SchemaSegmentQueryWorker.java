@@ -171,11 +171,11 @@ public class SchemaSegmentQueryWorker implements Runnable {
         if (config.ENABLE_PROFILER) {
           Measurement.getInstance().add(Profile.IOTDB_QUERY, System.nanoTime() - start);
         }
-        //if (!hasMetaData.getAndSet(true)) {
+        if (!hasMetaData.getAndSet(true)) {
           getTagValueFromPaths(metaData, paths);
           addBasicGroupByToResult(metaData, metricValueResult);
           setTags(metricValueResult);
-        //}
+        }
       } catch (SQLException e) {
         //TODO: add retry query, update connection if encountered error, retry once more
         LOGGER.error("{} Execute failed SQL: {}", Thread.currentThread().getName(), sql, e);
