@@ -3,7 +3,7 @@
 iotdb-kairosdb is a RESTful service for using IoTDB by KairosDB RESTful APIs.
 
 # Usage
-Configurations are in ```conf/config.properties```
+Configurations are in ```conf/config.properties``` and ```conf/DeploymentDescriptor.json```
 
 To start the RESTful service:
 
@@ -17,7 +17,9 @@ run  ```> ./start-rest-service.sh```
 - [1 测试环境部署](#1-测试环境部署)        
   - [1.1 测试环境要求](#11-测试环境要求)        
   - [1.2 IoTDB部署](#12-iotdb部署)        
-  - [1.3 IKR 部署](#13-ikr-部署)    
+  - [1.3 配置设置](#13-配置设置)    
+  - [1.4 IKR 部署](#14-ikr-部署)    
+  - [1.5 IoTDB扩容](#15-iotdb扩容)    
 - [2 测试用例](#2-测试用例)        
   - [2.1 写入测试用例](#21-写入测试用例)        
   - [2.2 查询测试](#22-查询测试)            
@@ -64,9 +66,10 @@ run  ```> ./start-rest-service.sh```
 ```
 $ git clone https://github.com/apache/incubator-iotdb.git
 ```
-2. 安装 IoTDB
+2. 安装 IoTDB v0.9.0
 ```
 $ cd incubator-iotdb
+$ git checkout release/0.9.0
 $ mvn clean install -Dmaven.test.skip=true
 ```
 3. 后台启动 IoTDB
@@ -78,7 +81,67 @@ $ nohup ./iotdb/iotdb/bin/start-server.sh &
 $ ./iotdb/iotdb/bin/stop-server.sh
 ```
 
-### 1.3 IKR 部署
+> 注意：以上为单节点IoTDB的部署方式，集群的部署方式同上，在多个节点上部署单机版IoTDB实例即可。
+
+### 1.3 配置设置
+
+#### 1.3.1 IKR配置设置
+1. 编辑```conf/DeploymentDescriptor.json```文件，确定当前部署的IoTDB集群IP列表，部署就绪时间等参数, 以下面的具体实例来介绍其代表的含义：
+```
+[
+  {
+    "scaleTime": "2013-9-20T00:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "192.168.130.16:6667",
+        "readOnly": [
+          "192.168.130.1:6667"
+        ]
+      },
+      {
+        "writeRead": "192.168.130.17:6667",
+        "readOnly": []
+      }
+    ]
+  },
+  {
+    "scaleTime": "2014-5-14T00:53:28+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "192.168.130.13:6667",
+        "readOnly": [
+          "192.168.130.2:6667",
+          "192.168.130.3:6667"
+        ]
+      }
+    ]
+  }
+]
+```
+整个IoTDB集群的部署方式是由类似上面的一个JSON字符串来描述的。我们按照层次来看，最外层是一个数组（JSON
+中数组用```[]```括起来，用```,```分隔每个元素），数组中包含多个Object元素（JSON中Object
+用```{}```括起来，其中包含多个键-值对），记为```TimeSegmentObject```。
+每个```TimeSegmentObject```描述的是一个时间分段内的部署方式，它包含两组键-值对，第一组```scaleTime```表示的是进行扩容时的时间点(部署就绪时间)。
+正常使用时（数据是按照真实时间戳实时到来的），用户应当将其配置为进行扩容的新一组IoTDB实例部署就绪的某一时间，并在该时间到来之前做好相应的IoTDB部署工作，
+以便在该时刻真正到来时，数据能顺利写入部署好的新IoTDB实例中。
+第二组```schemaSplit```表示的是将该时间分段内的数据分给哪些不同的IoTDB读写实例（基于元数据的数据分片，不同设备的数据会被分散到不同的IoTDB读写实例中），
+因此它的值是一个数组，每个元素Object包含两个键-值对，记为```SchemaSegmentObject```，
+其中```writeRead```表示某一个读写实例的访问IP和端口，```readOnly```表示该读写实例包含哪些只读副本，因此它的值也是一个数组（可以为空）。
+
+我们允许不同的时间分区```schemaSplit```数组包含元素的个数不同，但当一个时间分段内开始写入数据后该时间分段的部署方式便不能更改了，即不允许增删已写入数据区段的节点数。
+但用户可用通过增加新的时间分区（横向扩容）的方式来在新的时间分区中增加或减少```SchemaSegmentObject```来达到纵向扩缩容的目的。
+
+允许不同的```SchemaSegmentObject```的```readOnly```数组包含的元素个数不同，即不同读写实例的副本数不同。
+
+特别地，虽然第一个```TimeSegmentObject```的```scaleTime```字段的值并不影响功能，但为了统一语意```scaleTime```的值都应该填本时间区间IoTDB集群部署就绪的时间。
+
+2. （非必须）编辑```conf/config.properties```文件。该文件中的参数多为调优参数，各参数说明见配置文件中的注释，一般情况下使用默认配置即可。
+
+#### 1.3.2 IoTDB配置设置
+根据实际写入时间序列条数确定IoTDB的内存占用大小，通过IoTDB server下的```conf```文件夹下的```iotdb-env.sh```脚本文件中的```MAX_JVM```变量来配置。
+其他配置一般使用IoTDB的默认配置即可。
+
+### 1.4 IKR 部署
 
 > 如果 IKR 和 IoTDB在同一台机器上，步骤 1 和 2 可以省略
 
@@ -98,9 +161,10 @@ $ cd iotdb-kairosdb
 ```
 4. 配置 IKR
 ```
+$ vim conf/DeploymentDescriptor.json
 $ vim conf/config.properties
 ```
-配置HOST和PORT，对应IoTDB所在的IP和端口
+按照[1.3 配置设置](#13-配置设置) 中的说明配置相关参数
 
 5. 后台启动 IKR
 ```
@@ -110,6 +174,60 @@ $ nohup ./start-rest-service.sh &
 ```
 $ ./stop-rest-service-daemon.sh
 ```
+
+### 1.5 IoTDB扩容
+1. 假设初始状态下用户按照1.5的步骤只部署了一个IoTDB实例，```conf/DeploymentDescriptor.json```文件配置如下：
+```
+[
+  {
+    "scaleTime": "2019-9-20T00:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "192.168.130.16:6667",
+        "readOnly": []
+      }
+    ]
+  }
+]
+```
+
+2. 随着时间的推移，这个单节点的IoTDB数据量越来越大，用户希望进行扩容。假设用户希望时间戳在2020-1-14T00:53:28+08:00以后的
+数据都写入到新的IoTDB实例中，用户计划部署新增4个IoTDB实例，其中两个是IoTDB读写实例（IP端口是192.168.130.13:6667和192.168.130.14:6667
+），另外每个IoTDB读写实例分别有一个只读副本实例（IP端口是192.168.130.1:6667和192.168.130.2:6667）。
+该用户应该在2020-1-14T00:53:28+08:00之前```LOAD_PARAM_CYCLE```秒内将新的IoTDB实例部署好，然后修改```conf
+/DeploymentDescriptor.json```文件配置如下：
+```
+[
+  {
+    "scaleTime": "2019-9-20T00:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "192.168.130.16:6667",
+        "readOnly": []
+      }
+    ]
+  },
+ {
+   "scaleTime": "2020-1-14T00:53:28+08:00",
+   "schemaSplit": [
+     {
+       "writeRead": "192.168.130.13:6667",
+       "readOnly": [
+         "192.168.130.1:6667"
+       ]
+     },
+     {
+       "writeRead": "192.168.130.14:6667",
+       "readOnly": [
+         "192.168.130.2:6667"
+       ]
+     }
+   ]
+ }
+]
+```
+每经过```LOAD_PARAM_CYCLE```秒，IKR会重新读取一遍配置文件，因此当修改了```conf/DeploymentDescriptor.json```或
+```conf/config.properties```文件后，下次读取配置文件时，新的配置会生效而不需要重启IKR。
 
 ## 2 测试用例
 

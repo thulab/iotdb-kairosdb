@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,13 +23,17 @@ import org.slf4j.LoggerFactory;
 public class ConfigDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDescriptor.class);
-
+  private static ScheduledThreadPoolExecutor executor = (ScheduledThreadPoolExecutor) Executors
+      .newScheduledThreadPool(1);
   private Config config;
 
   private ConfigDescriptor() {
     config = new Config();
     loadProps();
-    new updateConfigThread().start();
+    executor.scheduleAtFixedRate(new UpdateConfigThread(),
+        config.LOAD_PARAM_CYCLE,
+        config.LOAD_PARAM_CYCLE,
+        TimeUnit.SECONDS);
   }
 
   public static ConfigDescriptor getInstance() {
@@ -110,6 +117,8 @@ public class ConfigDescriptor {
             .parseLong(properties.getProperty("MAX_RANGE", config.MAX_RANGE + ""));
         config.LATEST_TIME_RANGE = Long
             .parseLong(properties.getProperty("LATEST_TIME_RANGE", config.LATEST_TIME_RANGE + ""));
+        config.LOAD_PARAM_CYCLE = Long
+            .parseLong(properties.getProperty("LOAD_PARAM_CYCLE", config.LOAD_PARAM_CYCLE + ""));
         config.PROFILE_INTERVAL = Integer
             .parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
         config.CORE_POOL_SIZE = Integer
@@ -193,19 +202,13 @@ public class ConfigDescriptor {
   /**
    * 定时更新属性的线程
    */
-  private class updateConfigThread extends Thread {
+  private class UpdateConfigThread implements Runnable {
 
-    //每30分钟更新一次config文件
+    @Override
     public void run() {
-      while (true) {
-        updateProps();
-        try {
-          LOGGER.info("定时更新了配置");
-          Thread.sleep(1800000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
+      //updateProps();
+      loadProps();
+      LOGGER.info("定时更新了配置");
     }
   }
 

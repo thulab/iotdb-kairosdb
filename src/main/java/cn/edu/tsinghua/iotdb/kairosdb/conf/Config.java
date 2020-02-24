@@ -20,6 +20,7 @@ public class Config {
 
   public int GROUP_BY_UNIT = 20;
   public long MAX_RANGE = 20;
+  public long LOAD_PARAM_CYCLE = 1800000;
   public long LATEST_TIME_RANGE = 3600000;
   public int PROFILE_INTERVAL = 10;
   public int CORE_POOL_SIZE = 0;
