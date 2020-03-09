@@ -3,10 +3,11 @@ package cn.edu.tsinghua.iotdb.kairosdb.http.rest.json;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBSessionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.ConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SessionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import cn.edu.tsinghua.iotdb.kairosdb.util.ValidationException;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Validator;
@@ -20,16 +21,12 @@ import com.google.gson.stream.JsonToken;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.session.IoTDBSessionException;
-import org.apache.iotdb.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,14 +48,10 @@ public class DataPointsParser {
   // <path, type>
   private Map<String, DataType> seriesPaths = new HashMap<>();
 
-  // The constants of encoding methods
-  private static final String TEXT_ENCODING = "PLAIN";
-  private static final String INT64_ENCODING = "TS_2DIFF";
-  private static final String DOUBLE_ENCODING = "GORILLA";
-  private List<List<Session>> sessions;
+  private List<List<DBWrapper>> databases;
 
   public DataPointsParser(Reader stream, Gson gson) {
-    sessions = IoTDBSessionPool.getInstance().getSessions();
+    databases = SessionPool.getInstance().getSessions();
     this.inputStream = stream;
     this.gson = gson;
   }
@@ -143,47 +136,16 @@ public class DataPointsParser {
     return validationErrors;
   }
 
-  private static String createTimeSeriesSql(String seriesPath, DataType type) {
-    String datatype;
-    String encoding;
-    switch (type) {
-      case LONG:
-        datatype = "INT64";
-        encoding = INT64_ENCODING;
-        break;
-      case DOUBLE:
-        datatype = "DOUBLE";
-        encoding = DOUBLE_ENCODING;
-        break;
-      default:
-        datatype = "TEXT";
-        encoding = TEXT_ENCODING;
-    }
-    return String
-        .format("CREATE TIMESERIES %s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY", seriesPath,
-            datatype, encoding);
-  }
-
   private void createTimeSeries() throws SQLException {
-    int count = 0;
-    for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+    for (List<DBWrapper> connectionList : ConnectionPool.getInstance()
         .getWriteReadConnections()) {
-      for (Connection conn : connectionList) {
-        try (Statement statement = conn.createStatement()) {
-          for (Map.Entry<String, DataType> entry : seriesPaths.entrySet()) {
-            try {
-              statement.execute(createTimeSeriesSql(entry.getKey(), entry.getValue()));
-            } catch (Exception e) {
-              LOGGER.error("时间序列{}已存在,创建时间序列的连接序号为:{}", entry.getKey(), count, e);
-            }
-          }
-        }
+      for (DBWrapper conn : connectionList) {
+        conn.createTimeSeries(seriesPaths);
       }
-      count++;
     }
   }
 
-  private void sendMetricsData() throws IoTDBSessionException {
+  private void sendMetricsData() {
     long start = 0;
     if (config.DEBUG == 2) {
       start = System.currentTimeMillis();
@@ -206,9 +168,10 @@ public class DataPointsParser {
       int timeSegmentIndex = getTimeSegmentIndex(timestamp);
       String hashField = deviceId.split("\\.")[Constants.SCHEMA_SEGMENT_PATH_INDEX];
       int schemaSegmentIndex = SegmentManager.writeSchemaHashCode(hashField, timeSegmentIndex);
-      sessions.get(timeSegmentIndex).get(schemaSegmentIndex).insert(deviceId, timestamp,
+      databases.get(timeSegmentIndex).get(schemaSegmentIndex).insert(deviceId, timestamp,
           measurements, values);
     }
+
     if (config.DEBUG == 2) {
       long elapse = System.currentTimeMillis() - start;
       LOGGER.info("sendMetricsData() 执行的时间: ,{}, ms", elapse);

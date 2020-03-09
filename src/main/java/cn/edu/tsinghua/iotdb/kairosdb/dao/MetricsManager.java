@@ -9,6 +9,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUp;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpException;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpRecovery;
 import cn.edu.tsinghua.iotdb.kairosdb.rollup.RollUpStoreImpl;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -182,19 +183,18 @@ public class MetricsManager {
         datatype = "TEXT";
         encoding = TEXT_ENCODING;
     }
-    for (List<Connection> cons : IoTDBConnectionPool.getInstance().getWriteReadConnections()) {
-      for(Connection conn: cons) {
-        try (Statement statement = conn.createStatement()) {
-          statement.execute(String
-              .format(
-                  "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
-                  getStorageGroupName(path), path, metricName, datatype, encoding));
-        }
+    for (List<DBWrapper> cons : ConnectionPool.getInstance().getWriteReadConnections()) {
+      for(DBWrapper dbWrapper: cons) {
+        dbWrapper.executeSQL(String
+            .format(
+                "CREATE TIMESERIES root.%s%s.%s WITH DATATYPE=%s, ENCODING=%s, COMPRESSOR=SNAPPY",
+                getStorageGroupName(path), path, metricName, datatype, encoding));
+
       }
     }
   }
 
-  private static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
+  public static void createNewMetricAndIgnoreErrors(String metricName, String path, String type) {
     try {
       createNewMetric(metricName, path, type);
     } catch (SQLException ignore) {
@@ -204,9 +204,9 @@ public class MetricsManager {
 
   public static void addDataPoints(MetricResult metric, String metricName) {
     try {
-      for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+      for (List<DBWrapper> connectionList : ConnectionPool.getInstance()
           .getWriteReadConnections()) {
-        for (Connection conn : connectionList) {
+        for (DBWrapper dbWrapper : connectionList) {
           for (MetricValueResult valueResult : metric.getResults()) {
             if ((valueResult.isTextType() && metric.getResults().size() > 1)
                 || valueResult.getDatapoints() == null
@@ -217,29 +217,7 @@ public class MetricsManager {
             tag.put("saved_from", valueResult.getName());
             HashMap<Integer, String> orderTagKeyMap = getMapping(metricName, tag);
             String path = generatePath(tag, orderTagKeyMap);
-            try(Statement statement = conn.createStatement()) {
-              for (QueryDataPoint point : valueResult.getDatapoints()) {
-                String insertingSql = String
-                    .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
-                        getStorageGroupName(path),
-                        path, metricName, point.getTimestamp(), point.getAsString());
-                statement.addBatch(insertingSql);
-              }
-              String type;
-              switch (valueResult.getDatapoints().get(0).getType()) {
-                case Types.INTEGER:
-                  type = "long";
-                  break;
-                case Types.DOUBLE:
-                  type = "double";
-                  break;
-                default:
-                  type = "text";
-                  break;
-              }
-              createNewMetricAndIgnoreErrors(metricName, path, type);
-              statement.executeBatch();
-            }
+            dbWrapper.addSaveFromData(valueResult, path, metricName);
           }
         }
       }
@@ -250,25 +228,10 @@ public class MetricsManager {
 
   public static void deleteMetric(String metricName) {
     try {
-      for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+      for (List<DBWrapper> connectionList : ConnectionPool.getInstance()
           .getWriteReadConnections()) {
-        for (Connection conn : connectionList) {
-          try(Statement statement = conn.createStatement()) {
-            Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
-            if (mapping == null) {
-              return;
-            }
-            int size = mapping.size();
-            for (int i = 0; i <= size; i++) {
-              StringBuilder builder = new StringBuilder("DELETE TIMESERIES root.*");
-              builder.append(".");
-              for (int j = 0; j < i; j++) {
-                builder.append("*.");
-              }
-              builder.append(metricName);
-              executeAndIgnoreException(statement, builder.toString());
-            }
-          }
+        for (DBWrapper dbWrapper : connectionList) {
+          dbWrapper.deleteMetric(tagOrder, metricName);
           tagOrder.remove(metricName);
         }
       }
@@ -327,15 +290,13 @@ public class MetricsManager {
       String sql = String.format(
           "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, metric_name, tag_name, tag_order) values(%s, \"%s\", \"%s\", %s);",
           index.getAndIncrement(), metricName, entry.getKey(), entry.getValue());
-      for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+      for (List<DBWrapper> connectionList : ConnectionPool.getInstance()
           .getWriteReadConnections()) {
-        for (Connection conn : connectionList) {
-          try (Statement statement = conn.createStatement()) {
-            statement.execute(sql);
+        for (DBWrapper dbWrapper : connectionList) {
+          try {
+            dbWrapper.executeSQL(sql);
           } catch (SQLException e) {
-            LOGGER
-                .error(
-                    String.format(ERROR_OUTPUT_FORMATTER, e.getClass().getName(), e.getMessage()));
+            LOGGER.error("persistMappingCache failed", e);
           }
         }
       }
@@ -392,7 +353,7 @@ public class MetricsManager {
     return String.format("%s%s", STORAGE_GROUP_PREFIX, Math.abs(hashCode) % storageGroupSize);
   }
 
-  private static void executeAndIgnoreException(Statement statement, String sql) {
+  public static void executeAndIgnoreException(Statement statement, String sql) {
     try {
       statement.execute(sql);
     } catch (SQLException ignore) {

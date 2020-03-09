@@ -2,8 +2,9 @@ package cn.edu.tsinghua.iotdb.kairosdb;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBSessionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.ConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.SessionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBUtil;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.util.AddressUtil;
@@ -41,17 +42,21 @@ public class IKR {
 
   private static void initDB() throws SQLException, ClassNotFoundException {
     for (List<String> urls : config.IoTDB_LIST) {
-      for(String url: urls) {
-        LOGGER.info("Ready to connect to IoTDB. {}", url);
-        Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
-        LOGGER.info("Connected {} successfully.", url);
-        MetricsManager.loadMetadata(connection);
+      for(String typeUrl: urls) {
+        LOGGER.info("Ready to connect to DB {}", typeUrl);
+        String type = typeUrl.split("=")[0];
+        String url = typeUrl.split("=")[1];
+        if(type.equals(Constants.DB_IOT)) {
+          Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
+          LOGGER.info("Connected {} successfully.", url);
+          MetricsManager.loadMetadata(connection);
+        }
       }
     }
     // init connections
     LOGGER.info("Initializing DB connections ...");
-    IoTDBConnectionPool.getInstance().getWriteReadConnections();
-    IoTDBSessionPool.getInstance().getSessions();
+    ConnectionPool.getInstance().getWriteReadConnections();
+    SessionPool.getInstance().getSessions();
   }
 
   private static HttpServer startServer(String[] argv) throws SQLException, ClassNotFoundException {

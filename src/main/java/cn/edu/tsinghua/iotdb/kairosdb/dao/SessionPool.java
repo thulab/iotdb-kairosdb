@@ -2,22 +2,22 @@ package cn.edu.tsinghua.iotdb.kairosdb.dao;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBSessionPool {
+public class SessionPool {
 
   private static final Config config = ConfigDescriptor.getInstance().getConfig();
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SessionPool.class);
   private AtomicInteger loop = new AtomicInteger(0);
 
-  private List<List<List<Session>>> sessionsList = new ArrayList<>();
+  private List<List<List<DBWrapper>>> sessionsList = new ArrayList<>();
 
-  private IoTDBSessionPool() {
+  private SessionPool() {
     createSessions();
   }
 
@@ -27,19 +27,17 @@ public class IoTDBSessionPool {
     for (int timeSegmentIndex = 0; timeSegmentIndex < config.IoTDB_LIST.size();
         timeSegmentIndex++) {
       List<String> sameTimeSegmentUrlList = config.IoTDB_LIST.get(timeSegmentIndex);
-      List<List<Session>> sameTimeSegmentSessionList = new ArrayList<>();
-      for (String url : sameTimeSegmentUrlList) {
-        List<Session> sessions = new ArrayList<>();
+      List<List<DBWrapper>> sameTimeSegmentSessionList = new ArrayList<>();
+      for (String typeUrl : sameTimeSegmentUrlList) {
+        List<DBWrapper> sessions = new ArrayList<>();
         for (int i = 0; i < config.CONNECTION_NUM; i++) {
-          // each IoTDB creates multiple sessions
+          String dbType = typeUrl.split("=")[0];
+          String url = typeUrl.split("=")[1];
           try {
-            String host = url.split(":")[0];
-            int port = Integer.parseInt(url.split(":")[1]);
-            Session session = new Session(host, port, "root", "root");
-            session.open();
-            sessions.add(session);
+            DBWrapper dbWrapper = new DBWrapper(dbType, true, url);
+            sessions.add(dbWrapper);
           } catch (Exception e) {
-            LOGGER.error("Get new session failed ", e);
+            LOGGER.error("Get new DBWrapper of {} failed ", typeUrl, e);
           }
         }
         sameTimeSegmentSessionList.add(sessions);
@@ -48,15 +46,15 @@ public class IoTDBSessionPool {
     }
   }
 
-  public List<List<Session>> getSessions() {
+  public List<List<DBWrapper>> getSessions() {
     if (loop.incrementAndGet() > config.CONNECTION_NUM * 10000) {
       loop.set(0);
     }
-    List<List<Session>> list = new ArrayList<>();
+    List<List<DBWrapper>> list = new ArrayList<>();
     for (int i = 0; i < config.IoTDB_LIST.size(); i++) {
-      List<List<Session>> sameSegmentWriteRead = sessionsList.get(i);
-      List<Session> sameSegmentWriteReadCurrent = new ArrayList<>();
-      for (List<Session> sessions : sameSegmentWriteRead) {
+      List<List<DBWrapper>> sameSegmentWriteRead = sessionsList.get(i);
+      List<DBWrapper> sameSegmentWriteReadCurrent = new ArrayList<>();
+      for (List<DBWrapper> sessions : sameSegmentWriteRead) {
         sameSegmentWriteReadCurrent
             .add(sessions.get(loop.getAndIncrement() % config.CONNECTION_NUM));
       }
@@ -66,10 +64,10 @@ public class IoTDBSessionPool {
   }
 
   private static class IoTDBSessionPoolHolder {
-    private static final IoTDBSessionPool INSTANCE = new IoTDBSessionPool();
+    private static final SessionPool INSTANCE = new SessionPool();
   }
 
-  public static IoTDBSessionPool getInstance() {
+  public static SessionPool getInstance() {
     return IoTDBSessionPoolHolder.INSTANCE;
   }
 

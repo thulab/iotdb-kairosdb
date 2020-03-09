@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.query;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
-import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
+import cn.edu.tsinghua.iotdb.kairosdb.dao.ConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.SegmentManager;
 import cn.edu.tsinghua.iotdb.kairosdb.profile.Measurement;
@@ -152,7 +152,7 @@ public class QueryExecutor {
 
       if (getMetricMapping(metric)) {
         String querySql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
-        for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+        for (List<Connection> connectionList : ConnectionPool.getInstance()
             .getWriteReadConnections()) {
           for (Connection conn : connectionList) {
             try {
@@ -247,7 +247,7 @@ public class QueryExecutor {
       start = System.nanoTime();
     }
 
-    for (List<Connection> connectionList : IoTDBConnectionPool.getInstance()
+    for (List<Connection> connectionList : ConnectionPool.getInstance()
         .getWriteReadConnections()) {
       for (Connection connection : connectionList) {
         try (Statement statement = connection.createStatement()) {
