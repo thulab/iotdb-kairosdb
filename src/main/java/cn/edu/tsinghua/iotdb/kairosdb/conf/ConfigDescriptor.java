@@ -49,7 +49,9 @@ public class ConfigDescriptor {
     //  optimize and refactor:
     //  initialize the connection and session pools in this function, so that we can remove
     //  the IoTDB_LIST and IoTDB_READ_ONLY_LIST
-    String deploymentJsonStr = ReadFileUtils.readJsonFile("conf/DeploymentDescriptor.json");
+    String deploymentDescriptorPath = System.getProperty(Constants.REST_CONF, null).replace(
+        "config.properties", "DeploymentDescriptor.json");
+    String deploymentJsonStr = ReadFileUtils.readJsonFile(deploymentDescriptorPath);
     try {
       JSONArray jsonArray = JSON.parseArray(deploymentJsonStr);
       assert jsonArray != null;
