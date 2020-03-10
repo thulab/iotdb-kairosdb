@@ -1,12 +1,17 @@
 package cn.edu.tsinghua.iotdb.kairosdb.tsdb.influxdb;
 
 import cn.edu.tsinghua.iotdb.kairosdb.http.rest.json.DataPointsParser.DataType;
+import cn.edu.tsinghua.iotdb.kairosdb.query.QueryMetric;
+import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.tsdb.IDatabase;
 import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import org.influxdb.InfluxDB;
@@ -82,12 +87,40 @@ public class Influx implements IDatabase {
   }
 
   @Override
-  public void rangeQuery() {
-
+  public void rangeQuery(String sql, long metricCount, AtomicLong sampleSize,
+      MetricValueResult metricValueResult, AtomicBoolean hasMetaData, QueryMetric metric) {
+    
   }
 
   @Override
   public void createTimeSeries(Map<String, DataType> seriesPaths) {
     LOGGER.info("no need for InfluxDB to create TimeSeries");
+  }
+
+  @Override
+  public void executeSQL(String sql) throws SQLException {
+
+  }
+
+  @Override
+  public void addSaveFromData(MetricValueResult valueResult, String path, String metricName)
+      throws SQLException {
+
+  }
+
+  @Override
+  public void deleteMetric(Map<String, Map<String, Integer>> tagOrder, String metricName)
+      throws SQLException {
+
+  }
+
+  @Override
+  public void delete(String querySql) {
+
+  }
+
+  @Override
+  public long getValueResult(String sql, MetricValueResult metricValueResult) {
+    return 0;
   }
 }

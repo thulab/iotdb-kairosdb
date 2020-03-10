@@ -6,7 +6,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
-import java.sql.Connection;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +27,7 @@ public class TimeSegmentQueryWorker implements Runnable {
   private Map<Integer, String> pos2tag;
   private Map<Integer, List<String>> tmpTags;
   private MetricValueResult metricValueResult;
-  private List<List<List<Connection>>> connections;
+  private List<List<List<DBWrapper>>> connections;
   private AtomicBoolean hasMetaData;
   private AtomicLong sampleSize;
   private int metricCount;
@@ -35,7 +35,7 @@ public class TimeSegmentQueryWorker implements Runnable {
   private int timeSegmentIndex;
 
   public TimeSegmentQueryWorker(long segmentStartTime, long segmentEndTime, QueryMetric metric,
-      MetricValueResult metricValueResult, List<List<List<Connection>>> connections,
+      MetricValueResult metricValueResult, List<List<List<DBWrapper>>> connections,
       AtomicBoolean hasMetaData,
       AtomicLong sampleSize, int metricCount, CountDownLatch segmentQueryLatch, int timeSegmentIndex) {
     this.segmentEndTime = segmentEndTime;

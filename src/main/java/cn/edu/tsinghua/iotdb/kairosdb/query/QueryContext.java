@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
-import java.sql.Connection;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import java.util.List;
 
 public class QueryContext {
@@ -10,7 +10,7 @@ public class QueryContext {
   private long segmentEndTime;
   private int timeSegmentIndex;
   private int metricCount;
-  private List<List<List<Connection>>> connections;
+  private List<List<List<DBWrapper>>> connections;
 
   public QueryMetric getMetric() {
     return metric;
@@ -52,12 +52,12 @@ public class QueryContext {
     this.metricCount = metricCount;
   }
 
-  public List<List<List<Connection>>> getConnections() {
+  public List<List<List<DBWrapper>>> getConnections() {
     return connections;
   }
 
   public void setConnections(
-      List<List<List<Connection>>> connections) {
+      List<List<List<DBWrapper>>> connections) {
     this.connections = connections;
   }
 

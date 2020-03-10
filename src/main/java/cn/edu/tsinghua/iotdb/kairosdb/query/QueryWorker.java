@@ -15,6 +15,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBySerializer;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
+import cn.edu.tsinghua.iotdb.kairosdb.tsdb.DBWrapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.sql.Connection;
@@ -37,7 +38,7 @@ public class QueryWorker implements Runnable {
   private Long endTime;
   private int metricCount;
   private long[] timeVertex;
-  private List<List<List<Connection>>> connections;
+  private List<List<List<DBWrapper>>> connections;
 
   public QueryWorker(int metricCount, CountDownLatch queryLatch,
       List<StringBuilder> queryMetricStrList,
