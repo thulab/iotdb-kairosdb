@@ -18,7 +18,7 @@ public class QueryAggregatorFirst extends QueryAggregator
   private long endTimestamp;
 
   QueryAggregatorFirst() {
-    super(QueryAggregatorType.AVG);
+    super(QueryAggregatorType.FIRST);
   }
 
   @Override
