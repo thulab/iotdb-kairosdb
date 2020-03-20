@@ -67,13 +67,7 @@ public class IKR {
     }
     config = ConfigDescriptor.getInstance().getConfig();
     baseURI = getBaseURI();
-    LOGGER.info("connection informations for IoTDB");
-    for (List<String> urls : config.IoTDB_LIST) {
-      for(String url: urls) {
-        String[] urlSplit = url.split(":");
-        LOGGER.info("host = {}, port = {}", urlSplit[0], urlSplit[1]);
-      }
-    }
+    LOGGER.info("Connection information:");
     return startServer();
   }
 

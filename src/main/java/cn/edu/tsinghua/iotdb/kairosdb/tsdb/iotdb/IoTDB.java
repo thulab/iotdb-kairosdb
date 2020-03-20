@@ -12,6 +12,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.MetricValueResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.tsdb.IDatabase;
+import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -56,26 +57,6 @@ public class IoTDB implements IDatabase {
     }
   }
 
-  private boolean isNumeric(String string) {
-    for (int i = 0; i < string.length(); i++) {
-      if (!Character.isDigit(string.charAt(i))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private int findType(String string) {
-    if (isNumeric(string)) {
-      return Types.INTEGER;
-    } else {
-      if (string.contains(".")) {
-        return Types.DOUBLE;
-      } else {
-        return Types.VARCHAR;
-      }
-    }
-  }
 
   @Override
   public void insert(String deviceId, long timestamp, List<String> measurements,
@@ -117,7 +98,7 @@ public class IoTDB implements IDatabase {
           sampleSize.incrementAndGet();
           paths[i - 2] = true;
           QueryDataPoint dataPoint = null;
-          switch (findType(value)) {
+          switch (Util.findType(value)) {
             case Types.INTEGER:
               int intValue = rs.getInt(i);
               dataPoint = new QueryDataPoint(timestamp, intValue);
@@ -238,7 +219,7 @@ public class IoTDB implements IDatabase {
   @Override
   public void addSaveFromData(MetricValueResult valueResult, String path, String metricName)
       throws SQLException {
-    try(Statement statement = connection.createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       for (QueryDataPoint point : valueResult.getDatapoints()) {
         String insertingSql = String
             .format("insert into root.%s%s(timestamp,%s) values(%s,%s);",
@@ -266,7 +247,7 @@ public class IoTDB implements IDatabase {
   @Override
   public void deleteMetric(
       Map<String, Map<String, Integer>> tagOrder, String metricName) throws SQLException {
-    try(Statement statement = connection.createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       Map<String, Integer> mapping = tagOrder.getOrDefault(metricName, null);
       if (mapping == null) {
         return;
@@ -357,7 +338,7 @@ public class IoTDB implements IDatabase {
           sampleSize++;
           paths[i - 2] = true;
           QueryDataPoint dataPoint = null;
-          switch (findType(value)) {
+          switch (Util.findType(value)) {
             case Types.INTEGER:
               int intValue = rs.getInt(i);
               dataPoint = new QueryDataPoint(timestamp, intValue);

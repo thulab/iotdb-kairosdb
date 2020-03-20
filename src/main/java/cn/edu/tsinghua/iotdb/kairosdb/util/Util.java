@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.sql.Types;
 import java.util.Collections;
 import java.util.List;
 import org.joda.time.DateTime;
@@ -317,5 +318,26 @@ public class Util {
         break;
     }
     return ret;
+  }
+
+  public static boolean isNumeric(String string) {
+    for (int i = 0; i < string.length(); i++) {
+      if (!Character.isDigit(string.charAt(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static int findType(String string) {
+    if (isNumeric(string)) {
+      return Types.INTEGER;
+    } else {
+      if (string.contains(".")) {
+        return Types.DOUBLE;
+      } else {
+        return Types.VARCHAR;
+      }
+    }
   }
 }
