@@ -9,7 +9,7 @@
     ]
   },
   {
-    "scaleTime": "2018-9-21T10:00:00+08:00",
+    "scaleTime": "2018-9-20T23:00:00+08:00",
     "schemaSplit": [
       {
         "writeRead": "IoTDB=192.168.130.14:6667",
@@ -18,7 +18,7 @@
     ]
   },
   {
-    "scaleTime": "2018-9-22T20:00:00+08:00",
+    "scaleTime": "2018-9-21T22:00:00+08:00",
     "schemaSplit": [
       {
         "writeRead": "IoTDB=192.168.130.16:6667",
@@ -27,10 +27,28 @@
     ]
   },
   {
-    "scaleTime": "2018-9-23T06:00:00+08:00",
+    "scaleTime": "2018-9-22T21:00:00+08:00",
     "schemaSplit": [
       {
         "writeRead": "IoTDB=192.168.130.17:6667",
+        "readOnly": []
+      }
+    ]
+  },
+  {
+    "scaleTime": "2018-9-23T20:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "IoTDB=192.168.130.20:6667",
+        "readOnly": []
+      }
+    ]
+  },
+  {
+    "scaleTime": "2018-9-24T19:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "IoTDB=192.168.130.21:6667",
         "readOnly": []
       }
     ]
