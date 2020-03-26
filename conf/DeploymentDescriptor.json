@@ -9,6 +9,14 @@
       {
         "writeRead": "IoTDB=192.168.130.5:6667",
         "readOnly": []
+      },
+      {
+        "writeRead": "IoTDB=192.168.130.11:6667",
+        "readOnly": []
+      },
+      {
+        "writeRead": "IoTDB=192.168.130.14:6667",
+        "readOnly": []
       }
     ]
   }
