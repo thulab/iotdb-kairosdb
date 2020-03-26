@@ -31,6 +31,6 @@ IOTDB_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.au
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
 
 
-exec "$JAVA" $IOTDB_JMX_OPTS -Xmx50g -Xms50g -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exec "$JAVA" $IOTDB_JMX_OPTS -Xmx5g -Xms5g -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 
 exit $?
