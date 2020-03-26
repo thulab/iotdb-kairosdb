@@ -3,24 +3,7 @@
     "scaleTime": "2018-9-20T00:00:00+08:00",
     "schemaSplit": [
       {
-        "writeRead": "InfluxDB=http://192.168.130.16:8086",
-        "readOnly": []
-      },
-      {
-        "writeRead": "InfluxDB=http://192.168.130.17:8086",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2014-5-14T00:53:28+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "InfluxDB=http://192.168.130.13:8086",
-        "readOnly": []
-      },
-      {
-        "writeRead": "InfluxDB=http://192.168.130.14:8086",
+        "writeRead": "IoTDB=192.168.130.14:6667",
         "readOnly": []
       }
     ]
