@@ -3,70 +3,11 @@
     "scaleTime": "2018-9-20T00:00:00+08:00",
     "schemaSplit": [
       {
-        "writeRead": "IoTDB=192.168.130.5:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-20T17:00:00+08:00",
-    "schemaSplit": [
-      {
         "writeRead": "IoTDB=192.168.130.4:6667",
         "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-21T10:00:00+08:00",
-    "schemaSplit": [
+      },
       {
-        "writeRead": "IoTDB=192.168.130.11:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-22T03:00:00+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "IoTDB=192.168.130.14:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-22T20:00:00+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "IoTDB=192.168.130.17:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-23T13:00:00+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "IoTDB=192.168.130.19:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-24T06:00:00+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "IoTDB=192.168.130.20:6667",
-        "readOnly": []
-      }
-    ]
-  },
-  {
-    "scaleTime": "2018-9-24T23:00:00+08:00",
-    "schemaSplit": [
-      {
-        "writeRead": "IoTDB=192.168.130.21:6667",
+        "writeRead": "IoTDB=192.168.130.5:6667",
         "readOnly": []
       }
     ]
