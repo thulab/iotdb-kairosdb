@@ -7,5 +7,14 @@
         "readOnly": []
       }
     ]
+  },
+  {
+    "scaleTime": "2018-9-23T00:00:00+08:00",
+    "schemaSplit": [
+      {
+        "writeRead": "IoTDB=192.168.130.16:6667",
+        "readOnly": []
+      }
+    ]
   }
 ]
