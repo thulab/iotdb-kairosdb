@@ -3,7 +3,7 @@
     "scaleTime": "2018-9-20T00:00:00+08:00",
     "schemaSplit": [
       {
-        "writeRead": "IoTDB=192.168.130.3:6667",
+        "writeRead": "IoTDB=192.168.130.5:6667",
         "readOnly": []
       }
     ]
