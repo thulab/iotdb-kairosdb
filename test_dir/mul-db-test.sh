@@ -16,11 +16,11 @@ NET_ZONE=192.168.130
 
 for i in ${IP_ARRAY[@]}
 do
-  ssh $USER@$NET_ZONE.$i "sh $IOTDB_PATH/sbin/stop-server.sh"
+  ssh $USER@$NET_ZONE.$i "bash $IOTDB_PATH/sbin/stop-server.sh"
   ssh $USER@$NET_ZONE.$i "rm -rf $IOTDB_PATH/data"
   ssh $USER@$NET_ZONE.$i "rm -rf $IOTDB_PATH/logs"
   sleep 2
-  ssh $USER@$NET_ZONE.$i "sh $IOTDB_PATH/sbin/start-server.sh > /dev/null 2>&1 &"
+  ssh $USER@$NET_ZONE.$i "bash $IOTDB_PATH/sbin/start-server.sh > /dev/null 2>&1 &"
   echo "start databases on $USER@$NET_ZONE.$i"
 done
 
