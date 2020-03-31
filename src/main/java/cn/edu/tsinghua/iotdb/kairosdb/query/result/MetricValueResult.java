@@ -112,7 +112,9 @@ public class MetricValueResult {
   }
 
   public void setTag(String key, List<String> tags) {
-    this.tags.put(key, tags);
+    if (key != null && tags!= null) {
+      this.tags.put(key, tags);
+    }
   }
 
   public void addDataPoint(QueryDataPoint point) {
