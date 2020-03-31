@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.kairosdb.rollup;
 
 import cn.edu.tsinghua.iotdb.kairosdb.conf.Config;
 import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
+import cn.edu.tsinghua.iotdb.kairosdb.conf.Constants;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -30,8 +31,12 @@ public class RollUpStoreImpl implements RollUpStore {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
       for (List<String> writeReadList : config.IoTDB_LIST) {
         for (String url : writeReadList) {
-          connections.add(DriverManager
-              .getConnection(String.format(CONNECT_STRING, url), USER, PWD));
+          String dbType = url.split("=")[0];
+          if (dbType.equals(Constants.DB_IOT)) {
+            String iotdbUrl = url.split("=")[1];
+            connections.add(DriverManager
+                .getConnection(String.format(CONNECT_STRING, iotdbUrl), USER, PWD));
+          }
         }
       }
     } catch (Exception e) {
