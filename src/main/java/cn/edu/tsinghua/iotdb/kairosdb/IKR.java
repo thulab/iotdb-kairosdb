@@ -36,6 +36,14 @@ public class IKR {
     return GrizzlyHttpServerFactory.createHttpServer(baseURI, rc);
   }
 
+  private static HttpServer startSelfServer() {
+    final ResourceConfig rc = new ResourceConfig()
+        .packages("cn.edu.tsinghua.iotdb.kairosdb.http.rest");
+    URI self = UriBuilder.fromUri("http://127.0.0.1/").port(Integer.parseInt(config.REST_PORT))
+        .build();
+    return GrizzlyHttpServerFactory.createHttpServer(self, rc);
+  }
+
   private static void initDB() throws SQLException, ClassNotFoundException {
     for (String url : config.URL_LIST) {
       LOGGER.info("Ready to connect to IoTDB. {}", url);
@@ -61,8 +69,10 @@ public class IKR {
 
   public static void main(String[] argv) {
     HttpServer server = null;
+    HttpServer selfServer = null;
     try {
       server = startServer(argv);
+      selfServer = startSelfServer();
     } catch (Exception e) {
       LOGGER.error("启动IKR服务失败，请检查是否启动了IoTDB服务以及相关配置参数是否正确", e);
       System.exit(1);
@@ -75,6 +85,7 @@ public class IKR {
       Thread.currentThread().interrupt();
     }
     server.shutdown();
+    selfServer.shutdown();
     IoTDBUtil.closeConnection();
   }
 
