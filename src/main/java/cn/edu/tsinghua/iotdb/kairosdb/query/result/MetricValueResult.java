@@ -5,6 +5,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.group_by.GroupBy;
 import com.google.gson.annotations.SerializedName;
 import java.sql.Types;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,15 @@ public class MetricValueResult {
     groupBy = Collections.synchronizedList(new LinkedList<>());
     tags = new ConcurrentHashMap<>();
     values = Collections.synchronizedList(new LinkedList<>());
+  }
+
+  public void sort() {
+    values.sort(new Comparator<QueryDataPoint>() {
+      @Override
+      public int compare(QueryDataPoint o1, QueryDataPoint o2) {
+        return (int) (o1.getTimestamp() - o2.getTimestamp());
+      }
+    });
   }
 
   public List<List<QueryDataPoint>> splitDataPoint(
@@ -78,7 +88,7 @@ public class MetricValueResult {
 
   public void addGroupBy(GroupBy groupBy) {
     if (this.groupBy == null) {
-      this.groupBy = new LinkedList<>();
+      this.groupBy = Collections.synchronizedList(new LinkedList<>());
     }
     if (groupBy == null) {
       return;

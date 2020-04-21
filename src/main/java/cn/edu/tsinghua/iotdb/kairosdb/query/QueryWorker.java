@@ -59,7 +59,6 @@ public class QueryWorker implements Runnable {
     try {
       if (getMetricMapping(metric)) {
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
-        long interval = endTime - startTime;
         metricResult.setSampleSize(getValueResult(metricValueResult));
 
         if (metricResult.getSampleSize() == 0) {
@@ -67,12 +66,9 @@ public class QueryWorker implements Runnable {
           metricResult.addResult(new MetricValueResult(metric.getName()));
           metricResult.getResults().get(0).setGroupBy(null);
         } else {
+          metricValueResult.sort();
           metricResult.addResult(metricValueResult);
-          if (!(metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType()
-              .equals(
-                  QueryAggregatorType.AVG) || interval > config.MAX_RANGE)) {
-            metricResult = doAggregations(metric, metricResult);
-          }
+          metricResult = doAggregations(metric, metricResult);
         }
       } else {
         metricResult = new MetricResult();

@@ -139,8 +139,6 @@ public class TimeSegmentQueryWorker implements Runnable {
             + "time segment {}", timeSegmentIndex, e);
         Thread.currentThread().interrupt();
       }
-      String na = metricValueResult.getName();
-      System.out.println(na);
 
     } catch (Exception e) {
       LOGGER.error("{} execute segment query failed because", Thread.currentThread().getName(), e);

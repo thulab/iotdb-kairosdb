@@ -90,8 +90,9 @@ public class SchemaSegmentQueryWorker implements Runnable {
   @Override
   public void run() {
     try {
+      //push down avg aggregation query
+      /*
       long interval = segmentEndTime - segmentStartTime;
-      //push down aggregation query
       if (metric.getAggregators().size() == 1 && metric.getAggregators().get(0).getType().equals(
           QueryAggregatorType.AVG) || interval > config.MAX_RANGE) {
         long value = config.GROUP_BY_UNIT;
@@ -112,6 +113,7 @@ public class SchemaSegmentQueryWorker implements Runnable {
             + segmentEndTime
             + "])";
       }
+      */
 
       // use schema's hash code to use the query cache in IoTDB
       int schemaSegmentIndex = SegmentManager.writeSchemaHashCode(schemaKey, timeSegmentIndex);
