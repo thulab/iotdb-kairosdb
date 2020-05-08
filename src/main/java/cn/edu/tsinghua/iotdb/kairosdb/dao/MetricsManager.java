@@ -20,6 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +59,17 @@ public class MetricsManager {
   //index for persistence tag info in IoTDB
   private static AtomicLong index = new AtomicLong(1);
 
+  private static ScheduledThreadPoolExecutor executor = (ScheduledThreadPoolExecutor) Executors
+          .newScheduledThreadPool(1);
+
+  private static final String USER = "root";
+  private static final String PSW = "root";
+
   private MetricsManager() {
+    executor.scheduleAtFixedRate(new UpdateMetadataThread(),
+            config.LOAD_METADATA_CYCLE,
+            config.LOAD_METADATA_CYCLE,
+            TimeUnit.SECONDS);
   }
 
   /**
@@ -432,4 +445,26 @@ public class MetricsManager {
       return list;
     }
   }
+
+  private class UpdateMetadataThread implements Runnable {
+
+    @Override
+    public void run() {
+      for (List<String> urls : config.IoTDB_LIST) {
+        for(String url: urls) {
+          LOGGER.info("Ready to connect to IoTDB. {}", url);
+          try {
+            Connection connection = IoTDBUtil.getConnection(url, USER, PSW);
+            LOGGER.info("Connected {} successfully.", url);
+            MetricsManager.loadMetadata(connection);
+          } catch (Exception e) {
+            LOGGER.error("Fail to update metadata in {}", url);
+            return;
+          }
+        }
+      }
+      LOGGER.info("定时更新了IoTDB元数据信息");
+    }
+  }
+
 }

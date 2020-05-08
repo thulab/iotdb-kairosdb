@@ -119,6 +119,8 @@ public class ConfigDescriptor {
             .parseLong(properties.getProperty("LATEST_TIME_RANGE", config.LATEST_TIME_RANGE + ""));
         config.LOAD_PARAM_CYCLE = Long
             .parseLong(properties.getProperty("LOAD_PARAM_CYCLE", config.LOAD_PARAM_CYCLE + ""));
+        config.LOAD_METADATA_CYCLE = Long
+                .parseLong(properties.getProperty("LOAD_METADATA_CYCLE", config.LOAD_METADATA_CYCLE + ""));
         config.PROFILE_INTERVAL = Integer
             .parseInt(properties.getProperty("PROFILE_INTERVAL", config.PROFILE_INTERVAL + ""));
         config.CORE_POOL_SIZE = Integer
@@ -211,5 +213,4 @@ public class ConfigDescriptor {
       LOGGER.info("定时更新了配置");
     }
   }
-
 }
