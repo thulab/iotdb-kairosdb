@@ -12,6 +12,7 @@ import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryDataPoint;
 import cn.edu.tsinghua.iotdb.kairosdb.query.result.QueryResult;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.DeleteSqlBuilder;
 import cn.edu.tsinghua.iotdb.kairosdb.query.sql_builder.QuerySqlBuilder;
+import cn.edu.tsinghua.iotdb.kairosdb.util.Util;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -317,14 +318,13 @@ public class QueryExecutor {
   }
 
   private int findType(String string) {
-    if (isNumeric(string)) {
-      return Types.INTEGER;
-    } else {
+    if (Util.isNumber(string)) {
       if (string.contains(".")) {
         return Types.DOUBLE;
-      } else {
-        return Types.VARCHAR;
       }
+      return Types.INTEGER;
+    } else {
+      return Types.VARCHAR;
     }
   }
 
