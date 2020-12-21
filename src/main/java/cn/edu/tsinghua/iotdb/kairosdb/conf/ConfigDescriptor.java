@@ -66,6 +66,8 @@ public class ConfigDescriptor {
         config.DEBUG = Integer.parseInt(properties.getProperty("DEBUG", config.DEBUG + ""));
         config.CONNECTION_NUM = Integer
             .parseInt(properties.getProperty("CONNECTION_NUM", config.CONNECTION_NUM + ""));
+        config.IOTDB_GENERATE_QUERY = Boolean.parseBoolean(
+            properties.getProperty("IOTDB_GENERATE_QUERY", config.IOTDB_GENERATE_QUERY + ""));
       } catch (IOException e) {
         LOGGER.error("load properties error: ", e);
       }

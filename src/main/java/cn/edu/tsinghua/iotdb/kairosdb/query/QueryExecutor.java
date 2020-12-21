@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.kairosdb.query;
 
+import cn.edu.tsinghua.iotdb.kairosdb.conf.ConfigDescriptor;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.IoTDBConnectionPool;
 import cn.edu.tsinghua.iotdb.kairosdb.dao.MetricsManager;
 import cn.edu.tsinghua.iotdb.kairosdb.query.aggregator.QueryAggregator;
@@ -27,6 +28,8 @@ import org.slf4j.LoggerFactory;
 public class QueryExecutor {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(QueryExecutor.class);
+  private boolean iotdbGenerateQuery = ConfigDescriptor.getInstance()
+      .getConfig().IOTDB_GENERATE_QUERY;
 
   private Query query;
 
@@ -50,17 +53,27 @@ public class QueryExecutor {
 
     for (QueryMetric metric : query.getQueryMetrics()) {
 
-      if (getMetricMapping(metric)) {
+      if (iotdbGenerateQuery || getMetricMapping(metric)) {
 
         MetricResult metricResult = new MetricResult();
 
-        String sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
+        String sql = null;
+
+        if (iotdbGenerateQuery){
+          sql = buildSqlStatement(metric, startTime, endTime);
+        } else {
+          sql = buildSqlStatement(metric, pos2tag, tag2pos.size(), startTime, endTime);
+        }
 
         MetricValueResult metricValueResult = new MetricValueResult(metric.getName());
 
         metricResult.setSampleSize(getValueResult(sql, metricValueResult));
 
-        setTags(metricValueResult);
+        if (iotdbGenerateQuery){
+          setTags(metricValueResult, metric);
+        } else {
+          setTags(metricValueResult);
+        }
 
         if (metricResult.getSampleSize() == 0) {
           queryResult.addVoidMetricResult(metric.getName());
@@ -129,6 +142,15 @@ public class QueryExecutor {
     }
 
     return true;
+  }
+
+  private String buildSqlStatement(QueryMetric metric, long startTime, long endTime) {
+    QuerySqlBuilder sqlBuilder = new QuerySqlBuilder(metric.getName(), false);
+
+    sqlBuilder.append(metric.getTags().get("group"));
+    sqlBuilder.append(metric.getTags().get("device"));
+
+    return sqlBuilder.generateSql(startTime, endTime);
   }
 
   private String buildSqlStatement(QueryMetric metric, Map<Integer, String> pos2tag, int maxPath,
@@ -249,6 +271,11 @@ public class QueryExecutor {
     }
   }
 
+  private void setTags(MetricValueResult metricValueResult, QueryMetric metric) {
+    metricValueResult.setTag("group", metric.getTags().get("group"));
+    metricValueResult.setTag("device", metric.getTags().get("device"));
+  }
+
   private void setTags(MetricValueResult metricValueResult) {
     if (tmpTags != null) {
       for (Map.Entry<String, Integer> entry : tag2pos.entrySet()) {
@@ -264,6 +291,10 @@ public class QueryExecutor {
   private void addBasicGroupByToResult(
       ResultSetMetaData metaData, MetricValueResult metricValueResult) throws SQLException {
     int type = metaData.getColumnType(2);
+    if (iotdbGenerateQuery && type == Types.BOOLEAN){
+      metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
+      return;
+    }
     if (type == Types.VARCHAR) {
       metricValueResult.addGroupBy(GroupByType.getTextTypeInstance());
     } else {

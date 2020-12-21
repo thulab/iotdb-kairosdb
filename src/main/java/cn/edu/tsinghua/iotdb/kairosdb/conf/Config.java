@@ -13,6 +13,7 @@ public class Config {
   public int CONNECTION_NUM = 20;
   public int PROTOCAL_NUM = 12;
   public List<List<String>> PROTOCAL_MACHINE = new ArrayList<>();
+  public boolean IOTDB_GENERATE_QUERY = false;
 
   Config() {
 

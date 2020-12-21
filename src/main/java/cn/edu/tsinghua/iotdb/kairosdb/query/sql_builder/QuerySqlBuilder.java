@@ -13,6 +13,12 @@ public class QuerySqlBuilder {
 
   private List<StringBuilder> list;
 
+  public QuerySqlBuilder(String metricName, boolean notUsed){
+    this.metricName = metricName;
+    list = new LinkedList<>();
+    list.add(new StringBuilder("root"));
+  }
+
   public QuerySqlBuilder(String metricName) {
     this.metricName = metricName;
     list = new LinkedList<>();
