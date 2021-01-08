@@ -35,6 +35,8 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/api/v1")
 public class MetricsResource {
@@ -42,6 +44,8 @@ public class MetricsResource {
   private static final String QUERY_URL = "/datapoints/query";
   private static final String NO_CACHE = "no-cache";
   private static final ExecutorService threadPool = Executors.newCachedThreadPool();
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
 
   //Used for parsing incoming metrics
   private final Gson gson;
@@ -142,9 +146,11 @@ public class MetricsResource {
 
     } catch (BeanValidationException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+      LOGGER.error("query error, jsonStr:{}", jsonStr, e);
       return builder.addErrors(e.getErrorMessages()).build();
     } catch (QueryException e) {
       JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+      LOGGER.error("query error, jsonStr:{}", jsonStr, e);
       return builder.addError(e.getMessage()).build();
     }
   }
