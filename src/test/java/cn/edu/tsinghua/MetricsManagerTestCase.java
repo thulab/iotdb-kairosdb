@@ -33,7 +33,7 @@ public class MetricsManagerTestCase {
     try {
       initDB();
       DataPointsParser dpp = new DataPointsParser(null, null);
-      dpp.addDataPoint(name, ImmutableSortedMap.copyOf(tags), DataType.STRING, timestamp, value);
+      dpp.addDataPoint(name, ImmutableSortedMap.copyOf(tags), DataType.STRING, timestamp, timestamp, value);
     } catch (Exception e) {
       LOGGER.error(String.format("%s: %s", e.getClass().getName(), e.getMessage()));
     }

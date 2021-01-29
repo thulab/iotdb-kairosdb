@@ -106,14 +106,8 @@ public class DataPointsParser {
       sendMetricsData();
     } catch (SQLException e) {
       try {
-        createTimeSeries();
         sendMetricsData();
       } catch (SQLException ex) {
-        try {
-          sendMetricsData();
-        } catch (SQLException exc) {
-          LOGGER.debug("Exception occur for final send:,", exc);
-        }
         LOGGER.debug("Exception occur for create and send:,", ex);
         validationErrors.addErrorMessage(
             String.format("%s: %s", ex.getClass().getName(), ex.getMessage()));
@@ -185,6 +179,7 @@ public class DataPointsParser {
     for (Connection conn : connections) {
       try (Statement statement = conn.createStatement()) {
         for (Map.Entry<TimestampDevicePair, Map<String, String>> entry : tableMap.entrySet()) {
+          long genTime = entry.getKey().getGenTimestamp();
           StringBuilder sqlBuilder = new StringBuilder();
           StringBuilder sensorPartBuilder = new StringBuilder("(timestamp");
           StringBuilder valuePartBuilder = new StringBuilder(" values(");
@@ -197,8 +192,10 @@ public class DataPointsParser {
             sensorPartBuilder.append(",").append(subEntry.getKey());
             valuePartBuilder.append(",").append(subEntry.getValue());
           }
-          sensorPartBuilder.append(")");
-          valuePartBuilder.append(")");
+          long arrivalTime = System.currentTimeMillis();
+          long delay = arrivalTime - genTime;
+          sensorPartBuilder.append(",genTime,arrivalTime,delay)");
+          valuePartBuilder.append(String.format(",%s,%s,%s)", genTime, arrivalTime, delay));
           sqlBuilder.append(sqlPrefix).append(sensorPartBuilder).append(valuePartBuilder);
 //          LOGGER.info("插入数据的连接序号为:{},执行插入的SQL语句：{}，", count, sqlBuilder.toString());
           statement.execute(sqlBuilder.toString());
@@ -232,12 +229,13 @@ public class DataPointsParser {
    * @param tags The tags of the datapoint(at least one)
    * @param type The type of the datapoint value(int, double, text)
    * @param timestamp The timestamp of the datapoint
+   * @param genTimestamp The generate time of the datapoint
    * @param value The value of the datapoint
    * @return Null if the datapoint has been correctly insert, otherwise, the errors in
    * ValidationErrors
    */
   public ValidationErrors addDataPoint(String name, ImmutableSortedMap<String, String> tags,
-      DataType type, Long timestamp, String value) throws SQLException {
+      DataType type, Long timestamp, Long genTimestamp, String value) throws SQLException {
     ValidationErrors validationErrors = new ValidationErrors();
     if (null == tags) {
       LOGGER.error("metric {} have no tag", name);
@@ -257,7 +255,7 @@ public class DataPointsParser {
     seriesPaths
         .put(String.format("root.%s%s.%s", MetricsManager.getStorageGroupName(path), path, name),
             type);
-    TimestampDevicePair tableMapKey = new TimestampDevicePair(timestamp, path);
+    TimestampDevicePair tableMapKey = new TimestampDevicePair(timestamp, genTimestamp, path);
     if (tableMap.containsKey(tableMapKey)) {
       tableMap.get(tableMapKey).put(name, value);
     } else {
@@ -323,7 +321,7 @@ public class DataPointsParser {
 
         try {
           ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type,
-              metric.getTimestamp(),
+              metric.getTimestamp(), metric.getGenTimestamp(),
               metric.getValue().getAsString());
           if (null != tErrors) {
             validationErrors.add(tErrors);
@@ -380,7 +378,7 @@ public class DataPointsParser {
 
             try {
               ValidationErrors tErrors = addDataPoint(metric.getName(), tags, type, timestamp,
-                  dataPoint[1].getAsString());
+                  timestamp, dataPoint[1].getAsString());
               if (null != tErrors) {
                 validationErrors.add(tErrors);
               }
@@ -527,6 +525,7 @@ public class DataPointsParser {
 
     private String name;
     private Long timestamp = null;
+    private Long genTimestamp = null;
     private Long time = null;
     private JsonElement value;
     private Map<String, String> tags;
@@ -543,6 +542,10 @@ public class DataPointsParser {
       } else {
         return timestamp;
       }
+    }
+
+    public Long getGenTimestamp() {
+      return genTimestamp;
     }
 
     public JsonElement getValue() {

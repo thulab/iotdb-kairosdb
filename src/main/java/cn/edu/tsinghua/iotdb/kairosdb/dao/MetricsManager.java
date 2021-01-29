@@ -103,7 +103,6 @@ public class MetricsManager {
           storageGroupSize = rs.getInt(2);
         } else {
           LOGGER.error("Database metadata has broken, use 30 as storage group size.");
-//          System.exit(1);
           storageGroupSize = 30;
         }
 
@@ -136,13 +135,6 @@ public class MetricsManager {
         // Initialize the storage group with STORAGE_GROUP_SIZE which is specified by config.properties
         statement.execute(
             String.format(SYSTEM_CREATE_SQL, "storage_group_size", "INT32", INT32_ENCODING));
-        statement.execute(String.format(
-            "insert into root.SYSTEM.TAG_NAME_INFO(timestamp, storage_group_size) values(%s, %s);",
-            new Date().getTime(), storageGroupSize));
-        for (int i = 0; i < storageGroupSize; i++) {
-          statement
-              .execute(String.format("SET STORAGE GROUP TO root.%s%s", STORAGE_GROUP_PREFIX, i));
-        }
 
         // Create timeseries to persistence rollup tasks
         statement.execute(String.format(ROLLUP_CREATE_SQL, JSON, "TEXT", TEXT_ENCODING));
