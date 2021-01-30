@@ -25,7 +25,9 @@ else
     JAVA=java
 fi
 
+# Maximum heap size
+MAX_HEAP_SIZE="6G"
 
-exec "$JAVA" -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml  -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exec "$JAVA" -Duser.timezone=GMT+8 -Dlogback.configurationFile=${REST_HOME}/conf/logback.xml -Xmx${MAX_HEAP_SIZE} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 
 exit $?
